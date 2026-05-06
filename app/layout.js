@@ -1,9 +1,16 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Hi-Streets',
-  description: 'Live offers from shops near you',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1',
+  title: 'Hi-Streets — Live Offers & Free Parking',
+  description: 'Live offers from local shops and free parking near you. Now in Newham, London.',
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }) {

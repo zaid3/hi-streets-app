@@ -4,16 +4,13 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html {
-  height: 100%;
-  height: -webkit-fill-available;
-}
+html { height: 100%; height: -webkit-fill-available; }
 
 body {
   height: 100%;
   min-height: 100vh;
   min-height: -webkit-fill-available;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   background: #0a0a0a;
   color: white;
   -webkit-font-smoothing: antialiased;
@@ -38,3 +35,15 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
 .leaflet-popup-content-wrapper { background: rgba(20,20,20,0.98) !important; color: white !important; border-radius: 16px !important; border: 1px solid rgba(255,107,53,0.3) !important; box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; }
 .leaflet-popup-tip { background: rgba(20,20,20,0.98) !important; }
 .leaflet-popup-close-button { color: rgba(255,255,255,0.5) !important; }
+
+/* LOGO F */
+.hs-logo { display: inline-block; line-height: 1; font-family: Arial, Helvetica, sans-serif; }
+.hs-logo-row { display: flex; align-items: center; gap: 0; white-space: nowrap; }
+.hs-hi-mark { position: relative; flex-shrink: 0; }
+.hs-corner { position: absolute; border-color: #ff681f; border-style: solid; }
+.hs-corner.tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.hs-corner.br { border-width: 0 2px 2px 0; }
+.hs-hi { color: #ff681f; font-weight: 800; letter-spacing: -0.08em; }
+.hs-streets { color: #ffffff; font-weight: 400; letter-spacing: -0.055em; }
+.hs-tag { display: flex; align-items: center; gap: 9px; color: #ff681f; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; white-space: nowrap; font-family: Arial, Helvetica, sans-serif; }
+.hs-tag-line { height: 1px; background: #ff681f; opacity: 0.7; flex-shrink: 0; }

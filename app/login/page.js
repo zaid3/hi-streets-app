@@ -3,28 +3,6 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../lib/supabase'
 
-function LogoF({ size = 'large' }) {
-  const s = size === 'large'
-    ? { hi: 52, streets: 48, tag: 11, corner: 13, stroke: 2.5, boxW: 68, boxH: 60, hiL: 10, hiB: 7, tagGap: 12, tagLine: 34, brR: 4, brB: 3 }
-    : { hi: 30, streets: 27, tag: 7, corner: 8, stroke: 1.8, boxW: 40, boxH: 36, hiL: 6, hiB: 4, tagGap: 8, tagLine: 20, brR: 2, brB: 2 }
-  return (
-    <div className="hs-logo">
-      <div className="hs-logo-row">
-        <div className="hs-hi-mark" style={{ width: s.boxW, height: s.boxH }}>
-          <div className="hs-corner tl" style={{ width: s.corner, height: s.corner, borderWidth: `${s.stroke}px 0 0 ${s.stroke}px` }} />
-          <span className="hs-hi" style={{ position: 'absolute', left: s.hiL, bottom: s.hiB, fontSize: s.hi }}}>Hi</span>
-          <div className="hs-corner br" style={{ width: s.corner, height: s.corner, right: s.brR, bottom: s.brB, borderWidth: `0 ${s.stroke}px ${s.stroke}px 0` }} />
-        </div>
-        <span className="hs-streets" style={{ fontSize: s.streets }}>Streets</span>
-      </div>
-      <div className="hs-tag" style={{ marginTop: size === 'large' ? 18 : 10, gap: s.tagGap, fontSize: s.tag }}>
-        <div className="hs-tag-line" style={{ width: s.tagLine }} />
-        <span>Live Offers &amp; Free Parking Nearby</span>
-      </div>
-    </div>
-  )
-}
-
 export default function Login() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -56,8 +34,16 @@ export default function Login() {
     <div style={{ minHeight:'100vh', minHeight:'100dvh', background:'#0a0a0a', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px', fontFamily:'Arial,Helvetica,sans-serif' }}>
       <div style={{ position:'fixed', top:'-20%', left:'50%', transform:'translateX(-50%)', width:'600px', height:'600px', background:'radial-gradient(circle,rgba(255,104,31,.1) 0%,transparent 70%)', pointerEvents:'none' }} />
 
-      <div style={{ marginBottom: 40, zIndex: 1 }}>
-        <LogoF size="large" />
+      <div style={{ marginBottom: 40, zIndex: 1, textAlign: 'center' }}>
+        <div style={{ width: 68, height: 60, position: 'relative', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: 13, height: 13, borderTop: '2.5px solid #ff681f', borderLeft: '2.5px solid #ff681f' }} />
+          <span style={{ fontSize: 52, fontWeight: 800, color: '#ff681f', letterSpacing: '-0.08em', position: 'absolute', left: 10, bottom: 7 }}>Hi</span>
+          <div style={{ position: 'absolute', right: 4, bottom: 3, width: 13, height: 13, borderBottom: '2.5px solid #ff681f', borderRight: '2.5px solid #ff681f' }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 16 }}>
+          <span style={{ fontSize: 48, fontWeight: 400, color: 'white', letterSpacing: '-0.055em', marginLeft: 4 }}>Streets</span>
+        </div>
+        <p style={{ color: 'rgba(255,255,255,.45)', fontSize: 14, margin: 0 }}>Live offers &amp; free parking nearby</p>
       </div>
 
       <div style={{ background:'rgba(255,255,255,.05)', backdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,.1)', borderRadius:'20px', padding:'28px', width:'100%', maxWidth:'360px', zIndex:1 }}>

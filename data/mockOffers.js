@@ -1,0 +1,12 @@
+
+export const mockOffers = [
+  { id:'mo1', businessName:'Café Nero', category:'cafe', shortLabel:'20% off lunch', title:'20% Off All Lunch Orders', description:'20% off all lunch orders until 5pm. Dine-in and takeaway.', distance:'0.2 mi', expiresAt:new Date(Date.now()+4*3600000).toISOString(), lat:51.5370, lng:-0.0500, terms:'Not valid with other offers.', source:'app', status:'live' },
+  { id:'mo2', businessName:'Urban Bites', category:'restaurant', shortLabel:'Flat 15% off', title:'Flat 15% Off Everything', description:'15% off your entire order this weekend.', distance:'0.4 mi', expiresAt:new Date(Date.now()+8*3600000).toISOString(), lat:51.5155, lng:-0.0780, source:'whatsapp', status:'live' },
+  { id:'mo3', businessName:'Tech Fix', category:'electronics', shortLabel:'Free laptop check', title:'Free Laptop Health Check', description:'Free 15-minute diagnostic — no obligation.', distance:'0.6 mi', expiresAt:new Date(Date.now()+24*3600000).toISOString(), lat:51.5200, lng:-0.1100, source:'app', status:'live' },
+  { id:'mo4', businessName:'Beauty Hub', category:'beauty', shortLabel:'Buy 1 get 1 50%', title:'Buy 1 Get 1 at 50% Off', description:'All nail treatments. Book today.', distance:'0.3 mi', expiresAt:new Date(Date.now()+12*3600000).toISOString(), lat:51.5090, lng:-0.1340, source:'app', status:'live' },
+  { id:'mo5', businessName:'Green Grocers', category:'convenience', shortLabel:'3 for 2 on fruit', title:'3 for 2 on All Fresh Fruit', description:'Stock up and save on fresh fruit today.', distance:'0.1 mi', expiresAt:new Date(Date.now()+6*3600000).toISOString(), lat:51.5374, lng:0.0055, source:'whatsapp', status:'live' },
+]
+export const CATEGORY_ICONS = { restaurant:'🍽️', cafe:'☕', pub:'🍺', fast_food:'🍔', bank:'🏦', pharmacy:'💊', supermarket:'🛒', convenience:'🏪', beauty:'💅', electronics:'📱', hairdresser:'💇', bakery:'🍞', other:'🏪' }
+export const CATEGORY_COLORS = { restaurant:'#FF6B35', cafe:'#C0A000', fast_food:'#FF4444', pharmacy:'#3498DB', supermarket:'#9B59B6', beauty:'#E91E63', electronics:'#00BCD4', other:'#FF6B35' }
+export const getCatIcon = cat => CATEGORY_ICONS[cat]||'🏪'
+export const getCatColor = cat => CATEGORY_COLORS[cat]||'#FF6B35'

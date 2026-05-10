@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;height:-webkit-fill-available;color-scheme:dark}
+body{height:100%;min-height:100vh;min-height:-webkit-fill-available;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif;background:#0a0a0a;color:#fff;-webkit-font-smoothing:antialiased;overflow:hidden}
+.leaflet-container{height:100%!important;width:100%!important;background:#1c1c1e}
+.leaflet-control-attribution{display:none!important}
+.leaflet-control-zoom{border:none!important}
+.leaflet-control-zoom a{background:rgba(10,10,10,.95)!important;backdrop-filter:blur(20px)!important;color:#fff!important;border:1px solid rgba(255,255,255,.1)!important;border-radius:12px!important;font-size:18px!important;width:42px!important;height:42px!important;line-height:42px!important}
+.leaflet-bar{border:none!important;box-shadow:0 4px 24px rgba(0,0,0,.6)!important;border-radius:14px!important}
+.leaflet-popup-content-wrapper{background:rgba(10,10,10,.98)!important;color:#fff!important;border-radius:16px!important;border:1px solid rgba(255,107,53,.3)!important;box-shadow:0 8px 32px rgba(0,0,0,.7)!important;padding:0!important}
+.leaflet-popup-content{margin:0!important}
+.leaflet-popup-tip{background:rgba(10,10,10,.98)!important}
+.leaflet-popup-close-button{color:rgba(255,255,255,.5)!important;font-size:18px!important;top:8px!important;right:8px!important}
+@keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.slide-up{animation:slideUp .32s cubic-bezier(.34,1.2,.64,1) forwards}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+::-webkit-scrollbar{display:none}
+*{-ms-overflow-style:none;scrollbar-width:none}

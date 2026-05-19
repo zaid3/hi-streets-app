@@ -1,0 +1,40 @@
+{
+  "name": "Hi-Streets",
+  "short_name": "Hi-Streets",
+  "description": "Live parking availability and local offers near you",
+  "start_url": "/map",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0a",
+  "theme_color": "#ff681f",
+  "categories": ["navigation", "lifestyle", "shopping"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Find Free Parking",
+      "short_name": "Parking",
+      "url": "/map",
+      "description": "Open the live parking map"
+    },
+    {
+      "name": "Business Portal",
+      "short_name": "My Business",
+      "url": "/business",
+      "description": "Post offers and manage your business"
+    }
+  ],
+  "prefer_related_applications": false
+}

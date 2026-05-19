@@ -99,6 +99,9 @@ html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:#
 @keyframes shimmer{0%{opacity:.4}50%{opacity:.8}100%{opacity:.4}}
 .shimmer{animation:shimmer 1.5s ease infinite}
 
+/* Parking timer pulse */
+@keyframes timerPulse{0%,100%{box-shadow:0 4px 24px rgba(0,0,0,.5),0 0 0 2px rgba(255,215,0,.25)}50%{box-shadow:0 4px 24px rgba(0,0,0,.5),0 0 0 4px rgba(255,215,0,.5)}}
+
 /* Tab bar */
 .tab-bar{
   position:absolute;bottom:0;left:0;right:0;

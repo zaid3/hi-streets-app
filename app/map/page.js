@@ -11,13 +11,14 @@ import SearchOverlay from'../../components/SearchOverlay'
 import FiltersSheet from'../../components/FiltersSheet'
 import ListViewSheet from'../../components/ListViewSheet'
 import SideMenu from'../../components/SideMenu'
+import ParkingTimerWidget,{useParkingTimer}from'../../components/ParkingTimer'
 
 const MapLibreMap=dynamic(()=>import('../../components/MapLibreMap'),{ssr:false})
 
 const OR='#ff681f'
 const UK={lat:51.5370,lng:0.0325}
 
-// ── Time selector ────────────────────────────────────────
+// ── Time selector ─────────────────────────────────────────
 function TimeSelector({startTime,duration,onChangeTime,onChangeDuration}){
   const[open,setOpen]=useState(false)
   const fmt=t=>t.getHours().toString().padStart(2,'0')+':'+t.getMinutes().toString().padStart(2,'0')
@@ -59,10 +60,45 @@ function TimeSelector({startTime,duration,onChangeTime,onChangeDuration}){
   )
 }
 
-// ── Main ─────────────────────────────────────────────────
+// ── Haversine distance in metres ──────────────────────────
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371000
+  const dLat=(lat2-lat1)*Math.PI/180
+  const dLng=(lng2-lng1)*Math.PI/180
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))
+}
+
+// ── Find nearest free bay ─────────────────────────────────
+function findNearestFree(segments,userLat,userLng){
+  const free=segments.filter(s=>s.type==='free')
+  if(!free.length)return null
+  let best=null,bestDist=Infinity
+  free.forEach(s=>{
+    const lat=s.lat||s.coords?.[0]?.[0]
+    const lng=s.lng||s.coords?.[0]?.[1]
+    if(!lat||!lng)return
+    const d=haversine(userLat,userLng,lat,lng)
+    if(d<bestDist){bestDist=d;best=s}
+  })
+  return best
+}
+
+// ── Toast notification ────────────────────────────────────
+function Toast({message,onDismiss}){
+  useEffect(()=>{const t=setTimeout(onDismiss,3500);return()=>clearTimeout(t)},[onDismiss])
+  return(
+    <div style={{position:'absolute',bottom:90,left:'50%',transform:'translateX(-50%)',zIndex:350,background:'#222',border:'1px solid rgba(255,255,255,.15)',borderRadius:14,padding:'10px 18px',fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.4)'}}>
+      {message}
+    </div>
+  )
+}
+
+// ── Main ──────────────────────────────────────────────────
 export default function MapPage(){
   const r=useRouter()
   const[center,setCenter]=useState(UK)
+  const[userLocation,setUserLocation]=useState(null)
   const[zoom,setZoom]=useState(15)
   const[segments,setSegments]=useState([])
   const[offers,setOffers]=useState([])
@@ -78,7 +114,9 @@ export default function MapPage(){
   const[startTime,setStartTime]=useState(new Date())
   const[duration,setDuration]=useState(1)
   const[destination,setDestination]=useState(null)
+  const[toast,setToast]=useState(null)
   const loadTimer=useRef(null)
+  const{timer,startTimer,stopTimer,extendTimer}=useParkingTimer()
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>setUser(session?.user||null))
@@ -89,7 +127,11 @@ export default function MapPage(){
   useEffect(()=>{
     if(navigator.geolocation){
       navigator.geolocation.getCurrentPosition(
-        p=>setCenter({lat:p.coords.latitude,lng:p.coords.longitude}),
+        p=>{
+          const loc={lat:p.coords.latitude,lng:p.coords.longitude}
+          setCenter(loc)
+          setUserLocation(loc)
+        },
         ()=>{},
         {timeout:6000,maximumAge:30000}
       )
@@ -123,7 +165,20 @@ export default function MapPage(){
     }
   }
 
-  // Filter segments by active filters
+  function handleFindFreeBay(){
+    const loc=userLocation||center
+    if(!loc){setToast('📍 Enable location to find nearby bays');return}
+    const nearest=findNearestFree(filteredSegments,loc.lat,loc.lng)
+    if(!nearest){setToast('No free bays visible on map — try zooming out');return}
+    setSelectedOffer(null)
+    setSelectedSeg(nearest)
+    // Pan map to bay
+    const lat=nearest.lat||nearest.coords?.[0]?.[0]
+    const lng=nearest.lng||nearest.coords?.[0]?.[1]
+    if(lat&&lng)setCenter({lat,lng})
+  }
+
+  // Filter segments
   const filteredSegments=segments.filter(s=>{
     if(!filters.types.includes(s.type)&&!s.isCarPark)return false
     if(s.isCarPark&&!filters.types.includes('carpark'))return false
@@ -174,6 +229,9 @@ export default function MapPage(){
         </div>
       </div>
 
+      {/* Parking timer widget */}
+      <ParkingTimerWidget timer={timer} onStop={stopTimer} onExtend={extendTimer}/>
+
       {/* Right floating */}
       <div style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',zIndex:200,display:'flex',flexDirection:'column',gap:10}}>
         {/* Filter */}
@@ -183,10 +241,19 @@ export default function MapPage(){
         </button>
         {/* Locate */}
         <button onClick={()=>{
-          navigator.geolocation?.getCurrentPosition(p=>{setCenter({lat:p.coords.latitude,lng:p.coords.longitude});setZoom(16)})
+          navigator.geolocation?.getCurrentPosition(p=>{
+            const loc={lat:p.coords.latitude,lng:p.coords.longitude}
+            setCenter(loc);setUserLocation(loc);setZoom(16)
+          })
         }}
           style={{width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(0,0,0,.2)',fontSize:18}}>
           📍
+        </button>
+        {/* Find free bay */}
+        <button onClick={handleFindFreeBay}
+          title="Find nearest free bay"
+          style={{width:44,height:44,background:'#2ECC71',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(46,204,113,.4)',fontSize:18}}>
+          🅿️
         </button>
         {/* Offers toggle */}
         <button onClick={()=>setShowOffers(s=>!s)}
@@ -201,7 +268,7 @@ export default function MapPage(){
       </div>
 
       {/* Live offers counter */}
-      {offers.length>0&&view!=='list'&&!selectedSeg&&!selectedOffer&&(
+      {offers.length>0&&view!=='list'&&!selectedSeg&&!selectedOffer&&!timer&&(
         <div style={{position:'absolute',bottom:80,left:'50%',transform:'translateX(-50%)',zIndex:200,pointerEvents:'none'}}>
           <div style={{background:OR,borderRadius:20,padding:'6px 16px',fontSize:13,fontWeight:600,color:'white',boxShadow:'0 2px 12px rgba(255,104,31,.4)',whiteSpace:'nowrap'}}>
             🛍️ {offers.length} live offer{offers.length!==1?'s':''} nearby
@@ -209,12 +276,15 @@ export default function MapPage(){
         </div>
       )}
 
+      {/* Toast */}
+      {toast&&<Toast message={toast} onDismiss={()=>setToast(null)}/>}
+
       {/* Bottom tab bar */}
       <div className="tab-bar">
         {[
           {icon:'🗺️',label:'Map',active:view!=='list',action:()=>setView('bay')},
           {icon:'📋',label:'List',active:view==='list',action:()=>setView('list')},
-          {icon:'🛍️',label:'Offers',active:false,action:()=>setShowOffers(s=>!s)},
+          {icon:'🅿️',label:'Free bay',active:false,action:handleFindFreeBay},
           {icon:'👤',label:'Account',active:false,action:()=>user?r.push('/business'):r.push('/login?redirect=/map')},
         ].map(t=>(
           <button key={t.label} onClick={t.action} className={`tab-item${t.active?' active':''}`}>
@@ -241,6 +311,7 @@ export default function MapPage(){
           onClose={()=>setSelectedSeg(null)}
           destination={destination}
           onDirections={handleDirections}
+          onStartTimer={(mins,name,type)=>startTimer(mins,name,type)}
         />
       )}
 

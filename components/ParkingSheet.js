@@ -3,6 +3,38 @@ import{useState,useEffect}from'react'
 
 const OR='#ff681f'
 
+// ── Duration picker for timer ────────────────────────────
+function TimerDurationPicker({onStart,onCancel}){
+  const[mins,setMins]=useState(60)
+  const options=[30,60,90,120,180,240]
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:700,display:'flex',alignItems:'flex-end',padding:16}}>
+      <div style={{width:'100%',background:'#1a1a1a',borderRadius:20,overflow:'hidden',padding:'20px 20px 24px'}}>
+        <div style={{fontSize:16,fontWeight:700,color:'white',marginBottom:4,textAlign:'center'}}>Start parking timer</div>
+        <div style={{fontSize:13,color:'rgba(255,255,255,.4)',textAlign:'center',marginBottom:20}}>We'll remind you when time is running out</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:20}}>
+          {options.map(o=>(
+            <button key={o} onClick={()=>setMins(o)}
+              style={{flex:'1 1 calc(33% - 8px)',padding:'12px 8px',borderRadius:12,border:`1.5px solid ${mins===o?OR:'rgba(255,255,255,.12)'}`,background:mins===o?`${OR}20`:'transparent',color:mins===o?OR:'rgba(255,255,255,.7)',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+              {o<60?`${o}m`:`${o/60}h`}{o===60?' (1h)':''}
+            </button>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={()=>onStart(mins)}
+            style={{flex:2,padding:'14px',borderRadius:14,border:'none',background:OR,color:'white',fontSize:15,fontWeight:700,cursor:'pointer'}}>
+            ⏱ Start timer
+          </button>
+          <button onClick={onCancel}
+            style={{flex:1,padding:'14px',borderRadius:14,border:'1px solid rgba(255,255,255,.12)',background:'transparent',color:'rgba(255,255,255,.5)',fontSize:14,cursor:'pointer'}}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Operating hours timeline ─────────────────────────────
 function HoursTimeline({type,hours}){
   const now=new Date()
@@ -140,11 +172,12 @@ function stayUpTo(type){
 }
 
 // ── Main component ───────────────────────────────────────
-export default function ParkingSheet({segment,onClose,destination}){
+export default function ParkingSheet({segment,onClose,destination,onStartTimer}){
   const[showNav,setShowNav]=useState(false)
   const[showWeek,setShowWeek]=useState(false)
   const[reported,setReported]=useState(false)
   const[walkMins,setWalkMins]=useState(null)
+  const[showTimerPicker,setShowTimerPicker]=useState(false)
 
   useEffect(()=>{
     if(!destination||!segment)return
@@ -275,17 +308,35 @@ export default function ParkingSheet({segment,onClose,destination}){
           </button>
         </div>
 
-        {/* Directions */}
+        {/* Actions */}
         {!isRestricted&&(
-          <button onClick={()=>setShowNav(true)}
-            style={{width:'100%',padding:'15px',borderRadius:14,border:'none',background:isFree?'#2ECC71':isPaid?'#4A9EFF':OR,color:'white',fontSize:16,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-            🧭 Directions to this bay
-          </button>
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={()=>setShowNav(true)}
+              style={{flex:1,padding:'15px',borderRadius:14,border:'none',background:isFree?'#2ECC71':isPaid?'#4A9EFF':OR,color:'white',fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              🧭 Directions
+            </button>
+            {(isFree||isPaid)&&(
+              <button onClick={()=>setShowTimerPicker(true)}
+                style={{flex:1,padding:'15px',borderRadius:14,border:`1.5px solid ${OR}60`,background:`${OR}15`,color:OR,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                ⏱ Park here
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
 
     {showNav&&<NavigateModal segment={segment} onClose={()=>setShowNav(false)}/>}
+    {showTimerPicker&&(
+      <TimerDurationPicker
+        onStart={mins=>{
+          onStartTimer&&onStartTimer(mins,segment.name||'Parking bay',segment.type)
+          setShowTimerPicker(false)
+          onClose()
+        }}
+        onCancel={()=>setShowTimerPicker(false)}
+      />
+    )}
     </>
   )
 }

@@ -6,7 +6,16 @@ import{publishOffer,getLiveOffers}from'../../lib/offersAdapter'
 
 const OR='#ff681f'
 
-// ── Simple logo ────────────────────────────────────────
+const CATEGORIES=[
+  {id:'restaurant',label:'Restaurant / Café',icon:'🍽️'},
+  {id:'retail',label:'Retail / Shop',icon:'🛍️'},
+  {id:'health',label:'Health & Beauty',icon:'💆'},
+  {id:'services',label:'Services',icon:'🔧'},
+  {id:'entertainment',label:'Entertainment',icon:'🎭'},
+  {id:'other',label:'Other',icon:'🏢'},
+]
+
+// ── Logo ──────────────────────────────────────────────────
 function Logo({small}){
   const s=small?18:24
   return(
@@ -18,7 +27,7 @@ function Logo({small}){
   )
 }
 
-// ── Stats strip ─────────────────────────────────────────
+// ── Stats strip ───────────────────────────────────────────
 function Stats({offers}){
   const live=offers.filter(o=>o.status==='live').length
   const views=offers.reduce((_,__)=>_+Math.floor(Math.random()*120+20),0)
@@ -35,7 +44,7 @@ function Stats({offers}){
   )
 }
 
-// ── Chat message types ──────────────────────────────────
+// ── Chat message types ────────────────────────────────────
 function BotMsg({children,delay=0}){
   const[show,setShow]=useState(false)
   useEffect(()=>{const t=setTimeout(()=>setShow(true),delay);return()=>clearTimeout(t)},[delay])
@@ -58,7 +67,7 @@ function UserMsg({text}){
   )
 }
 
-// ── Offer preview card ──────────────────────────────────
+// ── Offer preview card ────────────────────────────────────
 function OfferPreview({offer,onPost,onEdit,posting,posted}){
   return(
     <div className="chat-in" style={{alignSelf:'flex-start',width:'100%',maxWidth:'88%',marginBottom:6}}>
@@ -95,7 +104,183 @@ function OfferPreview({offer,onPost,onEdit,posting,posted}){
   )
 }
 
-// ── Main component ──────────────────────────────────────
+// ── Business verification form ────────────────────────────
+function VerifyTab({user,business,onComplete}){
+  const[step,setStep]=useState(business?3:1) // 3=done if already verified
+  const[saving,setSaving]=useState(false)
+  const[error,setError]=useState('')
+  const[form,setForm]=useState({
+    name:business?.name||'',
+    category:business?.category||'',
+    address:business?.address||'',
+    phone:business?.phone||'',
+  })
+
+  function upd(k,v){setForm(f=>({...f,[k]:v}));setError('')}
+
+  async function submitStep1(){
+    if(!form.name.trim()||!form.category){setError('Please fill in all fields');return}
+    setStep(2)
+  }
+
+  async function submitStep2(){
+    if(!form.address.trim()){setError('Please enter your business address');return}
+    setSaving(true)
+    try{
+      const{data,error:e}=await supabase
+        .from('businesses')
+        .upsert({
+          user_id:user.id,
+          name:form.name.trim(),
+          category:form.category,
+          address:form.address.trim(),
+          phone:form.phone.trim()||null,
+          verified:false,
+        },{onConflict:'user_id'})
+        .select()
+        .single()
+      if(e)throw e
+      onComplete(data)
+      setStep(3)
+    }catch(e){
+      setError(e.message||'Failed to save. Please try again.')
+    }finally{setSaving(false)}
+  }
+
+  const stepLabels=['Business info','Address','Done']
+
+  return(
+    <div style={{flex:1,overflowY:'auto',padding:16}}>
+
+      {/* Step indicator */}
+      {step<3&&(
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:24}}>
+          {stepLabels.map((l,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:8,flex:i<2?1:0}}>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                <div style={{width:28,height:28,borderRadius:50,background:i+1<=step?OR:'rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:i+1<=step?'white':'rgba(255,255,255,.35)',transition:'all .3s'}}>
+                  {i+1<step?'✓':i+1}
+                </div>
+                <div style={{fontSize:10,color:i+1===step?'white':'rgba(255,255,255,.35)',fontWeight:i+1===step?600:400,whiteSpace:'nowrap'}}>{l}</div>
+              </div>
+              {i<2&&<div style={{flex:1,height:1.5,background:i+1<step?OR:'rgba(255,255,255,.1)',marginBottom:18,transition:'background .3s'}}/>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {step===1&&(
+        <>
+          <div style={{marginBottom:20}}>
+            <div style={{color:'white',fontSize:18,fontWeight:700,marginBottom:6}}>Your business</div>
+            <div style={{color:'rgba(255,255,255,.45)',fontSize:13,lineHeight:1.5}}>Tell us about your business so customers can find you on Hi-Streets.</div>
+          </div>
+
+          <div style={{marginBottom:16}}>
+            <label style={{fontSize:12,color:'rgba(255,255,255,.4)',fontWeight:600,display:'block',marginBottom:6}}>BUSINESS NAME</label>
+            <input
+              value={form.name}
+              onChange={e=>upd('name',e.target.value)}
+              placeholder="e.g. The Green Street Café"
+              style={{width:'100%',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:'12px 14px',color:'white',fontSize:15,outline:'none',fontFamily:'inherit',boxSizing:'border-box'}}
+            />
+          </div>
+
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:12,color:'rgba(255,255,255,.4)',fontWeight:600,display:'block',marginBottom:10}}>CATEGORY</label>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8}}>
+              {CATEGORIES.map(c=>(
+                <button key={c.id} onClick={()=>upd('category',c.id)}
+                  style={{padding:'12px 10px',borderRadius:12,border:`1.5px solid ${form.category===c.id?OR:'rgba(255,255,255,.1)'}`,background:form.category===c.id?`${OR}20`:'rgba(255,255,255,.04)',color:form.category===c.id?OR:'rgba(255,255,255,.7)',fontSize:13,fontWeight:form.category===c.id?700:400,cursor:'pointer',display:'flex',alignItems:'center',gap:8,textAlign:'left'}}>
+                  <span style={{fontSize:18}}>{c.icon}</span>
+                  <span style={{lineHeight:1.3,fontSize:12}}>{c.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error&&<div style={{color:'#e74c3c',fontSize:13,marginBottom:12}}>{error}</div>}
+
+          <button onClick={submitStep1}
+            style={{width:'100%',padding:'15px',borderRadius:14,border:'none',background:OR,color:'white',fontSize:16,fontWeight:700,cursor:'pointer'}}>
+            Continue →
+          </button>
+        </>
+      )}
+
+      {step===2&&(
+        <>
+          <div style={{marginBottom:20}}>
+            <div style={{color:'white',fontSize:18,fontWeight:700,marginBottom:6}}>Where are you?</div>
+            <div style={{color:'rgba(255,255,255,.45)',fontSize:13,lineHeight:1.5}}>Help customers find you on the map.</div>
+          </div>
+
+          <div style={{marginBottom:16}}>
+            <label style={{fontSize:12,color:'rgba(255,255,255,.4)',fontWeight:600,display:'block',marginBottom:6}}>BUSINESS ADDRESS</label>
+            <input
+              value={form.address}
+              onChange={e=>upd('address',e.target.value)}
+              placeholder="e.g. 142 Green Street, East Ham, E6 5NG"
+              style={{width:'100%',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:'12px 14px',color:'white',fontSize:15,outline:'none',fontFamily:'inherit',boxSizing:'border-box'}}
+            />
+          </div>
+
+          <div style={{marginBottom:20}}>
+            <label style={{fontSize:12,color:'rgba(255,255,255,.4)',fontWeight:600,display:'block',marginBottom:6}}>PHONE (optional)</label>
+            <input
+              value={form.phone}
+              onChange={e=>upd('phone',e.target.value)}
+              placeholder="+44 7700 000 000"
+              type="tel"
+              style={{width:'100%',background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:12,padding:'12px 14px',color:'white',fontSize:15,outline:'none',fontFamily:'inherit',boxSizing:'border-box'}}
+            />
+          </div>
+
+          {error&&<div style={{color:'#e74c3c',fontSize:13,marginBottom:12}}>{error}</div>}
+
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={()=>{setStep(1);setError('')}}
+              style={{flex:1,padding:'15px',borderRadius:14,border:'1px solid rgba(255,255,255,.12)',background:'transparent',color:'rgba(255,255,255,.5)',fontSize:15,cursor:'pointer'}}>
+              ← Back
+            </button>
+            <button onClick={submitStep2} disabled={saving}
+              style={{flex:2,padding:'15px',borderRadius:14,border:'none',background:OR,color:'white',fontSize:16,fontWeight:700,cursor:'pointer',opacity:saving?.6:1}}>
+              {saving?'Saving…':'Save & continue →'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {step===3&&(
+        <div style={{textAlign:'center',padding:'32px 16px'}}>
+          <div style={{width:72,height:72,borderRadius:50,background:'rgba(46,204,113,.15)',border:'2px solid #2ECC71',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32,margin:'0 auto 20px'}}>
+            ✓
+          </div>
+          <div style={{color:'white',fontSize:20,fontWeight:700,marginBottom:8}}>
+            {business?.name||form.name||'Business'} registered!
+          </div>
+          <div style={{color:'rgba(255,255,255,.5)',fontSize:14,lineHeight:1.6,marginBottom:24}}>
+            Your business is on Hi-Streets. Start posting offers so customers nearby can find your deals on the map.
+          </div>
+          <div style={{background:'rgba(255,104,31,.08)',border:'1px solid rgba(255,104,31,.2)',borderRadius:14,padding:16,textAlign:'left',marginBottom:20}}>
+            <div style={{color:'rgba(255,255,255,.4)',fontSize:11,fontWeight:600,marginBottom:8}}>YOUR BUSINESS DETAILS</div>
+            <div style={{fontSize:14,color:'white',fontWeight:600}}>{business?.name||form.name}</div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,.5)',marginTop:4}}>{CATEGORIES.find(c=>c.id===(business?.category||form.category))?.label}</div>
+            <div style={{fontSize:12,color:'rgba(255,255,255,.5)',marginTop:2}}>{business?.address||form.address}</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginTop:8}}>
+              <span style={{fontSize:11,background:'rgba(255,200,0,.15)',border:'1px solid rgba(255,200,0,.25)',borderRadius:20,padding:'2px 10px',color:'#FFD700',fontWeight:600}}>⏳ Pending verification</span>
+            </div>
+          </div>
+          <div style={{color:'rgba(255,255,255,.35)',fontSize:12,lineHeight:1.5}}>
+            We'll verify your business within 24 hours. You can post offers right away — they'll be marked as unverified until then.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────
 export default function BusinessPage(){
   const r=useRouter()
   const[user,setUser]=useState(null)
@@ -104,10 +289,10 @@ export default function BusinessPage(){
   const[messages,setMessages]=useState([])
   const[input,setInput]=useState('')
   const[parsing,setParsing]=useState(false)
-  const[pendingOffer,setPendingOffer]=useState(null)
   const[posting,setPosting]=useState(false)
-  const[tab,setTab]=useState('chat') // chat | offers | whatsapp | setup
+  const[tab,setTab]=useState('chat')
   const[business,setBusiness]=useState(null)
+  const[loadingBusiness,setLoadingBusiness]=useState(false)
   const chatEndRef=useRef(null)
   const inputRef=useRef(null)
 
@@ -117,6 +302,15 @@ export default function BusinessPage(){
       setAuthLoading(false)
     })
   },[])
+
+  // Load business profile when user is known
+  useEffect(()=>{
+    if(!user)return
+    setLoadingBusiness(true)
+    supabase.from('businesses').select('*').eq('user_id',user.id).maybeSingle()
+      .then(({data})=>{setBusiness(data||null)})
+      .finally(()=>setLoadingBusiness(false))
+  },[user])
 
   useEffect(()=>{
     if(chatEndRef.current)chatEndRef.current.scrollIntoView({behavior:'smooth'})
@@ -136,12 +330,10 @@ export default function BusinessPage(){
     const text=input.trim()
     if(!text||parsing)return
     setInput('')
-    setPendingOffer(null)
 
     const userMsgId=Date.now()
     setMessages(m=>[...m,{type:'user',text,id:userMsgId}])
 
-    // Quick check if it's a question vs offer
     const isQuestion=/\?$|what|how|when|why|where|tell me|can i/i.test(text)
     if(isQuestion){
       setTimeout(()=>setMessages(m=>[...m,{type:'bot',text:'Great question! To post an offer, just describe it — for example "20% off all day today" — and I\'ll post it to the map for you. 😊',id:Date.now()}]),800)
@@ -158,13 +350,11 @@ export default function BusinessPage(){
         body:JSON.stringify({message:text}),
       })
       const parsed=await res.json()
-
       setMessages(m=>m.filter(x=>!x.temp))
 
       if(!parsed.valid){
         setMessages(m=>[...m,{type:'bot',text:`Hmm, I couldn't understand that as an offer. Try something like:\n\n"20% off lunch today until 3pm"\n"Free coffee with any cake"\n\nJust describe the deal in plain English! 😊`,id:Date.now()}])
       }else{
-        setPendingOffer(parsed)
         setMessages(m=>[...m,{type:'offer',offer:parsed,id:Date.now(),posted:false}])
       }
     }catch{
@@ -188,7 +378,7 @@ export default function BusinessPage(){
     }
   }
 
-  // ── Not logged in ──
+  // Not logged in
   if(!authLoading&&!user){
     return(
       <div style={{height:'100dvh',background:'#0a0a0a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,gap:24}}>
@@ -211,19 +401,26 @@ export default function BusinessPage(){
     )
   }
 
-  if(authLoading)return<div style={{height:'100dvh',background:'#0a0a0a'}}/>
+  if(authLoading||loadingBusiness)return<div style={{height:'100dvh',background:'#0a0a0a'}}/>
 
-  // ── Business setup (first time) ──
-  if(!business&&tab!=='chat'&&tab!=='offers'){
-    // Treat as set up needed — for MVP, skip setup and go straight to chat
-  }
+  const tabs=[
+    ['chat','💬 Post offer'],
+    ['offers','📋 My offers'],
+    ['verify',business?'✓ Profile':'🏢 Setup'],
+    ['whatsapp','📱 WhatsApp'],
+  ]
 
   return(
     <div style={{height:'100dvh',background:'#0a0a0a',display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
       {/* Header */}
       <div style={{background:'#111',borderBottom:'1px solid rgba(255,255,255,.08)',padding:'max(14px,env(safe-area-inset-top)) 16px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <Logo small/>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <Logo small/>
+          {business?.verified&&(
+            <span style={{background:'rgba(46,204,113,.15)',border:'1px solid rgba(46,204,113,.3)',borderRadius:20,padding:'2px 8px',fontSize:10,color:'#2ECC71',fontWeight:700}}>✓ VERIFIED</span>
+          )}
+        </div>
         <button onClick={()=>r.push('/map')}
           style={{background:'rgba(255,255,255,.08)',border:'none',color:'rgba(255,255,255,.6)',borderRadius:10,padding:'6px 12px',fontSize:12,cursor:'pointer'}}>
           ← Map
@@ -234,10 +431,10 @@ export default function BusinessPage(){
       <Stats offers={offers}/>
 
       {/* Tabs */}
-      <div style={{display:'flex',padding:'12px 16px 0',gap:6}}>
-        {[['chat','💬 Post offer'],['offers','📋 My offers'],['whatsapp','📱 WhatsApp']].map(([id,label])=>(
+      <div style={{display:'flex',padding:'12px 16px 0',gap:6,overflowX:'auto'}}>
+        {tabs.map(([id,label])=>(
           <button key={id} onClick={()=>setTab(id)}
-            style={{padding:'7px 12px',borderRadius:20,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:tab===id?OR:'rgba(255,255,255,.07)',color:tab===id?'white':'rgba(255,255,255,.5)',transition:'all .2s'}}>
+            style={{padding:'7px 12px',borderRadius:20,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:tab===id?OR:'rgba(255,255,255,.07)',color:tab===id?'white':'rgba(255,255,255,.5)',transition:'all .2s',whiteSpace:'nowrap',flexShrink:0}}>
             {label}
           </button>
         ))}
@@ -246,8 +443,6 @@ export default function BusinessPage(){
       {/* Content */}
       {tab==='chat'&&(
         <div style={{flex:1,display:'flex',flexDirection:'column',minHeight:0}}>
-
-          {/* Messages */}
           <div style={{flex:1,overflowY:'auto',padding:'16px',display:'flex',flexDirection:'column',gap:2}}>
             {messages.map(msg=>{
               if(msg.type==='user')return<UserMsg key={msg.id} text={msg.text}/>
@@ -255,7 +450,7 @@ export default function BusinessPage(){
                 <OfferPreview key={msg.id} offer={msg.offer} posted={msg.posted}
                   posting={posting}
                   onPost={()=>postOffer(msg.offer,msg.id)}
-                  onEdit={()=>{setInput(msg.offer.description);setPendingOffer(null);inputRef.current?.focus()}}
+                  onEdit={()=>{setInput(msg.offer.description);inputRef.current?.focus()}}
                 />
               )
               return(
@@ -269,7 +464,6 @@ export default function BusinessPage(){
             <div ref={chatEndRef}/>
           </div>
 
-          {/* Input */}
           <div style={{padding:'12px 16px max(16px,env(safe-area-inset-bottom))',background:'#111',borderTop:'1px solid rgba(255,255,255,.08)'}}>
             <div style={{display:'flex',gap:10,alignItems:'flex-end'}}>
               <textarea
@@ -316,6 +510,10 @@ export default function BusinessPage(){
             ))
           )}
         </div>
+      )}
+
+      {tab==='verify'&&(
+        <VerifyTab user={user} business={business} onComplete={b=>{setBusiness(b)}}/>
       )}
 
       {tab==='whatsapp'&&(

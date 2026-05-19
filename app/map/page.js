@@ -88,7 +88,7 @@ function findNearestFree(segments,userLat,userLng){
 function Toast({message,onDismiss}){
   useEffect(()=>{const t=setTimeout(onDismiss,3500);return()=>clearTimeout(t)},[onDismiss])
   return(
-    <div style={{position:'absolute',bottom:90,left:'50%',transform:'translateX(-50%)',zIndex:350,background:'#222',border:'1px solid rgba(255,255,255,.15)',borderRadius:14,padding:'10px 18px',fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.4)'}}>
+    <div style={{position:'fixed',bottom:'calc(max(8px,env(safe-area-inset-bottom)) + 68px)',left:'50%',transform:'translateX(-50%)',zIndex:480,background:'#222',border:'1px solid rgba(255,255,255,.15)',borderRadius:14,padding:'10px 18px',fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.4)'}}>
       {message}
     </div>
   )
@@ -186,7 +186,7 @@ export default function MapPage(){
   })
 
   return(
-    <div style={{position:'relative',height:'100dvh',background:'#0a0a0a',overflow:'hidden'}}>
+    <div style={{position:'fixed',inset:0,background:'#0a0a0a',overflow:'hidden'}}>
 
       {/* Full screen map */}
       <MapLibreMap
@@ -232,8 +232,8 @@ export default function MapPage(){
       {/* Parking timer widget */}
       <ParkingTimerWidget timer={timer} onStop={stopTimer} onExtend={extendTimer}/>
 
-      {/* Right floating */}
-      <div style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',zIndex:200,display:'flex',flexDirection:'column',gap:10}}>
+      {/* Right floating — centred vertically between top bar and tab bar */}
+      <div style={{position:'fixed',right:12,top:'50%',transform:'translateY(-60%)',zIndex:200,display:'flex',flexDirection:'column',gap:10}}>
         {/* Filter */}
         <button onClick={()=>setShowFilters(true)}
           style={{width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(0,0,0,.2)',fontSize:18}}>
@@ -269,7 +269,7 @@ export default function MapPage(){
 
       {/* Live offers counter */}
       {offers.length>0&&view!=='list'&&!selectedSeg&&!selectedOffer&&!timer&&(
-        <div style={{position:'absolute',bottom:80,left:'50%',transform:'translateX(-50%)',zIndex:200,pointerEvents:'none'}}>
+        <div style={{position:'fixed',bottom:'calc(max(8px,env(safe-area-inset-bottom)) + 68px)',left:'50%',transform:'translateX(-50%)',zIndex:480,pointerEvents:'none'}}>
           <div style={{background:OR,borderRadius:20,padding:'6px 16px',fontSize:13,fontWeight:600,color:'white',boxShadow:'0 2px 12px rgba(255,104,31,.4)',whiteSpace:'nowrap'}}>
             🛍️ {offers.length} live offer{offers.length!==1?'s':''} nearby
           </div>
@@ -302,6 +302,11 @@ export default function MapPage(){
           onSelect={seg=>{setSelectedSeg(seg);setView('bay')}}
           onDirections={handleDirections}
         />
+      )}
+
+      {/* Parking sheet backdrop */}
+      {selectedSeg&&view!=='list'&&(
+        <div onClick={()=>setSelectedSeg(null)} style={{position:'fixed',inset:0,zIndex:399,background:'transparent'}}/>
       )}
 
       {/* Parking sheet */}

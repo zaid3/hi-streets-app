@@ -27,7 +27,7 @@ export default function OfferSheet({offer,onClose,onDirections,onLogin}){
   return(
     <div className="bottom-sheet open">
       <div className="sheet-handle"/>
-      <div style={{padding:'16px 20px 32px'}}>
+      <div style={{padding:'16px 20px',paddingBottom:'max(80px,calc(env(safe-area-inset-bottom) + 72px))'}}>
 
         {/* Header */}
         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:16}}>

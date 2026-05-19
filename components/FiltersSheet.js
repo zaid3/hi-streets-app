@@ -34,9 +34,9 @@ export default function FiltersSheet({open,onClose,filters,onApply}){
   if(!open)return null
 
   return(
-    <div style={{position:'absolute',inset:0,zIndex:450,display:'flex',flexDirection:'column'}}>
+    <div style={{position:'fixed',inset:0,zIndex:450,display:'flex',flexDirection:'column'}}>
       {/* Backdrop */}
-      <div onClick={onClose} style={{flex:1,background:'rgba(0,0,0,.5)'}}/>
+      <div onClick={onClose} style={{flex:1,background:'rgba(0,0,0,.6)'}}/>
       
       {/* Sheet */}
       <div style={{background:'#141414',borderRadius:'20px 20px 0 0',border:'1px solid rgba(255,255,255,.08)',maxHeight:'88vh',display:'flex',flexDirection:'column'}}>

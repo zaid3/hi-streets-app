@@ -27,16 +27,17 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],onSegm
         // ── Parking line source ──────────────────────────
         map.addSource('parking',{type:'geojson',data:{type:'FeatureCollection',features:[]}})
 
-        // Thick colored line for each bay segment
+        // Single clean line per bay segment — no double-layer halo
         map.addLayer({
           id:'parking-lines-bg',
           type:'line',
           source:'parking',
           layout:{'line-cap':'round','line-join':'round'},
           paint:{
-            'line-color':['get','color'],
-            'line-width':['interpolate',['linear'],['zoom'],13,5,16,10,19,16],
-            'line-opacity':0.5,
+            'line-color':'rgba(0,0,0,0.35)',
+            'line-width':['interpolate',['linear'],['zoom'],12,5,15,10,18,16],
+            'line-opacity':1,
+            'line-gap-width':0,
           }
         })
         map.addLayer({
@@ -46,7 +47,7 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],onSegm
           layout:{'line-cap':'round','line-join':'round'},
           paint:{
             'line-color':['get','color'],
-            'line-width':['interpolate',['linear'],['zoom'],13,2,16,4,19,6],
+            'line-width':['interpolate',['linear'],['zoom'],12,4,15,8,18,14],
             'line-opacity':1,
           }
         })
@@ -71,7 +72,7 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],onSegm
 
         // ── Segment click ────────────────────────────────
         map.on('click','parking-lines',e=>{
-          const f=map.queryRenderedFeatures(e.point,{layers:['parking-lines','parking-lines-bg']})[0]
+          const f=map.queryRenderedFeatures(e.point,{layers:['parking-lines']})[0]
           if(f&&onSegmentClick){
             try{onSegmentClick(JSON.parse(f.properties.data))}catch{}
           }
@@ -169,16 +170,7 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],onSegm
         properties:{color:seg.color,type:seg.type,data:JSON.stringify(seg)},
       })
 
-      // Bay circles at intervals (every 2 points)
-      const icon=seg.type==='free'?'✓':seg.type==='paid'?'£':seg.type==='permit'?'P':'⊘'
-      for(let i=0;i<seg.coords.length;i+=Math.max(1,Math.floor(seg.coords.length/3))){
-        const[lat,lng]=seg.coords[i]
-        bayFeatures.push({
-          type:'Feature',
-          geometry:{type:'Point',coordinates:[lng,lat]},
-          properties:{color:seg.color,data:JSON.stringify(seg),icon},
-        })
-      }
+      // No dot markers on line segments — lines speak for themselves
     })
 
     map.getSource('parking').setData({type:'FeatureCollection',features:lineFeatures})

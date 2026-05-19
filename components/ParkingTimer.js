@@ -84,11 +84,11 @@ export default function ParkingTimerWidget({ timer, onStop, onExtend }) {
 
   return (
     <div style={{
-      position: 'absolute',
-      top: 'max(100px, calc(env(safe-area-inset-top) + 90px))',
+      position: 'fixed',
+      bottom: 'calc(max(8px,env(safe-area-inset-bottom)) + 68px)',
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: 250,
+      zIndex: 490,
       background: '#1a1a1a',
       borderRadius: 20,
       padding: '12px 16px',

@@ -12,6 +12,7 @@ import FiltersSheet from'../../components/FiltersSheet'
 import ListViewSheet from'../../components/ListViewSheet'
 import SideMenu from'../../components/SideMenu'
 
+
 const MapLibreMap=dynamic(()=>import('../../components/MapLibreMap'),{ssr:false})
 
 const OR='#ff681f'
@@ -78,6 +79,7 @@ export default function MapPage(){
   const[startTime,setStartTime]=useState(new Date())
   const[duration,setDuration]=useState(1)
   const[destination,setDestination]=useState(null)
+  const[showTips,setShowTips]=useState(false)
   const loadTimer=useRef(null)
 
   useEffect(()=>{
@@ -91,12 +93,13 @@ export default function MapPage(){
       navigator.geolocation.getCurrentPosition(
         p=>setCenter({lat:p.coords.latitude,lng:p.coords.longitude}),
         ()=>{},
-        {timeout:6000,maximumAge:30000}
+        {enableHighAccuracy:true,timeout:9000,maximumAge:10000}
       )
     }
   },[])
 
   useEffect(()=>{
+    if(!localStorage.getItem('hs_tips_seen'))setShowTips(true)
     getLiveOffers().then(setOffers)
     const unsub=subscribeToOffers(setOffers)
     return unsub
@@ -183,7 +186,11 @@ export default function MapPage(){
         </button>
         {/* Locate */}
         <button onClick={()=>{
-          navigator.geolocation?.getCurrentPosition(p=>{setCenter({lat:p.coords.latitude,lng:p.coords.longitude});setZoom(16)})
+          navigator.geolocation?.getCurrentPosition(
+            p=>{setCenter({lat:p.coords.latitude,lng:p.coords.longitude});setZoom(17)},
+            ()=>{},
+            {enableHighAccuracy:true,timeout:9000,maximumAge:5000}
+          )
         }}
           style={{width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(0,0,0,.2)',fontSize:18}}>
           📍
@@ -205,6 +212,27 @@ export default function MapPage(){
         <div style={{position:'absolute',bottom:80,left:'50%',transform:'translateX(-50%)',zIndex:200,pointerEvents:'none'}}>
           <div style={{background:OR,borderRadius:20,padding:'6px 16px',fontSize:13,fontWeight:600,color:'white',boxShadow:'0 2px 12px rgba(255,104,31,.4)',whiteSpace:'nowrap'}}>
             🛍️ {offers.length} live offer{offers.length!==1?'s':''} nearby
+          </div>
+        </div>
+      )}
+
+
+
+      {view==='bay'&&!selectedSeg&&!selectedOffer&&(!showTips)&&(
+        <div style={{position:'absolute',left:12,right:12,bottom:82,zIndex:220}}>
+          <div style={{background:'rgba(255,255,255,.96)',borderRadius:18,padding:'14px 16px',boxShadow:'0 10px 30px rgba(0,0,0,.2)'}}>
+            <div style={{fontSize:28,fontWeight:700,color:'#111',textAlign:'center',marginBottom:10}}>What do you want to do?</div>
+            <button onClick={()=>setShowSearch(true)} style={{width:'100%',padding:'14px',borderRadius:12,border:'1px solid rgba(0,0,0,.08)',background:'white',textAlign:'left',fontSize:16,cursor:'pointer',marginBottom:10}}>🔎 Plan parking in advance</button>
+            <button onClick={()=>r.push('/business')} style={{width:'100%',padding:'14px',borderRadius:12,border:'1px solid rgba(0,0,0,.08)',background:'white',textAlign:'left',fontSize:16,cursor:'pointer'}}>🚗 Park smarter with Kerb-pilot</button>
+          </div>
+        </div>
+      )}
+
+      {showTips&&(!selectedSeg)&&(!selectedOffer)&&(
+        <div style={{position:'absolute',left:12,right:12,bottom:82,zIndex:240}}>
+          <div style={{background:'rgba(17,17,17,.95)',color:'white',borderRadius:16,padding:'14px 16px',boxShadow:'0 8px 28px rgba(0,0,0,.4)'}}>
+            <div style={{fontSize:14,lineHeight:1.5,marginBottom:10}}>Tap any bay to see parking rules. Orange bubbles are live offers. Sign in only when you want to save places and alerts.</div>
+            <button onClick={()=>{localStorage.setItem('hs_tips_seen','1');setShowTips(false)}} style={{background:'#ff681f',border:'none',color:'white',padding:'10px 14px',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Got it</button>
           </div>
         </div>
       )}

@@ -12,6 +12,7 @@ import FiltersSheet from'../../components/FiltersSheet'
 import ListViewSheet from'../../components/ListViewSheet'
 import SideMenu from'../../components/SideMenu'
 
+
 const MapLibreMap=dynamic(()=>import('../../components/MapLibreMap'),{ssr:false})
 
 const OR='#ff681f'
@@ -91,7 +92,7 @@ export default function MapPage(){
       navigator.geolocation.getCurrentPosition(
         p=>setCenter({lat:p.coords.latitude,lng:p.coords.longitude}),
         ()=>{},
-        {timeout:6000,maximumAge:30000}
+        {enableHighAccuracy:true,timeout:9000,maximumAge:10000}
       )
     }
   },[])
@@ -183,7 +184,11 @@ export default function MapPage(){
         </button>
         {/* Locate */}
         <button onClick={()=>{
-          navigator.geolocation?.getCurrentPosition(p=>{setCenter({lat:p.coords.latitude,lng:p.coords.longitude});setZoom(16)})
+          navigator.geolocation?.getCurrentPosition(
+            p=>{setCenter({lat:p.coords.latitude,lng:p.coords.longitude});setZoom(17)},
+            ()=>{},
+            {enableHighAccuracy:true,timeout:9000,maximumAge:5000}
+          )
         }}
           style={{width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(0,0,0,.2)',fontSize:18}}>
           📍

@@ -28,24 +28,24 @@ function TimeSelector({startTime,duration,onChangeTime,onChangeDuration}){
   return(
     <div style={{position:'relative'}}>
       <button onClick={()=>setOpen(o=>!o)}
-        style={{background:'white',border:'1px solid rgba(0,0,0,.1)',borderRadius:12,padding:'0 14px',boxShadow:'0 2px 12px rgba(0,0,0,.15)',cursor:'pointer',height:48,display:'flex',alignItems:'center',gap:6,fontSize:13,color:'#333',fontWeight:500,whiteSpace:'nowrap'}}>
+        style={{background:'white',border:'1px solid rgba(0,0,0,.09)',borderRadius:12,padding:'0 14px',boxShadow:'0 1px 8px rgba(0,0,0,.10)',cursor:'pointer',height:48,display:'flex',alignItems:'center',gap:6,fontSize:13,color:'#333',fontWeight:500,whiteSpace:'nowrap'}}>
         <span style={{fontWeight:700,color:'#111'}}>{fmt(startTime)}</span>
         <span style={{color:'rgba(0,0,0,.35)'}}>→ {duration}h</span>
         <span style={{color:'rgba(0,0,0,.35)',fontSize:11}}>{today}</span>
       </button>
 
       {open&&(
-        <div style={{position:'absolute',top:'calc(100% + 8px)',right:0,background:'white',borderRadius:16,boxShadow:'0 8px 32px rgba(0,0,0,.2)',padding:16,zIndex:300,minWidth:220}}>
-          <div style={{fontSize:12,color:'rgba(0,0,0,.4)',fontWeight:600,marginBottom:8}}>ARRIVE AT</div>
+        <div style={{position:'absolute',top:'calc(100% + 8px)',right:0,background:'white',borderRadius:16,boxShadow:'0 8px 32px rgba(0,0,0,.15)',padding:16,zIndex:600,minWidth:220,border:'1px solid rgba(0,0,0,.07)'}}>
+          <div style={{fontSize:11,color:'rgba(0,0,0,.4)',fontWeight:700,letterSpacing:.5,marginBottom:8}}>ARRIVE AT</div>
           <div style={{display:'flex',gap:8,marginBottom:16}}>
             {[new Date(),new Date(Date.now()+3600000),new Date(Date.now()+7200000)].map((t,i)=>(
-              <button key={i} onClick={()=>{onChangeTime(t);}}
-                style={{flex:1,padding:'8px 4px',borderRadius:10,border:`1.5px solid ${fmt(startTime)===fmt(t)?OR:'rgba(0,0,0,.1)'}`,background:fmt(startTime)===fmt(t)?'rgba(255,104,31,.08)':'white',color:fmt(startTime)===fmt(t)?OR:'#333',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+              <button key={i} onClick={()=>onChangeTime(t)}
+                style={{flex:1,padding:'8px 4px',borderRadius:10,border:`1.5px solid ${fmt(startTime)===fmt(t)?OR:'rgba(0,0,0,.1)'}`,background:fmt(startTime)===fmt(t)?'rgba(255,104,31,.06)':'white',color:fmt(startTime)===fmt(t)?OR:'#333',fontSize:12,fontWeight:600,cursor:'pointer'}}>
                 {i===0?'Now':fmt(t)}
               </button>
             ))}
           </div>
-          <div style={{fontSize:12,color:'rgba(0,0,0,.4)',fontWeight:600,marginBottom:8}}>DURATION</div>
+          <div style={{fontSize:11,color:'rgba(0,0,0,.4)',fontWeight:700,letterSpacing:.5,marginBottom:8}}>DURATION</div>
           <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
             {durs.map(d=>(
               <button key={d} onClick={()=>{onChangeDuration(d);setOpen(false)}}
@@ -60,7 +60,7 @@ function TimeSelector({startTime,duration,onChangeTime,onChangeDuration}){
   )
 }
 
-// ── Haversine distance in metres ──────────────────────────
+// ── Haversine ─────────────────────────────────────────────
 function haversine(lat1,lng1,lat2,lng2){
   const R=6371000
   const dLat=(lat2-lat1)*Math.PI/180
@@ -69,7 +69,6 @@ function haversine(lat1,lng1,lat2,lng2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))
 }
 
-// ── Find nearest free bay ─────────────────────────────────
 function findNearestFree(segments,userLat,userLng){
   const free=segments.filter(s=>s.type==='free')
   if(!free.length)return null
@@ -84,11 +83,11 @@ function findNearestFree(segments,userLat,userLng){
   return best
 }
 
-// ── Toast notification ────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────
 function Toast({message,onDismiss}){
   useEffect(()=>{const t=setTimeout(onDismiss,3500);return()=>clearTimeout(t)},[onDismiss])
   return(
-    <div style={{position:'fixed',bottom:'calc(max(8px,env(safe-area-inset-bottom)) + 68px)',left:'50%',transform:'translateX(-50%)',zIndex:480,background:'#222',border:'1px solid rgba(255,255,255,.15)',borderRadius:14,padding:'10px 18px',fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.4)'}}>
+    <div style={{position:'fixed',bottom:'calc(max(8px,env(safe-area-inset-bottom)) + 68px)',left:'50%',transform:'translateX(-50%)',zIndex:480,background:'#1a1a1a',borderRadius:14,padding:'10px 18px',fontSize:13,color:'white',fontWeight:500,whiteSpace:'nowrap',boxShadow:'0 4px 20px rgba(0,0,0,.3)'}}>
       {message}
     </div>
   )
@@ -127,13 +126,8 @@ export default function MapPage(){
   useEffect(()=>{
     if(navigator.geolocation){
       navigator.geolocation.getCurrentPosition(
-        p=>{
-          const loc={lat:p.coords.latitude,lng:p.coords.longitude}
-          setCenter(loc)
-          setUserLocation(loc)
-        },
-        ()=>{},
-        {timeout:6000,maximumAge:30000}
+        p=>{const loc={lat:p.coords.latitude,lng:p.coords.longitude};setCenter(loc);setUserLocation(loc)},
+        ()=>{},{timeout:6000,maximumAge:30000}
       )
     }
   },[])
@@ -147,10 +141,7 @@ export default function MapPage(){
   const handleBoundsChange=useCallback(async(bounds)=>{
     clearTimeout(loadTimer.current)
     loadTimer.current=setTimeout(async()=>{
-      try{
-        const data=await getParkingData(bounds)
-        setSegments(data)
-      }catch(e){console.error(e)}
+      try{const data=await getParkingData(bounds);setSegments(data)}catch(e){console.error(e)}
     },700)
   },[])
 
@@ -158,10 +149,8 @@ export default function MapPage(){
     const lat=item.lat||item.coords?.[0]?.[0]
     const lng=item.lng||item.coords?.[0]?.[1]
     if(lat&&lng){
-      if(/iPhone|iPad|iPod/i.test(navigator.userAgent))
-        window.open(`maps://maps.apple.com/?daddr=${lat},${lng}`)
-      else
-        window.open(`https://maps.google.com/?q=${lat},${lng}`,'_blank')
+      if(/iPhone|iPad|iPod/i.test(navigator.userAgent))window.open(`maps://maps.apple.com/?daddr=${lat},${lng}`)
+      else window.open(`https://maps.google.com/?q=${lat},${lng}`,'_blank')
     }
   }
 
@@ -169,24 +158,24 @@ export default function MapPage(){
     const loc=userLocation||center
     if(!loc){setToast('📍 Enable location to find nearby bays');return}
     const nearest=findNearestFree(filteredSegments,loc.lat,loc.lng)
-    if(!nearest){setToast('No free bays visible on map — try zooming out');return}
-    setSelectedOffer(null)
-    setSelectedSeg(nearest)
-    // Pan map to bay
+    if(!nearest){setToast('No free bays visible — try zooming out');return}
+    setSelectedOffer(null);setSelectedSeg(nearest)
     const lat=nearest.lat||nearest.coords?.[0]?.[0]
     const lng=nearest.lng||nearest.coords?.[0]?.[1]
     if(lat&&lng)setCenter({lat,lng})
   }
 
-  // Filter segments
   const filteredSegments=segments.filter(s=>{
     if(!filters.types.includes(s.type)&&!s.isCarPark)return false
     if(s.isCarPark&&!filters.types.includes('carpark'))return false
     return true
   })
 
+  // Top bar height for safe positioning
+  const topBarH='max(124px,calc(env(safe-area-inset-top) + 116px))'
+
   return(
-    <div style={{position:'fixed',inset:0,background:'#0a0a0a',overflow:'hidden'}}>
+    <div style={{position:'fixed',inset:0,background:'#f2f3f5',overflow:'hidden'}}>
 
       {/* Full screen map */}
       <MapLibreMap
@@ -199,78 +188,68 @@ export default function MapPage(){
         onMapMove={handleBoundsChange}
       />
 
-      {/* Top bar */}
-      <div style={{position:'absolute',top:0,left:0,right:0,zIndex:200,padding:'max(12px,env(safe-area-inset-top)) 12px 0',pointerEvents:'none'}}>
-
-        {/* Row 1: menu + search + time */}
-        <div style={{display:'flex',gap:8,marginBottom:8,pointerEvents:'all'}}>
-          <button onClick={()=>setShowMenu(true)}
-            style={{width:48,height:48,background:'white',border:'none',borderRadius:14,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:5,boxShadow:'0 2px 16px rgba(0,0,0,.2)',flexShrink:0}}>
-            {[0,1,2].map(i=><div key={i} style={{width:18,height:2,background:'#333',borderRadius:1}}/>)}
-          </button>
+      {/* ── Top bar ───────────────────────────────────────── */}
+      <div style={{position:'absolute',top:0,left:0,right:0,zIndex:200,padding:'max(12px,env(safe-area-inset-top)) 12px 0',background:'white',boxShadow:'0 1px 0 rgba(0,0,0,.06)'}}>
+        {/* Row 1: search + time */}
+        <div style={{display:'flex',gap:8,marginBottom:8}}>
           <button onClick={()=>setShowSearch(true)}
-            style={{flex:1,background:'white',border:'none',borderRadius:14,padding:'0 16px',display:'flex',alignItems:'center',gap:10,boxShadow:'0 2px 16px rgba(0,0,0,.2)',cursor:'pointer',height:48,color:'rgba(0,0,0,.45)',fontSize:14}}>
-            <span style={{color:'#4285f4',fontSize:18}}>🔍</span>
-            <span style={{flex:1,textAlign:'left'}}>Search destination…</span>
+            style={{flex:1,background:'#f2f3f5',border:'none',borderRadius:12,padding:'0 14px',display:'flex',alignItems:'center',gap:10,cursor:'pointer',height:48,color:'rgba(0,0,0,.4)',fontSize:14}}>
+            <span style={{color:'#4285f4',fontSize:17}}>🔍</span>
+            <span style={{flex:1,textAlign:'left',fontWeight:400}}>Search destination…</span>
           </button>
-          <div style={{pointerEvents:'all',flexShrink:0}}>
-            <TimeSelector startTime={startTime} duration={duration} onChangeTime={setStartTime} onChangeDuration={setDuration}/>
-          </div>
+          <TimeSelector startTime={startTime} duration={duration} onChangeTime={setStartTime} onChangeDuration={setDuration}/>
         </div>
 
         {/* Row 2: view tabs */}
-        <div style={{display:'flex',background:'white',borderRadius:12,padding:3,boxShadow:'0 2px 12px rgba(0,0,0,.15)',pointerEvents:'all',gap:2}}>
+        <div style={{display:'flex',background:'#f2f3f5',borderRadius:10,padding:'3px',gap:2,marginBottom:10}}>
           {[['Zone view','zone'],['Bay view','bay'],['List view','list']].map(([lb,id])=>(
             <button key={id} onClick={()=>setView(id)}
-              style={{flex:1,padding:'10px 8px',borderRadius:9,border:'none',fontSize:14,fontWeight:view===id?700:400,cursor:'pointer',background:view===id?OR:'transparent',color:view===id?'white':'rgba(0,0,0,.5)',transition:'all .2s'}}>
+              style={{flex:1,padding:'9px 8px',borderRadius:8,border:'none',fontSize:14,fontWeight:view===id?600:400,cursor:'pointer',background:view===id?OR:'transparent',color:view===id?'white':'rgba(0,0,0,.5)',transition:'all .2s'}}>
               {lb}
             </button>
           ))}
         </div>
       </div>
 
+      {/* ── Map-level controls ─────────────────────────────── */}
+      {/* Menu button — top left of map */}
+      <button onClick={()=>setShowMenu(true)}
+        style={{position:'absolute',top:`max(${parseInt('12')+96}px,calc(env(safe-area-inset-top) + 118px))`,left:12,zIndex:200,width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,boxShadow:'0 2px 12px rgba(0,0,0,.15)'}}>
+        {[0,1,2].map(i=><div key={i} style={{width:16,height:2,background:'#333',borderRadius:1}}/>)}
+      </button>
+
+      {/* Filter button — top right of map */}
+      <button onClick={()=>setShowFilters(true)}
+        style={{position:'absolute',top:`max(${parseInt('12')+96}px,calc(env(safe-area-inset-top) + 118px))`,right:12,zIndex:200,width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(0,0,0,.15)',fontSize:18}}>
+        ⚙️
+      </button>
+
+      {/* Locate button — bottom right above tab bar */}
+      <button onClick={()=>{
+        navigator.geolocation?.getCurrentPosition(p=>{
+          const loc={lat:p.coords.latitude,lng:p.coords.longitude}
+          setCenter(loc);setUserLocation(loc);setZoom(16)
+        })
+      }}
+        style={{position:'fixed',bottom:'calc(max(8px,env(safe-area-inset-bottom)) + 72px)',right:16,zIndex:200,width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(0,0,0,.2)',fontSize:20}}>
+        🎯
+      </button>
+
+      {/* Offers toggle — bottom right, above locate */}
+      {offers.length>0&&(
+        <button onClick={()=>setShowOffers(s=>!s)}
+          style={{position:'fixed',bottom:'calc(max(8px,env(safe-area-inset-bottom)) + 122px)',right:16,zIndex:200,width:44,height:44,background:showOffers?OR:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 2px 12px ${showOffers?'rgba(255,104,31,.35)':'rgba(0,0,0,.15)'}`,fontSize:18}}>
+          🛍️
+        </button>
+      )}
+
       {/* Parking timer widget */}
       <ParkingTimerWidget timer={timer} onStop={stopTimer} onExtend={extendTimer}/>
 
-      {/* Right floating — centred vertically between top bar and tab bar */}
-      <div style={{position:'fixed',right:12,top:'50%',transform:'translateY(-60%)',zIndex:200,display:'flex',flexDirection:'column',gap:10}}>
-        {/* Filter */}
-        <button onClick={()=>setShowFilters(true)}
-          style={{width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(0,0,0,.2)',fontSize:18}}>
-          ⚙️
-        </button>
-        {/* Locate */}
-        <button onClick={()=>{
-          navigator.geolocation?.getCurrentPosition(p=>{
-            const loc={lat:p.coords.latitude,lng:p.coords.longitude}
-            setCenter(loc);setUserLocation(loc);setZoom(16)
-          })
-        }}
-          style={{width:44,height:44,background:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(0,0,0,.2)',fontSize:18}}>
-          📍
-        </button>
-        {/* Find free bay */}
-        <button onClick={handleFindFreeBay}
-          title="Find nearest free bay"
-          style={{width:44,height:44,background:'#2ECC71',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(46,204,113,.4)',fontSize:18}}>
-          🅿️
-        </button>
-        {/* Offers toggle */}
-        <button onClick={()=>setShowOffers(s=>!s)}
-          style={{width:44,height:44,background:showOffers?OR:'white',border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 2px 12px ${showOffers?'rgba(255,104,31,.4)':'rgba(0,0,0,.2)'}`,fontSize:18}}>
-          🛍️
-        </button>
-        {/* Business */}
-        <button onClick={()=>r.push('/business')}
-          style={{width:44,height:44,background:OR,border:'none',borderRadius:50,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 12px rgba(255,104,31,.4)',fontSize:18}}>
-          🏪
-        </button>
-      </div>
-
       {/* Live offers counter */}
-      {offers.length>0&&view!=='list'&&!selectedSeg&&!selectedOffer&&!timer&&(
+      {offers.length>0&&showOffers&&view!=='list'&&!selectedSeg&&!selectedOffer&&!timer&&(
         <div style={{position:'fixed',bottom:'calc(max(8px,env(safe-area-inset-bottom)) + 68px)',left:'50%',transform:'translateX(-50%)',zIndex:480,pointerEvents:'none'}}>
-          <div style={{background:OR,borderRadius:20,padding:'6px 16px',fontSize:13,fontWeight:600,color:'white',boxShadow:'0 2px 12px rgba(255,104,31,.4)',whiteSpace:'nowrap'}}>
+          <div style={{background:OR,borderRadius:20,padding:'6px 16px',fontSize:13,fontWeight:600,color:'white',boxShadow:'0 2px 12px rgba(255,104,31,.35)',whiteSpace:'nowrap'}}>
             🛍️ {offers.length} live offer{offers.length!==1?'s':''} nearby
           </div>
         </div>
@@ -279,10 +258,10 @@ export default function MapPage(){
       {/* Toast */}
       {toast&&<Toast message={toast} onDismiss={()=>setToast(null)}/>}
 
-      {/* Bottom tab bar */}
+      {/* ── Tab bar ───────────────────────────────────────── */}
       <div className="tab-bar">
         {[
-          {icon:'🗺️',label:'Map',active:view!=='list',action:()=>setView('bay')},
+          {icon:'🗺️',label:'Map',active:view==='bay'||view==='zone',action:()=>setView('bay')},
           {icon:'📋',label:'List',active:view==='list',action:()=>setView('list')},
           {icon:'🅿️',label:'Free bay',active:false,action:handleFindFreeBay},
           {icon:'👤',label:'Account',active:false,action:()=>user?r.push('/business'):r.push('/login?redirect=/map')},
@@ -293,6 +272,8 @@ export default function MapPage(){
           </button>
         ))}
       </div>
+
+      {/* ── Sheets & overlays ─────────────────────────────── */}
 
       {/* List view */}
       {view==='list'&&(
@@ -306,7 +287,7 @@ export default function MapPage(){
 
       {/* Parking sheet backdrop */}
       {selectedSeg&&view!=='list'&&(
-        <div onClick={()=>setSelectedSeg(null)} style={{position:'fixed',inset:0,zIndex:399,background:'transparent'}}/>
+        <div onClick={()=>setSelectedSeg(null)} style={{position:'fixed',inset:0,zIndex:399}}/>
       )}
 
       {/* Parking sheet */}
@@ -330,7 +311,7 @@ export default function MapPage(){
         />
       )}
 
-      {/* Overlays */}
+      {/* Search */}
       {showSearch&&(
         <SearchOverlay
           onClose={()=>setShowSearch(false)}
@@ -344,12 +325,7 @@ export default function MapPage(){
         />
       )}
 
-      <FiltersSheet
-        open={showFilters}
-        onClose={()=>setShowFilters(false)}
-        filters={filters}
-        onApply={setFilters}
-      />
+      <FiltersSheet open={showFilters} onClose={()=>setShowFilters(false)} filters={filters} onApply={setFilters}/>
 
       <SideMenu
         open={showMenu}

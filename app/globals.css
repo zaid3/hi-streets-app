@@ -4,7 +4,7 @@
 @tailwind utilities;
 
 *,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif}
+html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:#f2f3f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#111}
 #__next{height:100%}
 
 /* MapLibre overrides */
@@ -27,7 +27,7 @@ html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:#
   white-space:nowrap;
   cursor:pointer;
   box-shadow:0 2px 12px rgba(255,104,31,.45);
-  border:2px solid rgba(255,255,255,.3);
+  border:2px solid rgba(255,255,255,.5);
   max-width:160px;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -47,26 +47,18 @@ html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:#
 .offer-bubble-wrap{position:relative;display:inline-block}
 
 /* User dot */
-.user-dot{
-  width:22px;height:22px;position:relative;
-}
-.user-dot-pulse{
-  position:absolute;inset:0;border-radius:50%;
-  background:rgba(66,133,244,.25);
-  animation:pulse 2s ease-out infinite;
-}
-.user-dot-inner{
-  position:absolute;inset:5px;background:#4285f4;
-  border-radius:50%;border:2.5px solid white;
-  box-shadow:0 2px 8px rgba(66,133,244,.6);
-}
+.user-dot{width:22px;height:22px;position:relative}
+.user-dot-pulse{position:absolute;inset:0;border-radius:50%;background:rgba(66,133,244,.25);animation:pulse 2s ease-out infinite}
+.user-dot-inner{position:absolute;inset:5px;background:#4285f4;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 8px rgba(66,133,244,.5)}
 @keyframes pulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.8);opacity:0}}
 
-/* Bottom sheet — fixed so tab bar (z-index 500) always shows on top */
+/* Bottom sheet — white, fixed so tab bar always shows */
 .bottom-sheet{
   position:fixed;bottom:0;left:0;right:0;
-  background:#141414;border-radius:20px 20px 0 0;
-  border-top:1px solid rgba(255,255,255,.1);
+  background:white;
+  border-radius:20px 20px 0 0;
+  border-top:1px solid rgba(0,0,0,.07);
+  box-shadow:0 -4px 32px rgba(0,0,0,.10);
   z-index:400;
   transform:translateY(100%);
   transition:transform .32s cubic-bezier(.4,0,.2,1);
@@ -75,56 +67,35 @@ html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:#
 .bottom-sheet.open{transform:translateY(0)}
 .sheet-handle{
   width:36px;height:4px;border-radius:2px;
-  background:rgba(255,255,255,.2);margin:10px auto 0;
-  flex-shrink:0;
+  background:rgba(0,0,0,.12);margin:10px auto 0;flex-shrink:0;
 }
-
-/* Sheet scroll content — padding-bottom keeps action buttons above fixed tab bar */
-.sheet-content{
-  padding:16px 20px;
-  padding-bottom:max(80px,calc(env(safe-area-inset-bottom) + 72px));
-}
-
-/* Parking segment popup */
-.parking-popup{
-  background:#1a1a1a!important;
-  border:1px solid rgba(255,255,255,.12)!important;
-  border-radius:12px!important;
-  color:white!important;
-  padding:0!important;
-  box-shadow:0 8px 32px rgba(0,0,0,.6)!important;
-}
-.maplibregl-popup-content{padding:12px 16px!important;background:transparent!important}
-.maplibregl-popup-tip{display:none!important}
-.maplibregl-popup-close-button{color:rgba(255,255,255,.5)!important;font-size:18px!important;right:8px!important;top:6px!important}
-
-/* Chat bubble animation */
-@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.chat-in{animation:fadeUp .2s ease}
-
-/* Shimmer for loading */
-@keyframes shimmer{0%{opacity:.4}50%{opacity:.8}100%{opacity:.4}}
-.shimmer{animation:shimmer 1.5s ease infinite}
-
-/* Parking timer pulse */
-@keyframes timerPulse{0%,100%{box-shadow:0 4px 20px rgba(0,0,0,.5),0 0 0 2px rgba(255,215,0,.2)}50%{box-shadow:0 4px 20px rgba(0,0,0,.5),0 0 0 5px rgba(255,215,0,.45)}}
 
 /* Tab bar — fixed at bottom, always on top */
 .tab-bar{
   position:fixed;bottom:0;left:0;right:0;
-  background:#111;border-top:1px solid rgba(255,255,255,.08);
+  background:white;
+  border-top:1px solid rgba(0,0,0,.07);
   display:flex;align-items:center;
   padding:8px 0 max(8px,env(safe-area-inset-bottom));
   z-index:500;
-  backdrop-filter:blur(12px);
-  -webkit-backdrop-filter:blur(12px);
 }
 .tab-item{
   flex:1;display:flex;flex-direction:column;
   align-items:center;gap:3px;padding:4px 0;
   cursor:pointer;border:none;background:none;
-  color:rgba(255,255,255,.4);font-size:10px;
+  color:rgba(0,0,0,.35);font-size:10px;font-weight:500;
   transition:color .15s;
 }
 .tab-item.active{color:#ff681f}
 .tab-icon{font-size:22px;line-height:1}
+
+/* Chat bubble animation */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.chat-in{animation:fadeUp .2s ease}
+
+/* Shimmer */
+@keyframes shimmer{0%{opacity:.4}50%{opacity:.8}100%{opacity:.4}}
+.shimmer{animation:shimmer 1.5s ease infinite}
+
+/* Timer pulse */
+@keyframes timerPulse{0%,100%{box-shadow:0 4px 20px rgba(0,0,0,.15),0 0 0 2px rgba(255,215,0,.3)}50%{box-shadow:0 4px 20px rgba(0,0,0,.15),0 0 0 5px rgba(255,215,0,.5)}}

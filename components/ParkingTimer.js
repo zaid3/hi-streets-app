@@ -89,13 +89,13 @@ export default function ParkingTimerWidget({ timer, onStop, onExtend }) {
       left: '50%',
       transform: 'translateX(-50%)',
       zIndex: 490,
-      background: '#1a1a1a',
+      background: 'white',
       borderRadius: 20,
       padding: '12px 16px',
       display: 'flex',
       alignItems: 'center',
       gap: 14,
-      boxShadow: `0 4px 24px rgba(0,0,0,.5), 0 0 0 2px ${accentColor}40`,
+      boxShadow: `0 4px 20px rgba(0,0,0,.15), 0 0 0 2px ${accentColor}40`,
       border: `1.5px solid ${accentColor}60`,
       minWidth: 240,
       animation: isWarning || isExpired ? 'timerPulse 1.5s ease infinite' : 'none',
@@ -103,7 +103,7 @@ export default function ParkingTimerWidget({ timer, onStop, onExtend }) {
       {/* Countdown ring */}
       <div style={{ position: 'relative', width: 64, height: 64, flexShrink: 0 }}>
         <svg width="64" height="64" style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="4" />
+          <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="4" />
           <circle
             cx="32" cy="32" r={r} fill="none"
             stroke={accentColor} strokeWidth="4"
@@ -124,10 +124,10 @@ export default function ParkingTimerWidget({ timer, onStop, onExtend }) {
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginBottom: 2 }}>
+        <div style={{ fontSize: 11, color: 'rgba(0,0,0,.4)', marginBottom: 2 }}>
           {isExpired ? '⚠️ Parking expired!' : isWarning ? '⚠️ Expiring soon' : '🅿️ Parking timer'}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {timer.bayName || 'Parking bay'}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
@@ -138,7 +138,7 @@ export default function ParkingTimerWidget({ timer, onStop, onExtend }) {
           </button>
           <button
             onClick={onStop}
-            style={{ padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,.15)', background: 'transparent', color: 'rgba(255,255,255,.5)', fontSize: 11, cursor: 'pointer' }}>
+            style={{ padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(0,0,0,.12)', background: 'transparent', color: 'rgba(0,0,0,.4)', fontSize: 11, cursor: 'pointer' }}>
             Stop
           </button>
         </div>

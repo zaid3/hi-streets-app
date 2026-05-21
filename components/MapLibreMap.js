@@ -1,6 +1,8 @@
 'use client'
 import{useEffect,useRef}from'react'
 
+const MAP_STYLE_URL='https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
+
 function metersPerDegreeLat(){return 111320}
 function metersPerDegreeLng(lat){return 111320*Math.cos((lat*Math.PI)/180)}
 function bayRectangles(coords,widthMeters=2.4){
@@ -35,7 +37,7 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],onSegm
     initRef.current=true
 
     import('maplibre-gl').then(({default:ml})=>{
-      const map=new ml.Map({container:containerRef.current,style:'https://tiles.openfreemap.org/styles/liberty',center:[center.lng,center.lat],zoom,maxZoom:20,minZoom:5,attributionControl:false})
+      const map=new ml.Map({container:containerRef.current,style:MAP_STYLE_URL,center:[center.lng,center.lat],zoom,maxZoom:20,minZoom:5,attributionControl:false})
       map.on('load',()=>{
         map.addSource('parking',{type:'geojson',data:{type:'FeatureCollection',features:[]}})
         map.addSource('bay-polygons',{type:'geojson',data:{type:'FeatureCollection',features:[]}})

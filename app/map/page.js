@@ -5,6 +5,7 @@ import dynamic from'next/dynamic'
 import{supabase}from'../../lib/supabase'
 import{getParkingData}from'../../lib/parkingAdapter'
 import{getLiveOffers,subscribeToOffers}from'../../lib/offersAdapter'
+import{getPlacesData}from'../../lib/placesAdapter'
 import ParkingSheet from'../../components/ParkingSheet'
 import OfferSheet from'../../components/OfferSheet'
 import SearchOverlay from'../../components/SearchOverlay'
@@ -67,6 +68,7 @@ export default function MapPage(){
   const[zoom,setZoom]=useState(15)
   const[segments,setSegments]=useState([])
   const[offers,setOffers]=useState([])
+  const[places,setPlaces]=useState([])
   const[selectedSeg,setSelectedSeg]=useState(null)
   const[selectedOffer,setSelectedOffer]=useState(null)
   const[showSearch,setShowSearch]=useState(false)
@@ -109,8 +111,9 @@ export default function MapPage(){
     clearTimeout(loadTimer.current)
     loadTimer.current=setTimeout(async()=>{
       try{
-        const data=await getParkingData(bounds)
-        setSegments(data)
+        const [parking,poi]=await Promise.all([getParkingData(bounds),getPlacesData(bounds)])
+        setSegments(parking)
+        setPlaces(poi)
       }catch(e){console.error(e)}
     },700)
   },[])
@@ -142,6 +145,7 @@ export default function MapPage(){
         zoom={zoom}
         segments={filteredSegments}
         offers={showOffers?offers:[]}
+        places={places}
         onSegmentClick={seg=>{setSelectedOffer(null);setSelectedSeg(seg)}}
         onOfferClick={o=>{setSelectedSeg(null);setSelectedOffer(o)}}
         onMapMove={handleBoundsChange}

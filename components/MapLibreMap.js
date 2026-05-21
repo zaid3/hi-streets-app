@@ -3,10 +3,11 @@ import{useEffect,useRef}from'react'
 
 const MAP_STYLE_URL='https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
 
-export default function MapLibreMap({center,zoom=15,segments=[],offers=[],onSegmentClick,onOfferClick,onMapMove}){
+export default function MapLibreMap({center,zoom=15,segments=[],offers=[],places=[],onSegmentClick,onOfferClick,onMapMove}){
   const containerRef=useRef(null)
   const mapRef=useRef(null)
   const markersRef=useRef([])
+  const placesRef=useRef([])
   const userMarkerRef=useRef(null)
   const moveTimerRef=useRef(null)
   const initRef=useRef(false)
@@ -112,6 +113,27 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],onSegm
       })
     })
   },[offers])
+
+
+
+  useEffect(()=>{
+    const map=mapRef.current
+    if(!map)return
+    placesRef.current.forEach(m=>m.remove())
+    placesRef.current=[]
+
+    import('maplibre-gl').then(({default:ml})=>{
+      places.forEach(place=>{
+        if(!place.lat||!place.lng)return
+        const el=document.createElement('div')
+        el.className='poi-chip'
+        el.textContent=place.name
+        el.title=place.category
+        const marker=new ml.Marker({element:el,anchor:'bottom'}).setLngLat([place.lng,place.lat]).addTo(map)
+        placesRef.current.push(marker)
+      })
+    })
+  },[places])
 
   return <div ref={containerRef} style={{position:'absolute',inset:0,width:'100%',height:'100%'}}/>
 }

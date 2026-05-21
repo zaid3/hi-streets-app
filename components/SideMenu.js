@@ -1,17 +1,17 @@
 'use client'
 import{useRouter}from'next/navigation'
 const OR='#ff681f'
-const items=[
+const baseItems=[
   {icon:'🗺️',label:'Map',href:'/map'},
   {icon:'🏪',label:'For businesses',href:'/business'},
   {icon:'♥',label:'Saved places',action:'saved'},
   {icon:'🔔',label:'Notifications',action:'notif'},
   {icon:'❓',label:'Help & FAQ',action:'help'},
   {icon:'⚙️',label:'Settings',action:'settings'},
-  {icon:'🚪',label:'Sign out',action:'signout'},
 ]
 export default function SideMenu({open,onClose,onAction,user}){
   const r=useRouter()
+  const items=user?[...baseItems,{icon:'🚪',label:'Sign out',action:'signout'}]:[...baseItems,{icon:'🔐',label:'Sign in',href:'/login?redirect=/map'}]
   function handle(item){
     if(item.href){r.push(item.href);onClose()}
     else{onAction&&onAction(item.action);onClose()}

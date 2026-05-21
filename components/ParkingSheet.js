@@ -201,6 +201,10 @@ export default function ParkingSheet({segment,onClose,destination}){
           <button onClick={onClose} style={{background:'rgba(255,255,255,.1)',border:'none',color:'rgba(255,255,255,.6)',width:32,height:32,borderRadius:50,cursor:'pointer',fontSize:18,flexShrink:0}}>✕</button>
         </div>
 
+        <div style={{background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.08)',borderRadius:10,padding:'10px 12px',marginBottom:12,color:'rgba(255,255,255,.75)',fontSize:12,lineHeight:1.4}}>
+          ⚠️ Please check local signs before parking. Times and restrictions can change.
+        </div>
+
         {/* Stats grid */}
         {!isRestricted&&(
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:16}}>

@@ -72,6 +72,7 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],onSegm
     if(!map||!map.isStyleLoaded()||!map.getSource('parking'))return
     const lineFeatures=[]
     const bayFeatures=[]
+    const bayPolyFeatures=[]
 
     segments.forEach(seg=>{
       if(!seg.coords?.length)return

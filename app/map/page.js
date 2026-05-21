@@ -228,7 +228,7 @@ export default function MapPage(){
         </div>
       )}
 
-      {showTips&&window.innerWidth<900&&(!selectedSeg)&&(!selectedOffer)&&(
+      {showTips&&(!selectedSeg)&&(!selectedOffer)&&(
         <div style={{position:'absolute',left:12,right:12,bottom:82,zIndex:240}}>
           <div style={{background:'rgba(17,17,17,.95)',color:'white',borderRadius:16,padding:'14px 16px',boxShadow:'0 8px 28px rgba(0,0,0,.4)'}}>
             <div style={{fontSize:14,lineHeight:1.5,marginBottom:10}}>Tap any bay to see parking rules. Orange bubbles are live offers. Sign in only when you want to save places and alerts.</div>

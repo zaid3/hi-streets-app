@@ -259,6 +259,7 @@ export default function MapPage(){
           center={center}
           onSelect={seg=>{setSelectedSeg(seg);setView('bay')}}
           onDirections={handleDirections}
+          onBack={()=>setView('bay')}
         />
       )}
 
@@ -269,6 +270,7 @@ export default function MapPage(){
           onClose={()=>setSelectedSeg(null)}
           destination={destination}
           onDirections={handleDirections}
+          onBack={()=>setView('bay')}
         />
       )}
 

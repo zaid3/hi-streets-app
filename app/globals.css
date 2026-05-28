@@ -116,3 +116,18 @@ html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;background:#
 }
 .tab-item.active{color:#ff681f}
 .tab-icon{font-size:22px;line-height:1}
+
+.poi-chip{
+  background:rgba(255,255,255,.92);
+  color:#333;
+  border:1px solid rgba(0,0,0,.12);
+  border-radius:12px;
+  font-size:11px;
+  font-weight:600;
+  padding:3px 8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+  white-space:nowrap;
+  max-width:140px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}

@@ -53,7 +53,7 @@ function walkMins(seg,center){
 
 const SORT_OPTIONS=['Cheapest','Nearest','Longest stay']
 
-export default function ListViewSheet({segments,center,onSelect,onDirections}){
+export default function ListViewSheet({segments,center,onSelect,onDirections,onBack}){
   const[sort,setSort]=useState('Cheapest')
   const[showSort,setShowSort]=useState(false)
 
@@ -80,6 +80,7 @@ export default function ListViewSheet({segments,center,onSelect,onDirections}){
     <div style={{position:'absolute',inset:0,background:'#0a0a0a',zIndex:350,display:'flex',flexDirection:'column',paddingTop:'max(60px,env(safe-area-inset-top))'}}>
       {/* Sort header */}
       <div style={{padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'#111'}}>
+        <button onClick={onBack} style={{background:'none',border:'none',color:'white',fontSize:14,cursor:'pointer',marginRight:10}}>← Back</button>
         <button onClick={()=>setShowSort(s=>!s)}
           style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:20,padding:'7px 14px',color:'white',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:14}}>☰</span>

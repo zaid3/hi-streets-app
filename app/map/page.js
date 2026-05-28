@@ -105,8 +105,6 @@ export default function MapPage(){
 
   useEffect(()=>{
     if(!localStorage.getItem('hs_tips_seen'))setShowTips(true)
-    const pref=localStorage.getItem('hs_use_google_map')
-    setUseGoogleMap(pref==='1')
     getLiveOffers().then(setOffers)
     const unsub=subscribeToOffers(setOffers)
     return unsub
@@ -145,30 +143,16 @@ export default function MapPage(){
     <div style={{position:'relative',height:'100dvh',background:'#0a0a0a',overflow:'hidden'}}>
 
       {/* Full screen map */}
-      {gmapsKey&&useGoogleMap?(
-        <GoogleMap
-          apiKey={gmapsKey}
-          center={center}
-          zoom={zoom}
-          segments={filteredSegments}
-          offers={showOffers?offers:[]}
-          places={places}
-          onSegmentClick={seg=>{setSelectedOffer(null);setSelectedSeg(seg)}}
-          onOfferClick={o=>{setSelectedSeg(null);setSelectedOffer(o)}}
-          onMapMove={handleBoundsChange}
-        />
-      ):(
-        <MapLibreMap
-          center={center}
-          zoom={zoom}
-          segments={filteredSegments}
-          offers={showOffers?offers:[]}
-          places={places}
-          onSegmentClick={seg=>{setSelectedOffer(null);setSelectedSeg(seg)}}
-          onOfferClick={o=>{setSelectedSeg(null);setSelectedOffer(o)}}
-          onMapMove={handleBoundsChange}
-        />
-      )}
+      <MapLibreMap
+        center={center}
+        zoom={zoom}
+        segments={filteredSegments}
+        offers={showOffers?offers:[]}
+        places={places}
+        onSegmentClick={seg=>{setSelectedOffer(null);setSelectedSeg(seg)}}
+        onOfferClick={o=>{setSelectedSeg(null);setSelectedOffer(o)}}
+        onMapMove={handleBoundsChange}
+      />
 
       {/* Top bar */}
       <div style={{position:'absolute',top:0,left:0,right:0,zIndex:200,padding:'max(12px,env(safe-area-inset-top)) 12px 0',pointerEvents:'none'}}>
@@ -263,7 +247,7 @@ export default function MapPage(){
         </div>
       )}
 
-      {showTips&&window.innerWidth<900&&(!selectedSeg)&&(!selectedOffer)&&(
+      {showTips&&(!selectedSeg)&&(!selectedOffer)&&(
         <div style={{position:'absolute',left:12,right:12,bottom:82,zIndex:240}}>
           <div style={{background:'rgba(17,17,17,.95)',color:'white',borderRadius:16,padding:'14px 16px',boxShadow:'0 8px 28px rgba(0,0,0,.4)'}}>
             <div style={{fontSize:14,lineHeight:1.5,marginBottom:10}}>Tap any bay to see parking rules. Orange bubbles are live offers. Sign in only when you want to save places and alerts.</div>

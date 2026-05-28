@@ -6,6 +6,7 @@ import{supabase}from'../../lib/supabase'
 import{getParkingData}from'../../lib/parkingAdapter'
 import{getLiveOffers,subscribeToOffers}from'../../lib/offersAdapter'
 import{getPlacesData}from'../../lib/placesAdapter'
+import{NEWHAM_CENTER,boundsAround,newhamParkingSegments,newhamPlaces}from'../../lib/newhamSeedData'
 import ParkingSheet from'../../components/ParkingSheet'
 import OfferSheet from'../../components/OfferSheet'
 import SearchOverlay from'../../components/SearchOverlay'
@@ -18,7 +19,7 @@ const MapLibreMap=dynamic(()=>import('../../components/MapLibreMap'),{ssr:false}
 const GoogleMap=dynamic(()=>import('../../components/GoogleMap'),{ssr:false})
 
 const OR='#ff681f'
-const UK={lat:51.5370,lng:0.0325}
+const UK=NEWHAM_CENTER
 
 // ── Time selector ────────────────────────────────────────
 function TimeSelector({startTime,duration,onChangeTime,onChangeDuration}){
@@ -67,9 +68,9 @@ export default function MapPage(){
   const r=useRouter()
   const[center,setCenter]=useState(UK)
   const[zoom,setZoom]=useState(15)
-  const[segments,setSegments]=useState([])
+  const[segments,setSegments]=useState(newhamParkingSegments)
   const[offers,setOffers]=useState([])
-  const[places,setPlaces]=useState([])
+  const[places,setPlaces]=useState(newhamPlaces)
   const[selectedSeg,setSelectedSeg]=useState(null)
   const[selectedOffer,setSelectedOffer]=useState(null)
   const[showSearch,setShowSearch]=useState(false)
@@ -83,9 +84,14 @@ export default function MapPage(){
   const[duration,setDuration]=useState(1)
   const[destination,setDestination]=useState(null)
   const[showTips,setShowTips]=useState(false)
+  const[showHelp,setShowHelp]=useState(false)
   const loadTimer=useRef(null)
   const gmapsKey=process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY||''
-  const[useGoogleMap,setUseGoogleMap]=useState(false)
+  const[useGoogleMap,setUseGoogleMap]=useState(Boolean(gmapsKey))
+
+  useEffect(()=>{
+    if(typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('help')==='1')setShowHelp(true)
+  },[])
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>setUser(session?.user||null))
@@ -97,18 +103,11 @@ export default function MapPage(){
     if(navigator.geolocation){
       navigator.geolocation.getCurrentPosition(
         p=>setCenter({lat:p.coords.latitude,lng:p.coords.longitude}),
-        ()=>{},
+        ()=>setCenter(UK),
         {enableHighAccuracy:true,timeout:9000,maximumAge:10000}
       )
     }
   },[])
-
-  useEffect(()=>{
-    if(!localStorage.getItem('hs_tips_seen'))setShowTips(true)
-    getLiveOffers().then(setOffers)
-    const unsub=subscribeToOffers(setOffers)
-    return unsub
-  },[gmapsKey])
 
   const handleBoundsChange=useCallback(async(bounds)=>{
     clearTimeout(loadTimer.current)
@@ -121,6 +120,14 @@ export default function MapPage(){
     },700)
   },[])
 
+  useEffect(()=>{
+    if(!localStorage.getItem('hs_tips_seen'))setShowTips(true)
+    handleBoundsChange(boundsAround(UK))
+    getLiveOffers().then(setOffers)
+    const unsub=subscribeToOffers(setOffers)
+    return unsub
+  },[handleBoundsChange])
+
   function handleDirections(item){
     const lat=item.lat||item.coords?.[0]?.[0]
     const lng=item.lng||item.coords?.[0]?.[1]
@@ -132,27 +139,68 @@ export default function MapPage(){
     }
   }
 
-  // Filter segments by active filters
+  function walkMinsTo(seg){
+    const lat=seg.lat||seg.coords?.[0]?.[0]
+    const lng=seg.lng||seg.coords?.[0]?.[1]
+    if(!lat||!lng)return 0
+    const R=6371000
+    const dLat=(lat-center.lat)*Math.PI/180
+    const dLng=(lng-center.lng)*Math.PI/180
+    const a=Math.sin(dLat/2)**2+Math.cos(center.lat*Math.PI/180)*Math.cos(lat*Math.PI/180)*Math.sin(dLng/2)**2
+    return Math.max(1,Math.round((R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)))/84))
+  }
+
+  // Filter segments by active filters while keeping car parks, resident and seed categories connected.
   const filteredSegments=segments.filter(s=>{
-    if(!filters.types.includes(s.type)&&!s.isCarPark)return false
-    if(s.isCarPark&&!filters.types.includes('carpark'))return false
+    const type=s.isCarPark?'carpark':(s.type==='permit'?'resident':s.type)
+    if(!filters.types.includes(type))return false
+    if(filters.blueBadge&&type!=='disabled')return false
+    if(filters.priceFilter?.length&&type!=='carpark'){
+      if(type==='free'&&!filters.priceFilter.includes('free'))return false
+      if(type==='paid'&&!filters.priceFilter.includes('paid'))return false
+    }
+    if(filters.maxWalk<30&&walkMinsTo(s)>filters.maxWalk)return false
     return true
   })
 
+  const handleSelectSegment=seg=>{
+    const lat=seg.lat||seg.coords?.[0]?.[0]
+    const lng=seg.lng||seg.coords?.[0]?.[1]
+    if(lat&&lng){setCenter({lat,lng});setZoom(17)}
+    setSelectedOffer(null)
+    setSelectedSeg(seg)
+  }
+
+  const showGoogleMap=Boolean(gmapsKey&&useGoogleMap)
+
   return(
-    <div style={{position:'relative',height:'100dvh',background:'#0a0a0a',overflow:'hidden'}}>
+    <div className="map-shell">
 
       {/* Full screen map */}
-      <MapLibreMap
-        center={center}
-        zoom={zoom}
-        segments={filteredSegments}
-        offers={showOffers?offers:[]}
-        places={places}
-        onSegmentClick={seg=>{setSelectedOffer(null);setSelectedSeg(seg)}}
-        onOfferClick={o=>{setSelectedSeg(null);setSelectedOffer(o)}}
-        onMapMove={handleBoundsChange}
-      />
+      {showGoogleMap?(
+        <GoogleMap
+          apiKey={gmapsKey}
+          center={center}
+          zoom={zoom}
+          segments={filteredSegments}
+          offers={showOffers?offers:[]}
+          places={places}
+          onSegmentClick={handleSelectSegment}
+          onOfferClick={o=>{setSelectedSeg(null);setSelectedOffer(o)}}
+          onMapMove={handleBoundsChange}
+        />
+      ):(
+        <MapLibreMap
+          center={center}
+          zoom={zoom}
+          segments={filteredSegments}
+          offers={showOffers?offers:[]}
+          places={places}
+          onSegmentClick={handleSelectSegment}
+          onOfferClick={o=>{setSelectedSeg(null);setSelectedOffer(o)}}
+          onMapMove={handleBoundsChange}
+        />
+      )}
 
       {/* Top bar */}
       <div style={{position:'absolute',top:0,left:0,right:0,zIndex:200,padding:'max(12px,env(safe-area-inset-top)) 12px 0',pointerEvents:'none'}}>
@@ -185,7 +233,7 @@ export default function MapPage(){
       </div>
 
 
-      <div style={{position:'absolute',left:12,bottom:96,zIndex:210}}>
+      {gmapsKey&&<div style={{position:'absolute',left:12,bottom:96,zIndex:210}}>
         <button onClick={()=>{
           const next=!useGoogleMap
           setUseGoogleMap(next)
@@ -194,7 +242,7 @@ export default function MapPage(){
           style={{background:'rgba(17,17,17,.88)',color:'white',border:'1px solid rgba(255,255,255,.2)',borderRadius:20,padding:'8px 12px',fontSize:12,cursor:'pointer'}}>
           {useGoogleMap?'Use free map':'Use Google map'}
         </button>
-      </div>
+      </div>}
 
       {/* Right floating */}
       <div style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',zIndex:200,display:'flex',flexDirection:'column',gap:10}}>
@@ -207,7 +255,7 @@ export default function MapPage(){
         <button onClick={()=>{
           navigator.geolocation?.getCurrentPosition(
             p=>{setCenter({lat:p.coords.latitude,lng:p.coords.longitude});setZoom(17)},
-            ()=>{},
+            ()=>setCenter(UK),
             {enableHighAccuracy:true,timeout:9000,maximumAge:5000}
           )
         }}
@@ -276,7 +324,7 @@ export default function MapPage(){
         <ListViewSheet
           segments={filteredSegments}
           center={center}
-          onSelect={seg=>{setSelectedSeg(seg);setView('bay')}}
+          onSelect={seg=>{handleSelectSegment(seg);setView('bay')}}
           onDirections={handleDirections}
           onBack={()=>setView('bay')}
         />
@@ -324,12 +372,42 @@ export default function MapPage(){
         onApply={setFilters}
       />
 
+
+      {showHelp&&(
+        <div style={{position:'absolute',inset:0,zIndex:520,background:'rgba(0,0,0,.58)',display:'flex',alignItems:'center',justifyContent:'center',padding:18}}>
+          <div style={{background:'#111',border:'1px solid rgba(255,255,255,.12)',borderRadius:20,maxWidth:520,width:'100%',maxHeight:'86vh',overflowY:'auto',boxShadow:'0 18px 60px rgba(0,0,0,.5)'}}>
+            <div style={{padding:20,borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+              <div>
+                <div style={{color:'white',fontSize:22,fontWeight:800}}>Help & FAQ</div>
+                <div style={{color:'rgba(255,255,255,.45)',fontSize:13,marginTop:4}}>How to read the Hi Streets map</div>
+              </div>
+              <button onClick={()=>setShowHelp(false)} style={{background:'rgba(255,255,255,.1)',border:'none',color:'white',width:36,height:36,borderRadius:18,cursor:'pointer'}}>✕</button>
+            </div>
+            <div style={{padding:20,color:'rgba(255,255,255,.78)',fontSize:14,lineHeight:1.55}}>
+              {[
+                ['Parking pins','Blue P pins are car parks. Green ✓ pins are free bays. Blue £ pins are paid bays. Purple R pins are resident bays.'],
+                ['Business and POI markers','Dark POI chips show shops, stations and local services. Orange offer bubbles are live deals from nearby businesses.'],
+                ['Location fallback','If you allow location access we centre the map on you. If not, the map opens around Green Street / Newham so it is never empty.'],
+                ['List view','Use List to see the same filtered parking shown on the map. Tapping a row recentres the map and opens details.'],
+                ['Filters','Use the cog to filter by bay type, walking time, price and blue badge parking.'],
+              ].map(([q,a])=>(
+                <div key={q} style={{marginBottom:16,background:'rgba(255,255,255,.05)',borderRadius:12,padding:14}}>
+                  <div style={{color:'white',fontWeight:700,marginBottom:6}}>{q}</div>
+                  <div>{a}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <SideMenu
         open={showMenu}
         onClose={()=>setShowMenu(false)}
         user={user}
         onAction={a=>{
           if(a==='signout'){supabase.auth.signOut();setUser(null)}
+          if(a==='help')setShowHelp(true)
         }}
       />
     </div>

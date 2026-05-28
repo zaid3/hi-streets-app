@@ -1,5 +1,5 @@
 'use client'
-import{useEffect,useRef}from'react'
+import{useEffect,useRef,useState}from'react'
 
 function loadGoogleMaps(apiKey){
   return new Promise((resolve,reject)=>{
@@ -45,6 +45,7 @@ export default function GoogleMap({apiKey,center,zoom=15,segments=[],offers=[],p
   const mapRef=useRef(null)
   const overlaysRef=useRef([])
   const userMarkerRef=useRef(null)
+  const[mapReady,setMapReady]=useState(false)
 
   useEffect(()=>{
     if(!apiKey||!containerRef.current||mapRef.current)return
@@ -77,12 +78,13 @@ export default function GoogleMap({apiKey,center,zoom=15,segments=[],offers=[],p
         const sw=b.getSouthWest()
         onMapMove&&onMapMove({south:sw.lat(),west:sw.lng(),north:ne.lat(),east:ne.lng()})
       })
+      setMapReady(true)
     }).catch((error)=>console.error('Google Maps failed to load',error))
   },[apiKey])
 
   useEffect(()=>{
     const map=mapRef.current
-    if(!map||!window.google?.maps)return
+    if(!mapReady||!map||!window.google?.maps)return
     overlaysRef.current.forEach(o=>o.setMap?.(null))
     overlaysRef.current=[]
     const maps=window.google.maps
@@ -119,7 +121,13 @@ export default function GoogleMap({apiKey,center,zoom=15,segments=[],offers=[],p
         zIndex:20,
         icon:{path:maps.SymbolPath.CIRCLE,scale:8,fillColor:'#111827',fillOpacity:0.92,strokeColor:'#ffffff',strokeWeight:2},
       })
-      const info=new maps.InfoWindow({content:`<strong>${place.name}</strong><br/><span>${place.category||'Local place'}</span>`})
+      const infoContent=document.createElement('div')
+      const infoName=document.createElement('strong')
+      infoName.textContent=place.name||'Local place'
+      const infoCategory=document.createElement('span')
+      infoCategory.textContent=place.category||'Local place'
+      infoContent.append(infoName,document.createElement('br'),infoCategory)
+      const info=new maps.InfoWindow({content:infoContent})
       marker.addListener('click',()=>info.open({anchor:marker,map}))
       overlaysRef.current.push(marker,info)
     })
@@ -137,7 +145,7 @@ export default function GoogleMap({apiKey,center,zoom=15,segments=[],offers=[],p
       marker.addListener('click',()=>onOfferClick&&onOfferClick(offer))
       overlaysRef.current.push(marker)
     })
-  },[segments,offers,places,onSegmentClick,onOfferClick])
+  },[mapReady,segments,offers,places,onSegmentClick,onOfferClick])
 
   useEffect(()=>{
     const map=mapRef.current

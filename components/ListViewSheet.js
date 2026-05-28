@@ -1,157 +1,48 @@
 'use client'
-import{useState,useMemo}from'react'
+import{useMemo,useState}from'react'
 
-const OR='#ff681f'
-
-function stayText(type){
-  const now=new Date(),h=now.getHours()
-  if(type==='free')return'Until 08:00 tomorrow'
-  if(type==='restricted')return'No parking'
-  if(type==='paid'){
-    if(h>=18)return'Free until 08:00'
-    return`Free after ${18}:30`
-  }
-  return'Check signs'
+function point(seg){return{lat:seg.lat||seg.coords?.[0]?.[0],lng:seg.lng||seg.coords?.[0]?.[1]}}
+function distanceM(seg,center){
+  const p=point(seg)
+  if(!p.lat||!p.lng||!center)return 999999
+  const R=6371000,dLat=(p.lat-center.lat)*Math.PI/180,dLng=(p.lng-center.lng)*Math.PI/180
+  const a=Math.sin(dLat/2)**2+Math.cos(center.lat*Math.PI/180)*Math.cos(p.lat*Math.PI/180)*Math.sin(dLng/2)**2
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))
+}
+function label(seg){
+  if(seg.isCarPark)return['Car park','blue','P']
+  if(seg.type==='free')return['Free guidance','green','✓']
+  if(seg.type==='paid')return['Paid parking','blue','£']
+  if(seg.type==='restricted'||seg.type==='no_parking')return['Restriction warning','red','!']
+  return['Check signs','grey','?']
 }
 
-function nextRestriction(type){
-  const now=new Date(),h=now.getHours(),m=now.getMinutes()
-  if(type==='free'){
-    return'Pay to park after 08:00 tomorrow'
-  }
-  if(type==='paid'){
-    if(h>=18)return'Pay to park after 08:00 tomorrow'
-    return`Pay to park — free from 18:30`
-  }
-  if(type==='restricted')return'No parking applies at all times'
-  return null
-}
-
-function distText(seg,center){
-  if(!center||!seg.coords?.length)return'Nearby'
-  const[lat,lng]=seg.coords[0]
-  const R=6371000
-  const dLat=(lat-center.lat)*Math.PI/180
-  const dLng=(lng-center.lng)*Math.PI/180
-  const a=Math.sin(dLat/2)**2+Math.cos(center.lat*Math.PI/180)*Math.cos(lat*Math.PI/180)*Math.sin(dLng/2)**2
-  const dist=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))
-  if(dist<50)return'<50 m'
-  if(dist<1000)return`${Math.round(dist/10)*10} m`
-  return`${(dist/1000).toFixed(1)} km`
-}
-
-function walkMins(seg,center){
-  if(!center||!seg.coords?.length)return null
-  const[lat,lng]=seg.coords[0]
-  const R=6371000
-  const dLat=(lat-center.lat)*Math.PI/180
-  const dLng=(lng-center.lng)*Math.PI/180
-  const a=Math.sin(dLat/2)**2+Math.cos(center.lat*Math.PI/180)*Math.cos(lat*Math.PI/180)*Math.sin(dLng/2)**2
-  const dist=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))
-  return Math.max(1,Math.round(dist/84))
-}
-
-const SORT_OPTIONS=['Cheapest','Nearest','Longest stay']
-
-export default function ListViewSheet({segments,center,onSelect,onDirections,onBack}){
-  const[sort,setSort]=useState('Cheapest')
-  const[showSort,setShowSort]=useState(false)
-
+export default function ListViewSheet({segments=[],center,onSelect,onDirections,onBack}){
+  const[sort,setSort]=useState('nearest')
   const sorted=useMemo(()=>{
-    if(!segments)return[]
-    const filtered=segments.filter(s=>!s.isCarPark||s.lat)
-    if(sort==='Cheapest')return[...filtered].sort((a,b)=>{
-      const order={free:0,paid:1,permit:2,restricted:3}
-      return(order[a.type]||0)-(order[b.type]||0)
-    })
-    if(sort==='Nearest')return[...filtered].sort((a,b)=>{
-      const wa=walkMins(a,center)||999
-      const wb=walkMins(b,center)||999
-      return wa-wb
-    })
-    if(sort==='Longest stay')return[...filtered].sort((a,b)=>{
-      const score={free:3,paid:2,permit:1,restricted:0}
-      return(score[b.type]||0)-(score[a.type]||0)
-    })
-    return filtered
-  },[segments,sort,center])
-
+    const copy=[...segments]
+    if(sort==='free')copy.sort((a,b)=>(a.type==='free'?0:1)-(b.type==='free'?0:1)||distanceM(a,center)-distanceM(b,center))
+    else copy.sort((a,b)=>distanceM(a,center)-distanceM(b,center))
+    return copy
+  },[segments,center,sort])
   return(
-    <div style={{position:'absolute',inset:0,background:'#0a0a0a',zIndex:350,display:'flex',flexDirection:'column',paddingTop:'max(60px,env(safe-area-inset-top))'}}>
-      {/* Sort header */}
-      <div style={{padding:'12px 16px',borderBottom:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'#111'}}>
-        <button onClick={onBack} style={{background:'none',border:'none',color:'white',fontSize:14,cursor:'pointer',marginRight:10}}>← Back</button>
-        <button onClick={()=>setShowSort(s=>!s)}
-          style={{background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:20,padding:'7px 14px',color:'white',fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',gap:8}}>
-          <span style={{fontSize:14}}>☰</span>
-          <span>Sort by <strong>{sort}</strong></span>
-        </button>
-        <div style={{color:'rgba(255,255,255,.35)',fontSize:13}}>{sorted.length} results</div>
+    <div className="list-panel">
+      <div className="panel-header">
+        <button className="round-close" onClick={onBack} aria-label="Close list">←</button>
+        <div><div className="eyebrow">Parking nearby</div><h2>{sorted.length} guidance spots</h2></div>
+        <select value={sort} onChange={e=>setSort(e.target.value)} className="sort-select"><option value="nearest">Nearest</option><option value="free">Free first</option></select>
       </div>
-
-      {/* Sort picker */}
-      {showSort&&(
-        <div style={{background:'#1a1a1a',borderBottom:'1px solid rgba(255,255,255,.08)',padding:'8px 16px'}}>
-          {SORT_OPTIONS.map(o=>(
-            <button key={o} onClick={()=>{setSort(o);setShowSort(false)}}
-              style={{width:'100%',background:'none',border:'none',color:sort===o?OR:'rgba(255,255,255,.7)',fontSize:14,padding:'10px 0',cursor:'pointer',textAlign:'left',fontWeight:sort===o?700:400,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              {o}{sort===o&&<span style={{color:OR}}>✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* List */}
-      <div style={{flex:1,overflowY:'auto'}}>
-        {sorted.map((seg,i)=>{
-          const isFree=seg.type==='free'
-          const isPaid=seg.type==='paid'
-          const isNo=seg.type==='restricted'||seg.type==='no_parking'
-          const statusColor=isFree?'#2ECC71':isPaid?'#4A9EFF':isNo?'#888':'#9B59B6'
-          const statusBg=isFree?'#1a4a2e':isPaid?'#1a2e4a':isNo?'#2a2a2a':'#2e1a4a'
-          const icon=isFree?'✓':isPaid?'£':isNo?'⊘':'P'
-          const label=isFree?'Park for free':isPaid?'Pay to park':isNo?'No parking':'Permit'
-          const nr=nextRestriction(seg.type)
-          const wm=walkMins(seg,center)
-
-          return(
-            <div key={seg.id||i}
-              onClick={()=>onSelect&&onSelect(seg)}
-              style={{padding:'16px',borderBottom:'1px solid rgba(255,255,255,.06)',cursor:'pointer',display:'flex',alignItems:'flex-start',gap:14}}>
-              {/* Icon */}
-              <div style={{width:48,height:48,borderRadius:14,background:statusBg,border:`1.5px solid ${statusColor}40`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,color:statusColor,fontWeight:700,flexShrink:0}}>
-                {icon}
-              </div>
-
-              {/* Content */}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:2}}>
-                  <div style={{color:'white',fontSize:15,fontWeight:700}}>{label}</div>
-                  {/* Directions */}
-                  <button onClick={e=>{e.stopPropagation();onDirections&&onDirections(seg)}}
-                    style={{width:32,height:32,background:'rgba(255,255,255,.07)',border:'1px solid rgba(255,255,255,.1)',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'rgba(255,255,255,.6)',fontSize:16,flexShrink:0}}>
-                    🧭
-                  </button>
-                </div>
-                <div style={{color:'rgba(255,255,255,.45)',fontSize:12,marginBottom:4}}>{seg.name||'Parking bay'}</div>
-                {nr&&(
-                  <div style={{background:isFree?'rgba(46,204,113,.08)':isPaid?'rgba(255,200,0,.08)':'rgba(255,100,50,.08)',borderRadius:8,padding:'4px 8px',fontSize:11,color:isFree?'#2ECC71':isPaid?'#FFD700':'#FF6432',display:'inline-block',marginBottom:4}}>
-                    {nr}
-                  </div>
-                )}
-                <div style={{display:'flex',gap:12,marginTop:4}}>
-                  <span style={{color:'rgba(255,255,255,.35)',fontSize:11}}>Stay up to {stayText(seg.type)}</span>
-                  {wm&&<span style={{color:'rgba(255,255,255,.35)',fontSize:11}}>🚶 {wm} min walk</span>}
-                </div>
-              </div>
-            </div>
-          )
+      <div className="list-scroll">
+        {sorted.map(seg=>{
+          const [name,tone,icon]=label(seg)
+          const dist=distanceM(seg,center)
+          return <button className="parking-row" key={seg.id} onClick={()=>onSelect?.(seg)}>
+            <span className={`row-icon ${tone}`}>{icon}</span>
+            <span className="row-main"><strong>{name}</strong><small>{seg.name||'Parking location'} · {dist<1000?`${Math.round(dist/10)*10}m`:`${(dist/1000).toFixed(1)}km`}</small><em>{seg.source||'unknown'} source · check signs</em></span>
+            <span className="row-action" onClick={e=>{e.stopPropagation();onDirections?.(seg)}}>↗</span>
+          </button>
         })}
-        {sorted.length===0&&(
-          <div style={{textAlign:'center',color:'rgba(255,255,255,.25)',padding:40,fontSize:14}}>
-            No parking found in this area.<br/>Move the map to search nearby.
-          </div>
-        )}
+        {!sorted.length&&<div className="empty-state">No parking guidance matches your filters. Try widening filters or moving the map.</div>}
       </div>
     </div>
   )

@@ -6,7 +6,7 @@ const baseItems=[
   {icon:'🏪',label:'For businesses',href:'/business'},
   {icon:'♥',label:'Saved places',action:'saved'},
   {icon:'🔔',label:'Notifications',action:'notif'},
-  {icon:'❓',label:'Help & FAQ',action:'help'},
+  {icon:'❓',label:'Help & FAQ',href:'/map?help=1'},
   {icon:'⚙️',label:'Settings',action:'settings'},
 ]
 export default function SideMenu({open,onClose,onAction,user}){

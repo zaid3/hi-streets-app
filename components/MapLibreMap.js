@@ -24,9 +24,10 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],places
 
         map.addLayer({id:'parking-casing',type:'line',source:'parking',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],13,4,16,8,19,12],'line-opacity':0.85}})
         map.addLayer({id:'parking-lines',type:'line',source:'parking',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':['get','color'],'line-width':['interpolate',['linear'],['zoom'],13,2.4,16,3.2,19,4.4],'line-opacity':0.98}})
-        map.addLayer({id:'bay-circle-outer',type:'circle',source:'bays',minzoom:14,paint:{'circle-radius':['interpolate',['linear'],['zoom'],14,7,17,11,19,13],'circle-color':['get','color'],'circle-stroke-width':2,'circle-stroke-color':'white','circle-opacity':1}})
+        map.addLayer({id:'bay-circle-outer',type:'circle',source:'bays',minzoom:13,paint:{'circle-radius':['interpolate',['linear'],['zoom'],13,8,17,13,19,16],'circle-color':['get','color'],'circle-stroke-width':3,'circle-stroke-color':'white','circle-opacity':1}})
+        map.addLayer({id:'bay-labels',type:'symbol',source:'bays',minzoom:13,layout:{'text-field':['get','label'],'text-size':12,'text-font':['Open Sans Bold','Arial Unicode MS Bold'],'text-allow-overlap':true},paint:{'text-color':'#ffffff'}})
 
-        ;['parking-lines','bay-circle-outer'].forEach(layer=>{
+        ;['parking-lines','bay-circle-outer','bay-labels'].forEach(layer=>{
           map.on('click',layer,e=>{
             const f=e.features?.[0]||map.queryRenderedFeatures(e.point,{layers:[layer]})[0]
             if(f&&onSegmentClick){try{onSegmentClick(JSON.parse(f.properties.data))}catch{}}
@@ -79,14 +80,14 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],places
       if(seg.isCarPark){
         const lat=seg.lat||seg.coords[0]?.[0]
         const lng=seg.lng||seg.coords[0]?.[1]
-        if(lat&&lng)bayFeatures.push({type:'Feature',geometry:{type:'Point',coordinates:[lng,lat]},properties:{color:seg.color,data:JSON.stringify(seg)}})
+        if(lat&&lng)bayFeatures.push({type:'Feature',geometry:{type:'Point',coordinates:[lng,lat]},properties:{color:seg.color,label:'P',data:JSON.stringify(seg)}})
         return
       }
       if(seg.coords.length<2)return
       lineFeatures.push({type:'Feature',geometry:{type:'LineString',coordinates:seg.coords.map(([lat,lng])=>[lng,lat])},properties:{color:seg.color,data:JSON.stringify(seg)}})
       for(let i=0;i<seg.coords.length;i+=Math.max(2,Math.floor(seg.coords.length/4))){
         const[lat,lng]=seg.coords[i]
-        bayFeatures.push({type:'Feature',geometry:{type:'Point',coordinates:[lng,lat]},properties:{color:seg.color,data:JSON.stringify(seg)}})
+        bayFeatures.push({type:'Feature',geometry:{type:'Point',coordinates:[lng,lat]},properties:{color:seg.color,label:seg.type==='paid'?'£':seg.type==='disabled'?'♿':seg.type==='loading'?'L':seg.type==='resident'||seg.type==='permit'?'R':seg.type==='restricted'?'×':'✓',data:JSON.stringify(seg)}})
       }
     })
 
@@ -126,7 +127,7 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],places
         if(!place.lat||!place.lng)return
         const el=document.createElement('div')
         el.className='poi-chip'
-        el.textContent=place.name
+        el.textContent=`• ${place.name}`
         el.title=place.category
         const marker=new ml.Marker({element:el,anchor:'bottom'}).setLngLat([place.lng,place.lat]).addTo(map)
         placesRef.current.push(marker)

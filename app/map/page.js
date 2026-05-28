@@ -15,6 +15,7 @@ import SideMenu from'../../components/SideMenu'
 
 
 const MapLibreMap=dynamic(()=>import('../../components/MapLibreMap'),{ssr:false})
+const GoogleMap=dynamic(()=>import('../../components/GoogleMap'),{ssr:false})
 
 const OR='#ff681f'
 const UK={lat:51.5370,lng:0.0325}
@@ -83,6 +84,8 @@ export default function MapPage(){
   const[destination,setDestination]=useState(null)
   const[showTips,setShowTips]=useState(false)
   const loadTimer=useRef(null)
+  const gmapsKey=process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY||''
+  const[useGoogleMap,setUseGoogleMap]=useState(false)
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>setUser(session?.user||null))
@@ -179,6 +182,18 @@ export default function MapPage(){
             </button>
           ))}
         </div>
+      </div>
+
+
+      <div style={{position:'absolute',left:12,bottom:96,zIndex:210}}>
+        <button onClick={()=>{
+          const next=!useGoogleMap
+          setUseGoogleMap(next)
+          localStorage.setItem('hs_use_google_map',next?'1':'0')
+        }}
+          style={{background:'rgba(17,17,17,.88)',color:'white',border:'1px solid rgba(255,255,255,.2)',borderRadius:20,padding:'8px 12px',fontSize:12,cursor:'pointer'}}>
+          {useGoogleMap?'Use free map':'Use Google map'}
+        </button>
       </div>
 
       {/* Right floating */}

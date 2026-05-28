@@ -23,11 +23,10 @@ export default function MapLibreMap({center,zoom=15,segments=[],offers=[],places
         map.addSource('bays',{type:'geojson',data:{type:'FeatureCollection',features:[]}})
 
         map.addLayer({id:'parking-casing',type:'line',source:'parking',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],13,4,16,8,19,12],'line-opacity':0.85}})
-        map.addLayer({id:'parking-lines-left',type:'line',source:'parking',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':['get','color'],'line-width':['interpolate',['linear'],['zoom'],13,1.6,16,2.4,19,3.5],'line-offset':['interpolate',['linear'],['zoom'],13,-2,16,-4,19,-7],'line-opacity':0.95}})
-        map.addLayer({id:'parking-lines-right',type:'line',source:'parking',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':['get','color'],'line-width':['interpolate',['linear'],['zoom'],13,1.6,16,2.4,19,3.5],'line-offset':['interpolate',['linear'],['zoom'],13,2,16,4,19,7],'line-opacity':0.95}})
+        map.addLayer({id:'parking-lines',type:'line',source:'parking',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':['get','color'],'line-width':['interpolate',['linear'],['zoom'],13,2.4,16,3.2,19,4.4],'line-opacity':0.98}})
         map.addLayer({id:'bay-circle-outer',type:'circle',source:'bays',minzoom:14,paint:{'circle-radius':['interpolate',['linear'],['zoom'],14,7,17,11,19,13],'circle-color':['get','color'],'circle-stroke-width':2,'circle-stroke-color':'white','circle-opacity':1}})
 
-        ;['parking-lines-left','parking-lines-right','bay-circle-outer'].forEach(layer=>{
+        ;['parking-lines','bay-circle-outer'].forEach(layer=>{
           map.on('click',layer,e=>{
             const f=e.features?.[0]||map.queryRenderedFeatures(e.point,{layers:[layer]})[0]
             if(f&&onSegmentClick){try{onSegmentClick(JSON.parse(f.properties.data))}catch{}}

@@ -108,7 +108,7 @@ export default function MapPage(){
     getLiveOffers().then(setOffers)
     const unsub=subscribeToOffers(setOffers)
     return unsub
-  },[])
+  },[gmapsKey])
 
   const handleBoundsChange=useCallback(async(bounds)=>{
     clearTimeout(loadTimer.current)

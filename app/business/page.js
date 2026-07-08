@@ -1,101 +1,24 @@
 'use client'
-import{useState,useEffect,useRef}from'react'
+import{useEffect,useRef,useState}from'react'
 import{useRouter}from'next/navigation'
 import{supabase}from'../../lib/supabase'
-import{publishOffer,getLiveOffers}from'../../lib/offersAdapter'
+import{getLiveOffers,publishOffer}from'../../lib/offersAdapter'
 
-const OR='#ff681f'
-
-// ── Simple logo ────────────────────────────────────────
-function Logo({small}){
-  const s=small?18:24
-  return(
-    <span>
-      <span style={{fontSize:s,fontWeight:800,color:OR}}>Hi</span>
-      <span style={{fontSize:s,fontWeight:400,color:'white'}}>Streets</span>
-      <span style={{fontSize:s*0.55,color:'rgba(255,255,255,.35)',marginLeft:6}}>Business</span>
-    </span>
-  )
-}
-
-// ── Stats strip ─────────────────────────────────────────
-function Stats({offers}){
-  const live=offers.filter(o=>o.status==='live').length
-  const views=offers.reduce((_,__)=>_+Math.floor(Math.random()*120+20),0)
-  const taps=Math.floor(views*.27)
-  return(
-    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,padding:'16px 16px 0'}}>
-      {[['Live offers',live,OR],['Views today',views,'#4A9EFF'],['Taps',taps,'#2ECC71']].map(([l,v,c])=>(
-        <div key={l} style={{background:'rgba(255,255,255,.05)',borderRadius:12,padding:'12px 10px',textAlign:'center'}}>
-          <div style={{fontSize:24,fontWeight:700,color:c}}>{v}</div>
-          <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginTop:2}}>{l}</div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ── Chat message types ──────────────────────────────────
-function BotMsg({children,delay=0}){
-  const[show,setShow]=useState(false)
-  useEffect(()=>{const t=setTimeout(()=>setShow(true),delay);return()=>clearTimeout(t)},[delay])
-  if(!show)return null
-  return(
-    <div className="chat-in" style={{alignSelf:'flex-start',maxWidth:'88%',marginBottom:6}}>
-      <div style={{background:'rgba(255,255,255,.09)',borderRadius:'18px 18px 18px 4px',padding:'10px 14px',fontSize:14,color:'white',lineHeight:1.5}}>
-        {children}
-      </div>
-    </div>
-  )
-}
-function UserMsg({text}){
-  return(
-    <div className="chat-in" style={{alignSelf:'flex-end',maxWidth:'88%',marginBottom:6}}>
-      <div style={{background:OR,borderRadius:'18px 18px 4px 18px',padding:'10px 14px',fontSize:14,color:'white',lineHeight:1.5}}>
-        {text}
-      </div>
-    </div>
-  )
-}
-
-// ── Offer preview card ──────────────────────────────────
-function OfferPreview({offer,onPost,onEdit,posting,posted}){
-  return(
-    <div className="chat-in" style={{alignSelf:'flex-start',width:'100%',maxWidth:'88%',marginBottom:6}}>
-      <div style={{background:'rgba(255,255,255,.09)',borderRadius:'18px 18px 18px 4px',padding:'12px 14px'}}>
-        <div style={{fontSize:12,color:'rgba(255,255,255,.5)',marginBottom:6}}>Here's your offer preview:</div>
-        <div style={{background:'rgba(255,104,31,.12)',border:'1px solid rgba(255,104,31,.3)',borderRadius:10,padding:'10px 12px',marginBottom:10}}>
-          <div style={{color:OR,fontSize:13,fontWeight:700,marginBottom:2}}>🛍️ {offer.shortLabel}</div>
-          <div style={{color:'white',fontSize:14,fontWeight:600,marginBottom:4}}>{offer.title}</div>
-          <div style={{color:'rgba(255,255,255,.6)',fontSize:12,lineHeight:1.4}}>{offer.description}</div>
-          {offer.expiresAt&&(
-            <div style={{color:'rgba(255,255,255,.4)',fontSize:11,marginTop:6}}>
-              ⏱ Expires: {new Date(offer.expiresAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
-            </div>
-          )}
-        </div>
-        {!posted?(
-          <div style={{display:'flex',gap:8}}>
-            <button onClick={onPost} disabled={posting}
-              style={{flex:2,padding:'10px',borderRadius:10,border:'none',background:OR,color:'white',fontSize:13,fontWeight:700,cursor:'pointer',opacity:posting?.6:1}}>
-              {posting?'Posting…':'📍 Post to map'}
-            </button>
-            <button onClick={onEdit}
-              style={{flex:1,padding:'10px',borderRadius:10,border:'1px solid rgba(255,255,255,.15)',background:'transparent',color:'rgba(255,255,255,.6)',fontSize:13,cursor:'pointer'}}>
-              Edit
-            </button>
-          </div>
-        ):(
-          <div style={{color:'#2ECC71',fontSize:13,fontWeight:600,textAlign:'center',padding:'6px 0'}}>
-            ✓ Live on the map!
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ── Main component ──────────────────────────────────────
+const BLUE='#2547d8',OR='#ff681f',INK='#0b0628',GREEN='#078d16'
+function Logo(){return <div style={{fontSize:30,fontWeight:900,letterSpacing:'-.8px',color:INK}}>hi-streets<span style={{color:BLUE}}>+</span><span style={{fontSize:18,marginLeft:8,color:'#77768a'}}>business</span></div>}
+function Bot({children}){return <div className="chat-in" style={{alignSelf:'flex-start',maxWidth:'92%',background:'#fff',border:'1px solid #eeeaf7',borderRadius:'20px 20px 20px 6px',padding:'13px 16px',fontSize:16,fontWeight:700,lineHeight:1.45,color:INK,boxShadow:'0 6px 18px rgba(29,24,60,.06)'}}>{children}</div>}
+function User({text}){return <div className="chat-in" style={{alignSelf:'flex-end',maxWidth:'88%',background:BLUE,color:'#fff',borderRadius:'20px 20px 6px 20px',padding:'13px 16px',fontSize:16,fontWeight:800,lineHeight:1.45}}>{text}</div>}
+function OfferPreview({offer,onPost,posting,posted,onEdit}){return <div className="chat-in" style={{alignSelf:'flex-start',width:'100%',background:'#fff',border:'1px solid #eeeaf7',borderRadius:18,padding:16,boxShadow:'0 8px 24px rgba(29,24,60,.08)'}}>
+  <div style={{fontSize:13,fontWeight:900,color:'#77768a',marginBottom:8}}>AI offer preview</div>
+  <div style={{border:'1px solid #ffe1d1',background:'#fff7f2',borderRadius:14,padding:14,marginBottom:12}}>
+    <div style={{fontSize:18,fontWeight:900,color:OR,marginBottom:4}}>🛍️ {offer.shortLabel}</div>
+    <div style={{fontSize:20,fontWeight:900,color:INK,marginBottom:6}}>{offer.title}</div>
+    <div style={{fontSize:15,fontWeight:700,color:'#4c485f',lineHeight:1.45}}>{offer.description}</div>
+    <div style={{fontSize:13,fontWeight:800,color:'#77768a',marginTop:10}}>Expires {new Date(offer.expiresAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+  </div>
+  {posted?<div style={{color:GREEN,fontSize:17,fontWeight:900,textAlign:'center',padding:8}}>✓ Live on the map</div>:<div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:10}}><button onClick={onPost} disabled={posting} className="solid-btn" style={{height:54,fontSize:17,background:OR,borderColor:OR}}>{posting?'Posting…':'Post to map'}</button><button onClick={onEdit} className="outline-btn" style={{height:54,fontSize:17}}>Edit</button></div>}
+</div>}
+function Step({n,title,body,done}){return <div style={{display:'grid',gridTemplateColumns:'44px 1fr',gap:14,alignItems:'start',padding:'14px 0',borderBottom:'1px solid #eeeaf7'}}><div style={{width:44,height:44,borderRadius:99,background:done?GREEN:BLUE,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{done?'✓':n}</div><div><div style={{fontSize:18,fontWeight:900,color:INK}}>{title}</div><div style={{fontSize:15,fontWeight:700,color:'#77768a',lineHeight:1.4,marginTop:4}}>{body}</div></div></div>}
 export default function BusinessPage(){
   const r=useRouter()
   const[user,setUser]=useState(null)
@@ -104,256 +27,41 @@ export default function BusinessPage(){
   const[messages,setMessages]=useState([])
   const[input,setInput]=useState('')
   const[parsing,setParsing]=useState(false)
-  const[pendingOffer,setPendingOffer]=useState(null)
   const[posting,setPosting]=useState(false)
-  const[tab,setTab]=useState('chat') // chat | offers | whatsapp | setup
+  const[tab,setTab]=useState('chat')
   const[business,setBusiness]=useState(null)
-  const chatEndRef=useRef(null)
-  const inputRef=useRef(null)
-
-  useEffect(()=>{
-    supabase.auth.getSession().then(({data:{session}})=>{
-      setUser(session?.user||null)
-      setAuthLoading(false)
-    })
-  },[])
-
-  useEffect(()=>{
-    if(chatEndRef.current)chatEndRef.current.scrollIntoView({behavior:'smooth'})
-  },[messages])
-
-  useEffect(()=>{
-    getLiveOffers().then(setOffers)
-  },[])
-
-  // Welcome message
-  useEffect(()=>{
-    if(!user)return
-    setTimeout(()=>setMessages([{type:'bot',text:`Hi! 👋 I'm your Hi-Streets assistant.\n\nJust tell me your offer in plain English — like:\n\n"20% off all pizzas until 8pm"\n"Free garlic bread with any large today"\n"Buy one coffee get one free"\n\nI'll handle the rest and post it to the map instantly.`,id:Date.now()}]),400)
-  },[user])
-
+  const[form,setForm]=useState({name:'Green Street Grill',address:'142 Green Street, Newham',phone:'+44 7700 900 123',website:'',googlePlaceId:'demo-green-street-grill',category:'food'})
+  const chatEndRef=useRef(null),inputRef=useRef(null)
+  useEffect(()=>{supabase.auth.getSession().then(({data:{session}})=>{setUser(session?.user||null);setAuthLoading(false)});try{const saved=localStorage.getItem('hs_business_profile');if(saved)setBusiness(JSON.parse(saved))}catch{}},[])
+  useEffect(()=>{chatEndRef.current?.scrollIntoView({behavior:'smooth'})},[messages])
+  useEffect(()=>{getLiveOffers().then(setOffers)},[])
+  useEffect(()=>{if(!messages.length)setMessages([{type:'bot',text:'Hi, I can turn a simple WhatsApp-style message into a clean map offer. Try: 20% off all pizzas until 8pm',id:1}])},[messages.length])
   async function sendMessage(){
-    const text=input.trim()
-    if(!text||parsing)return
-    setInput('')
-    setPendingOffer(null)
-
-    const userMsgId=Date.now()
-    setMessages(m=>[...m,{type:'user',text,id:userMsgId}])
-
-    // Quick check if it's a question vs offer
-    const isQuestion=/\?$|what|how|when|why|where|tell me|can i/i.test(text)
-    if(isQuestion){
-      setTimeout(()=>setMessages(m=>[...m,{type:'bot',text:'Great question! To post an offer, just describe it — for example "20% off all day today" — and I\'ll post it to the map for you. 😊',id:Date.now()}]),800)
-      return
-    }
-
+    const text=input.trim();if(!text||parsing)return
+    setInput('');setMessages(m=>[...m,{type:'user',text,id:Date.now()}])
+    if(/\?$|what|how|when|why|where|help/i.test(text)){setMessages(m=>[...m,{type:'bot',text:'To post an offer, just type the deal in plain English. I will clean it up, set an expiry and prepare it for the map.',id:Date.now()+1}]);return}
     setParsing(true)
-    setTimeout(()=>setMessages(m=>[...m,{type:'bot',text:'Got it, reading your offer…',id:Date.now(),temp:true}]),300)
-
-    try{
-      const res=await fetch('/api/parse-offer',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({message:text}),
-      })
-      const parsed=await res.json()
-
-      setMessages(m=>m.filter(x=>!x.temp))
-
-      if(!parsed.valid){
-        setMessages(m=>[...m,{type:'bot',text:`Hmm, I couldn't understand that as an offer. Try something like:\n\n"20% off lunch today until 3pm"\n"Free coffee with any cake"\n\nJust describe the deal in plain English! 😊`,id:Date.now()}])
-      }else{
-        setPendingOffer(parsed)
-        setMessages(m=>[...m,{type:'offer',offer:parsed,id:Date.now(),posted:false}])
-      }
-    }catch{
-      setMessages(m=>[...m.filter(x=>!x.temp),{type:'bot',text:'Something went wrong — please try again.',id:Date.now()}])
-    }finally{
-      setParsing(false)
-    }
+    try{const res=await fetch('/api/parse-offer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});const parsed=await res.json();if(!parsed.valid)setMessages(m=>[...m,{type:'bot',text:'I could not read that as an offer. Try: Free cake with any hot drink until 6pm.',id:Date.now()}]);else setMessages(m=>[...m,{type:'offer',offer:parsed,id:Date.now(),posted:false}])}catch{setMessages(m=>[...m,{type:'bot',text:'Something went wrong. Please try again.',id:Date.now()}])}finally{setParsing(false)}
   }
-
-  async function postOffer(offer,msgId){
-    setPosting(true)
-    const businessId=business?.id||'demo'
-    const result=await publishOffer(offer,businessId)
-    setPosting(false)
-    if(result.success){
-      setMessages(m=>m.map(msg=>msg.id===msgId?{...msg,posted:true}:msg))
-      getLiveOffers().then(setOffers)
-      setTimeout(()=>{
-        setMessages(m=>[...m,{type:'bot',text:'🎉 Your offer is live on the map! Anyone nearby can see it right now.\n\nWant to post another offer?',id:Date.now()}])
-      },600)
-    }
-  }
-
-  // ── Not logged in ──
-  if(!authLoading&&!user){
-    return(
-      <div style={{height:'100dvh',background:'#0a0a0a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,gap:24}}>
-        <Logo/>
-        <div style={{textAlign:'center'}}>
-          <h1 style={{color:'white',fontSize:26,fontWeight:700,margin:'0 0 8px'}}>Grow your business</h1>
-          <p style={{color:'rgba(255,255,255,.5)',fontSize:15,margin:0,lineHeight:1.6}}>Post live offers on the map. Free forever.<br/>Just type your deal in plain English.</p>
-        </div>
-        <div style={{width:'100%',maxWidth:320,display:'flex',flexDirection:'column',gap:12}}>
-          <button onClick={()=>r.push('/login?redirect=/business')}
-            style={{padding:'16px',borderRadius:14,border:'none',background:OR,color:'white',fontSize:17,fontWeight:700,cursor:'pointer'}}>
-            Sign in free →
-          </button>
-          <button onClick={()=>r.push('/map')}
-            style={{padding:'14px',borderRadius:14,border:'1px solid rgba(255,255,255,.1)',background:'transparent',color:'rgba(255,255,255,.5)',fontSize:15,cursor:'pointer'}}>
-            Back to map
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if(authLoading)return<div style={{height:'100dvh',background:'#0a0a0a'}}/>
-
-  // ── Business setup (first time) ──
-  if(!business&&tab!=='chat'&&tab!=='offers'){
-    // Treat as set up needed — for MVP, skip setup and go straight to chat
-  }
-
+  async function postOffer(offer,msgId){setPosting(true);const result=await publishOffer(offer,business?.id||'demo',business?.whatsapp?'whatsapp':'portal');setPosting(false);if(result.success){setMessages(m=>m.map(x=>x.id===msgId?{...x,posted:true}:x));getLiveOffers().then(setOffers)}}
+  function verifyBusiness(){const profile={id:'demo',...form,is_verified:true,verifiedAt:new Date().toISOString(),whatsapp:true};setBusiness(profile);localStorage.setItem('hs_business_profile',JSON.stringify(profile));setTab('chat')}
+  if(authLoading)return <div style={{height:'100dvh',background:'#f7f6fc'}}/>
   return(
-    <div style={{height:'100dvh',background:'#0a0a0a',display:'flex',flexDirection:'column',overflow:'hidden'}}>
-
-      {/* Header */}
-      <div style={{background:'#111',borderBottom:'1px solid rgba(255,255,255,.08)',padding:'max(14px,env(safe-area-inset-top)) 16px 12px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-        <Logo small/>
-        <button onClick={()=>r.push('/map')}
-          style={{background:'rgba(255,255,255,.08)',border:'none',color:'rgba(255,255,255,.6)',borderRadius:10,padding:'6px 12px',fontSize:12,cursor:'pointer'}}>
-          ← Map
-        </button>
+    <div style={{height:'100dvh',background:'#f7f6fc',display:'flex',flexDirection:'column',overflow:'hidden',color:INK}}>
+      <div style={{background:'#fff',borderBottom:'1px solid #eeeaf7',padding:'max(16px,env(safe-area-inset-top)) 24px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',boxShadow:'0 4px 18px rgba(29,24,60,.05)'}}>
+        <Logo/>
+        <button onClick={()=>r.push('/map')} className="outline-btn" style={{height:46,fontSize:16,padding:'0 18px'}}>Map</button>
       </div>
-
-      {/* Stats */}
-      <Stats offers={offers}/>
-
-      {/* Tabs */}
-      <div style={{display:'flex',padding:'12px 16px 0',gap:6}}>
-        {[['chat','💬 Post offer'],['offers','📋 My offers'],['whatsapp','📱 WhatsApp']].map(([id,label])=>(
-          <button key={id} onClick={()=>setTab(id)}
-            style={{padding:'7px 12px',borderRadius:20,border:'none',fontSize:12,fontWeight:600,cursor:'pointer',background:tab===id?OR:'rgba(255,255,255,.07)',color:tab===id?'white':'rgba(255,255,255,.5)',transition:'all .2s'}}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      {tab==='chat'&&(
-        <div style={{flex:1,display:'flex',flexDirection:'column',minHeight:0}}>
-
-          {/* Messages */}
-          <div style={{flex:1,overflowY:'auto',padding:'16px',display:'flex',flexDirection:'column',gap:2}}>
-            {messages.map(msg=>{
-              if(msg.type==='user')return<UserMsg key={msg.id} text={msg.text}/>
-              if(msg.type==='offer')return(
-                <OfferPreview key={msg.id} offer={msg.offer} posted={msg.posted}
-                  posting={posting}
-                  onPost={()=>postOffer(msg.offer,msg.id)}
-                  onEdit={()=>{setInput(msg.offer.description);setPendingOffer(null);inputRef.current?.focus()}}
-                />
-              )
-              return(
-                <BotMsg key={msg.id}>
-                  {msg.text.split('\n').map((line,i)=>(
-                    <span key={i}>{line}{i<msg.text.split('\n').length-1&&<br/>}</span>
-                  ))}
-                </BotMsg>
-              )
-            })}
-            <div ref={chatEndRef}/>
-          </div>
-
-          {/* Input */}
-          <div style={{padding:'12px 16px max(16px,env(safe-area-inset-bottom))',background:'#111',borderTop:'1px solid rgba(255,255,255,.08)'}}>
-            <div style={{display:'flex',gap:10,alignItems:'flex-end'}}>
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={e=>setInput(e.target.value)}
-                onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}}}
-                placeholder="Type your offer here… e.g. 20% off today until 5pm"
-                rows={1}
-                style={{flex:1,background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.1)',borderRadius:14,padding:'12px 14px',color:'white',fontSize:14,outline:'none',resize:'none',fontFamily:'inherit',lineHeight:1.4,maxHeight:100,overflowY:'auto'}}
-                onInput={e=>{e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,100)+'px'}}
-              />
-              <button onClick={sendMessage} disabled={parsing||!input.trim()}
-                style={{width:44,height:44,borderRadius:50,border:'none',background:input.trim()&&!parsing?OR:'rgba(255,255,255,.1)',color:'white',fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'background .2s'}}>
-                {parsing?'⏳':'➤'}
-              </button>
-            </div>
-            <div style={{fontSize:11,color:'rgba(255,255,255,.25)',marginTop:8,textAlign:'center'}}>
-              AI powered by Gemini · Your offer goes live instantly
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab==='offers'&&(
-        <div style={{flex:1,overflowY:'auto',padding:16}}>
-          {offers.length===0?(
-            <div style={{textAlign:'center',color:'rgba(255,255,255,.3)',padding:40}}>
-              <div style={{fontSize:40,marginBottom:12}}>🛍️</div>
-              <div>No live offers yet.<br/>Go to "Post offer" to get started.</div>
-            </div>
-          ):(
-            offers.map(o=>(
-              <div key={o.id} style={{background:'rgba(255,255,255,.05)',borderRadius:14,padding:'14px',marginBottom:10}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                  <span style={{color:'white',fontWeight:600,fontSize:14}}>{o.title}</span>
-                  <span style={{background:'#2ECC7120',color:'#2ECC71',borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:600}}>Live</span>
-                </div>
-                <div style={{color:'rgba(255,255,255,.4)',fontSize:12}}>{o.businessName} · via {o.source}</div>
-                <div style={{color:'rgba(255,255,255,.3)',fontSize:11,marginTop:4}}>
-                  Expires: {o.expiresAt?new Date(o.expiresAt).toLocaleString('en-GB',{hour:'2-digit',minute:'2-digit',day:'numeric',month:'short'}):'Today'}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {tab==='whatsapp'&&(
-        <div style={{flex:1,overflowY:'auto',padding:16}}>
-          <div style={{background:'rgba(37,211,102,.08)',border:'1px solid rgba(37,211,102,.2)',borderRadius:16,padding:20,marginBottom:16,textAlign:'center'}}>
-            <div style={{fontSize:40,marginBottom:8}}>📱</div>
-            <div style={{color:'white',fontSize:16,fontWeight:700,marginBottom:4}}>Post via WhatsApp</div>
-            <div style={{color:'rgba(255,255,255,.5)',fontSize:13,lineHeight:1.5}}>Text your offer to this number and it appears on the map instantly.</div>
-          </div>
-
-          <div style={{background:'rgba(255,255,255,.05)',borderRadius:14,padding:16,marginBottom:12}}>
-            <div style={{color:'rgba(255,255,255,.4)',fontSize:11,marginBottom:4}}>YOUR HI-STREETS NUMBER</div>
-            <div style={{color:'white',fontSize:22,fontWeight:700,letterSpacing:1}}>+44 7700 900 123</div>
-            <button style={{background:OR,border:'none',borderRadius:10,color:'white',padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',marginTop:10}}>
-              Save number
-            </button>
-          </div>
-
-          <div style={{background:'rgba(255,255,255,.05)',borderRadius:14,padding:16,marginBottom:12}}>
-            <div style={{color:'rgba(255,255,255,.4)',fontSize:11,marginBottom:10}}>EXAMPLE MESSAGES</div>
-            {['20% off all pizzas until 8pm tonight','Free garlic bread with any large pizza today','Buy one coffee get one free all day'].map((ex,i)=>(
-              <div key={i} style={{background:'rgba(255,255,255,.07)',borderRadius:10,padding:'8px 12px',marginBottom:6,fontSize:13,color:'rgba(255,255,255,.7)',fontStyle:'italic'}}>
-                "{ex}"
-              </div>
-            ))}
-          </div>
-
-          <div style={{background:'rgba(255,255,255,.05)',borderRadius:14,padding:16}}>
-            <div style={{color:'rgba(255,255,255,.4)',fontSize:11,marginBottom:10}}>HOW IT WORKS</div>
-            {['Text your offer to the number above','Our AI reads it and creates the offer','It appears on the Hi-Streets map in seconds','Customers nearby see it and come in'].map((s,i)=>(
-              <div key={i} style={{display:'flex',gap:10,marginBottom:10,alignItems:'flex-start'}}>
-                <div style={{width:22,height:22,borderRadius:50,background:OR,color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,flexShrink:0}}>{i+1}</div>
-                <div style={{color:'rgba(255,255,255,.7)',fontSize:13,paddingTop:2}}>{s}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {!user&&<div style={{background:'#fff4df',borderBottom:'1px solid #f5e2b8',padding:'10px 24px',fontSize:14,fontWeight:800,color:INK}}>Demo mode: sign in later to save real businesses and offers permanently.</div>}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,padding:'16px 18px 6px'}}>{[['Live offers',offers.length,OR],['Verified',business?.is_verified?'Yes':'No',business?.is_verified?GREEN:'#77768a'],['Source',business?.whatsapp?'WhatsApp':'Portal',BLUE]].map(([l,v,c])=><div key={l} style={{background:'#fff',border:'1px solid #eeeaf7',borderRadius:14,padding:14,textAlign:'center'}}><div style={{fontSize:24,fontWeight:900,color:c}}>{v}</div><div style={{fontSize:13,fontWeight:800,color:'#77768a',marginTop:3}}>{l}</div></div>)}</div>
+      <div style={{display:'flex',gap:8,padding:'12px 18px 6px'}}>{[['chat','AI offer'],['offers','My offers'],['verify','Verify business'],['whatsapp','WhatsApp setup']].map(([id,label])=><button key={id} onClick={()=>setTab(id)} style={{border:0,borderRadius:999,padding:'10px 14px',background:tab===id?BLUE:'#fff',color:tab===id?'#fff':INK,fontSize:14,fontWeight:900,cursor:'pointer',boxShadow:'0 3px 10px rgba(29,24,60,.06)'}}>{label}</button>)}</div>
+      {tab==='chat'&&<div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+        <div style={{flex:1,overflowY:'auto',padding:18,display:'flex',flexDirection:'column',gap:10}}>{messages.map(msg=>msg.type==='user'?<User key={msg.id} text={msg.text}/>:msg.type==='offer'?<OfferPreview key={msg.id} offer={msg.offer} posted={msg.posted} posting={posting} onPost={()=>postOffer(msg.offer,msg.id)} onEdit={()=>{setInput(msg.offer.description);inputRef.current?.focus()}}/>:<Bot key={msg.id}>{msg.text}</Bot>)}<div ref={chatEndRef}/></div>
+        <div style={{background:'#fff',borderTop:'1px solid #eeeaf7',padding:'14px 18px max(14px,env(safe-area-inset-bottom))'}}><div style={{display:'flex',gap:10,alignItems:'flex-end'}}><textarea ref={inputRef} value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage()}}} rows={1} placeholder="Type your offer, e.g. Free garlic bread until 9pm" style={{flex:1,border:'1px solid #e7e3f0',background:'#f7f6fc',borderRadius:14,padding:'14px 15px',fontSize:16,fontWeight:700,outline:0,resize:'none',maxHeight:100}} onInput={e=>{e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,100)+'px'}}/><button onClick={sendMessage} disabled={parsing||!input.trim()} className="solid-btn" style={{width:56,height:56,borderRadius:99,padding:0}}>➤</button></div><div style={{fontSize:12,fontWeight:800,color:'#77768a',textAlign:'center',marginTop:9}}>Privacy-first MVP: offer text only. No customer tracking needed.</div></div>
+      </div>}
+      {tab==='offers'&&<div style={{flex:1,overflowY:'auto',padding:18}}>{offers.map(o=><div key={o.id} style={{background:'#fff',border:'1px solid #eeeaf7',borderRadius:16,padding:16,marginBottom:12}}><div style={{display:'flex',justifyContent:'space-between',gap:12}}><div style={{fontSize:19,fontWeight:900}}>{o.title}</div><span style={{background:'#e8fff1',color:GREEN,borderRadius:999,padding:'4px 10px',fontSize:12,fontWeight:900}}>Live</span></div><div style={{fontSize:15,fontWeight:800,color:'#77768a',marginTop:7}}>{o.businessName} · {o.source||'portal'}</div></div>)}</div>}
+      {tab==='verify'&&<div style={{flex:1,overflowY:'auto',padding:18}}><div style={{background:'#fff',border:'1px solid #eeeaf7',borderRadius:18,padding:20}}><h2 style={{fontSize:28,fontWeight:900,margin:'0 0 8px'}}>Verify your business</h2><p style={{fontSize:16,fontWeight:700,color:'#77768a',lineHeight:1.45}}>Simple verification keeps the map trustworthy without collecting unnecessary customer data. Link a Google place, phone or website, then approve WhatsApp posting.</p>{[['name','Business name'],['address','Business address'],['phone','Business phone'],['website','Website optional'],['googlePlaceId','Google Place ID or Maps link'],['category','Category']].map(([k,label])=><label key={k} style={{display:'block',fontSize:14,fontWeight:900,color:'#77768a',marginTop:14}}>{label}<input value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} style={{display:'block',width:'100%',marginTop:6,border:'1px solid #e7e3f0',borderRadius:12,padding:'13px 14px',fontSize:16,fontWeight:800,color:INK}}/></label>)}<button onClick={verifyBusiness} className="solid-btn" style={{width:'100%',marginTop:18}}>Verify demo business</button></div></div>}
+      {tab==='whatsapp'&&<div style={{flex:1,overflowY:'auto',padding:18}}><div style={{background:'#fff',border:'1px solid #eeeaf7',borderRadius:18,padding:20}}><h2 style={{fontSize:28,fontWeight:900,margin:'0 0 8px'}}>WhatsApp AI agent</h2><p style={{fontSize:16,fontWeight:700,color:'#77768a',lineHeight:1.45}}>The business texts an offer to the Hi-Streets WhatsApp number. The webhook sends the text to the AI parser, checks the verified business profile, then publishes the offer to the map.</p><Step n="1" done={business?.is_verified} title="Verify business" body="Store business name, address, Google Place ID and approved WhatsApp phone."/><Step n="2" title="Receive WhatsApp text" body="Example: 20% off all pizzas until 8pm."/><Step n="3" title="AI improves the copy" body="The parser creates title, short label, expiry, category and customer-friendly description."/><Step n="4" title="Publish to map" body="Only active offers with an expiry are shown. Expired offers disappear automatically."/><div style={{background:'#f7f6fc',borderRadius:14,padding:16,marginTop:16,fontSize:15,fontWeight:800,color:'#4c485f'}}>Webhook route added at <b>/api/whatsapp</b>. Add your Meta webhook verify token and WhatsApp credentials in environment variables before production.</div></div></div>}
     </div>
   )
 }

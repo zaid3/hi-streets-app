@@ -62,14 +62,34 @@ Imported parking data should be stored in `public.parking_segments`:
 
 Use `source = 'dtro'` for D-TRO imports, `source = 'council'` for council open-data imports and `source = 'field_checked'` for manually verified streets.
 
+## Camden import endpoint
+
+The app includes a protected import route:
+
+```text
+POST /api/admin/import-camden-parking
+Authorization: Bearer <ADMIN_IMPORT_TOKEN>
+```
+
+Required server environment variables:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+ADMIN_IMPORT_TOKEN=
+```
+
+The import writes Camden parking bay rows into `parking_segments` with `is_verified = false`. Review sample streets first, then approve checked rows by setting `is_verified = true` in Supabase.
+
 ## Adding a new council
 
 1. Find the council parking bay or TRO open dataset.
 2. Confirm licence allows reuse, ideally Open Government Licence or similar.
 3. Add a source entry in `lib/councilParkingSources.js`.
 4. Add a normaliser function that maps rows into the app parking shape.
-5. Test the area on the map and compare random results against street signs.
-6. For long-term performance, import verified rows into `parking_segments` instead of relying only on live fetches.
+5. Add a protected admin import route or scheduled job.
+6. Test the area on the map and compare random results against street signs.
+7. For long-term performance, import verified rows into `parking_segments` instead of relying only on live fetches.
 
 ## D-TRO production path
 

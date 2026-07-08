@@ -145,7 +145,7 @@ for update using (
   exists(select 1 from public.businesses b where b.id = offers.business_id and b.owner_user_id = auth.uid())
 )
 with check (
-  exists(select 1 from public.businesses b where b.id = offers_business_id and b.owner_user_id = auth.uid())
+  exists(select 1 from public.businesses b where b.id = offers.business_id and b.owner_user_id = auth.uid())
 );
 
 drop policy if exists "owners manage offers" on public.offers;

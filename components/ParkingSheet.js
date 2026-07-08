@@ -34,6 +34,12 @@ function getStatus(seg){
   if(seg.type==='disabled')return{title:'Blue badge parking',sub:'Disabled bay',color:'#8E44AD',icon:'BB',pill:'Blue badge holders only'}
   return{title:'Park for free',sub:bayKind(seg),color:GREEN,icon:'P',pill:seg.type==='paid'?'Pay to park after 08:00 tomorrow':seg.type==='resident'||seg.type==='permit'?'No parking after 08:00 tomorrow':'Check signs before parking'}
 }
+function paymentLabel(seg,st){
+  if(seg.tariff)return seg.tariff
+  if(st.title==='Pay to park')return'Pay by app'
+  if(st.title==='Off-street parking')return'Pay at car park'
+  return'No charge'
+}
 function stayUpTo(seg){
   if(seg.isCarPark)return seg.maxStay||'Open now'
   if(isNoParking(seg.type))return'No parking'
@@ -166,7 +172,7 @@ export default function ParkingSheet({segment,onClose,destination}){
           </div>
 
           <div className="stat-grid">
-            <div><div className="stat-label">Payment</div><div className="stat-value">{segment.tariff||st.title==='Pay to park'?'Pay by app':st.title==='Off-street parking'?'Pay at car park':'No charge'}</div></div>
+            <div><div className="stat-label">Payment</div><div className="stat-value">{paymentLabel(segment,st)}</div></div>
             <div><div className="stat-label">Stay up to</div><div className="stat-value">{stayUpTo(segment)}</div></div>
             <div><div className="stat-label">Source</div><div className="stat-value">{segment.council||src.label}</div></div>
           </div>

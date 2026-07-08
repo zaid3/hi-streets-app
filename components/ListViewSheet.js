@@ -6,6 +6,7 @@ function point(seg){const p=seg.coords?.[0];return{lat:seg.lat||p?.[0],lng:seg.l
 function isNo(seg){return['restricted','no_parking','yellow_double','red_route'].includes(seg.type)}
 function kind(seg){if(seg.isCarPark)return'Car park';if(seg.type==='yellow_double')return'Double yellow line';if(seg.type==='red_route')return'Red route';if(seg.type==='disabled')return'Disabled bay';if(seg.type==='loading')return'Loading bay';if(seg.type==='resident'||seg.type==='permit')return'Resident bay';if(seg.type==='paid')return'Paid bay';return'Parking bay'}
 function source(seg){if(seg.source==='council')return'Official council data';if(seg.source==='google')return'Google Places';if(seg.source==='osm')return'OpenStreetMap';if(seg.source==='verified_seed')return'MVP starter coverage';return'Check signs'}
+function priority(seg){if(seg.source==='council')return 0;if(seg.confidence==='high')return 1;if(seg.source==='google')return 2;if(seg.source==='osm')return 3;return 4}
 function status(seg){
   if(seg.isCarPark)return{title:'Off-street parking',sub:seg.name||'Car park',icon:'P',color:BLUE,pill:'Pay at location'}
   if(isNo(seg))return{title:'No parking',sub:kind(seg),icon:'x',color:GREY,pill:'Applies at all times'}
@@ -29,7 +30,7 @@ export default function ListViewSheet({segments,center,onSelect,onDirections,onB
     const data=[...(segments||[])]
     if(sort==='Nearest')return data.sort((a,b)=>distance(a,center)-distance(b,center))
     if(sort==='Longest stay')return data.sort((a,b)=>(stay(b)==='No limit'?999:parseInt(stay(b))||0)-(stay(a)==='No limit'?999:parseInt(stay(a))||0))
-    if(sort==='Official first')return data.sort((a,b)=>(a.source==='council'?0:a.confidence==='high'?1:2)-(b.source==='council'?0:b.confidence==='high'?1:2))
+    if(sort==='Official first')return data.sort((a,b)=>priority(a)-priority(b))
     return data.sort((a,b)=>{const aw=status(a),bw=status(b);const o={'Park for free':0,'Pay to park':1,'Off-street parking':2,'No parking':3};return(o[aw.title]??4)-(o[bw.title]??4)})
   },[segments,sort,center])
   return(

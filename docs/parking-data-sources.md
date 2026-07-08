@@ -4,37 +4,39 @@ Hi-Streets must never draw fake legal street parking. Parking data should be sho
 
 ## Source priority
 
-1. Council open parking bay datasets
+1. Verified parking segments in Supabase
+   - This is the production store for road-by-road bay data.
+   - Use this for council imports, D-TRO imports, FOI/open-data imports and field-checked bays.
+   - Only rows with `is_verified = true` are shown publicly.
+
+2. Council open parking bay datasets
    - Highest practical confidence when the council publishes bay geometry, restriction type, operating times, tariff, max stay and CPZ.
    - First live connector: London Borough of Camden Parking Bays dataset.
 
-2. DfT Digital TRO service
+3. DfT Digital TRO service
    - National long-term source for digital Traffic Regulation Order extracts.
    - The DfT says the service provides machine-readable D-TRO data through an API and is free to use after registration.
    - Keep API credentials server-side. Do not expose D-TRO tokens in the browser.
 
-3. Google Places parking
+4. Google Places parking
    - Good for off-street parking places and car parks.
    - Not enough for exact legal on-street bay restrictions.
 
-4. OpenStreetMap and Overpass
+5. OpenStreetMap and Overpass
    - Useful community fallback for mapped parking features.
    - Show as medium confidence and ask users to check signs.
 
-5. Starter coverage
-   - Only for MVP coverage and demos in known areas.
+6. Starter coverage
+   - Only for early known-area coverage.
    - Must be labelled clearly and should be replaced by council, D-TRO or verified field data.
 
-## Adding a new council
+## Parking segment shape
 
-1. Find the council parking bay or TRO open dataset.
-2. Confirm licence allows reuse, ideally Open Government Licence or similar.
-3. Add a source entry in `lib/councilParkingSources.js`.
-4. Add a normaliser function that maps rows into the app parking shape:
+Imported parking data should be stored in `public.parking_segments`:
 
 ```js
 {
-  id,
+  external_id,
   type,
   color,
   coords,
@@ -43,19 +45,31 @@ Hi-Streets must never draw fake legal street parking. Parking data should be sho
   name,
   restriction,
   hours,
-  maxStay,
+  max_stay,
   tariff,
   cpz,
-  source: 'council',
-  sourceName,
+  spaces,
+  length,
+  is_car_park,
+  source,
+  source_name,
   council,
-  confidence: 'high',
-  dataNote,
+  confidence,
+  data_note,
+  is_verified
 }
 ```
 
-5. Add it to `/api/parking/council/route.js` through `normaliseCouncilRows`.
-6. Test the area on the map and compare random results against street signs.
+Use `source = 'dtro'` for D-TRO imports, `source = 'council'` for council open-data imports and `source = 'field_checked'` for manually verified streets.
+
+## Adding a new council
+
+1. Find the council parking bay or TRO open dataset.
+2. Confirm licence allows reuse, ideally Open Government Licence or similar.
+3. Add a source entry in `lib/councilParkingSources.js`.
+4. Add a normaliser function that maps rows into the app parking shape.
+5. Test the area on the map and compare random results against street signs.
+6. For long-term performance, import verified rows into `parking_segments` instead of relying only on live fetches.
 
 ## D-TRO production path
 
@@ -68,10 +82,10 @@ D_TRO_API_BASE_URL=
 D_TRO_API_KEY=
 ```
 
-2. Create a server route such as `/api/parking/dtro`.
-3. Convert D-TRO measures into the same parking shape used by council sources.
-4. Merge D-TRO data before OSM and Google fallback.
-5. Keep source labels visible in the UI.
+2. Create a server import job that pulls D-TRO records by authority or bounding box.
+3. Convert D-TRO measures into `parking_segments` rows.
+4. Keep `is_verified = false` until the import is checked.
+5. Mark checked rows verified so the public map can display them.
 
 ## User trust rule
 

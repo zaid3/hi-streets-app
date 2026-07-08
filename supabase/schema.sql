@@ -37,8 +37,28 @@ create table if not exists public.offers (
 );
 
 create index if not exists businesses_location_idx on public.businesses(lat,lng);
+create index if not exists businesses_owner_idx on public.businesses(owner_user_id);
 create index if not exists offers_live_idx on public.offers(is_active,expires_at);
 create index if not exists offers_business_idx on public.offers(business_id);
+
+create or replace function public.prevent_self_verification()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if auth.uid() = new.owner_user_id and new.is_verified is distinct from old.is_verified then
+    raise exception 'Only an admin can change business verification status';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists prevent_self_verification_trigger on public.businesses;
+create trigger prevent_self_verification_trigger
+before update on public.businesses
+for each row execute function public.prevent_self_verification();
 
 alter table public.businesses enable row level security;
 alter table public.offers enable row level security;
@@ -46,6 +66,21 @@ alter table public.offers enable row level security;
 drop policy if exists "public read verified businesses" on public.businesses;
 create policy "public read verified businesses" on public.businesses
 for select using (is_verified = true);
+
+drop policy if exists "owners read businesses" on public.businesses;
+create policy "owners read businesses" on public.businesses
+for select using (auth.uid() = owner_user_id);
+
+drop policy if exists "owners create businesses" on public.businesses;
+create policy "owners create businesses" on public.businesses
+for insert with check (auth.uid() = owner_user_id and is_verified = false);
+
+drop policy if exists "owners update businesses" on public.businesses;
+create policy "owners update businesses" on public.businesses
+for update using (auth.uid() = owner_user_id)
+with check (auth.uid() = owner_user_id);
+
+drop policy if exists "owners manage businesses" on public.businesses;
 
 drop policy if exists "public read live offers" on public.offers;
 create policy "public read live offers" on public.offers
@@ -58,16 +93,25 @@ for select using (
   )
 );
 
-drop policy if exists "owners manage businesses" on public.businesses;
-create policy "owners manage businesses" on public.businesses
-for all using (auth.uid() = owner_user_id)
-with check (auth.uid() = owner_user_id);
+drop policy if exists "owners read offers" on public.offers;
+create policy "owners read offers" on public.offers
+for select using (
+  exists(select 1 from public.businesses b where b.id = offers.business_id and b.owner_user_id = auth.uid())
+);
 
-drop policy if exists "owners manage offers" on public.offers;
-create policy "owners manage offers" on public.offers
-for all using (
+drop policy if exists "owners create offers" on public.offers;
+create policy "owners create offers" on public.offers
+for insert with check (
+  exists(select 1 from public.businesses b where b.id = offers.business_id and b.owner_user_id = auth.uid() and b.is_verified = true)
+);
+
+drop policy if exists "owners update offers" on public.offers;
+create policy "owners update offers" on public.offers
+for update using (
   exists(select 1 from public.businesses b where b.id = offers.business_id and b.owner_user_id = auth.uid())
 )
 with check (
   exists(select 1 from public.businesses b where b.id = offers.business_id and b.owner_user_id = auth.uid())
 );
+
+drop policy if exists "owners manage offers" on public.offers;

@@ -29,7 +29,7 @@ export default function ListViewSheet({segments,center,onSelect,onDirections,onB
     return data.sort((a,b)=>{const aw=status(a),bw=status(b);const o={'Park for free':0,'Pay to park':1,'Off-street parking':2,'No parking':3};return(o[aw.title]??4)-(o[bw.title]??4)})
   },[segments,sort,center])
   return(
-    <div style={{position:'absolute',inset:0,zIndex:360;background:'#f7f6fc',display:'flex',flexDirection:'column',paddingTop:'max(155px,env(safe-area-inset-top) + 142px)'}}>
+    <div style={{position:'absolute',inset:0,zIndex:360,background:'#f7f6fc',display:'flex',flexDirection:'column',paddingTop:'max(155px,env(safe-area-inset-top) + 142px)'}}>
       <div style={{height:112,background:'#fff',boxShadow:'0 6px 22px rgba(27,23,55,.07)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:16,padding:'0 26px'}}>
         <button onClick={()=>setOpen(o=>!o)} style={{height:56,border:'1px solid #e5e1ef',background:'#fff',borderRadius:9,padding:'0 22px',display:'flex',alignItems:'center',gap:14,fontSize:18,fontWeight:800,color:INK,cursor:'pointer'}}>☰ <span style={{fontWeight:600,color:'#77768a'}}>Sort by</span> {sort}</button>
         <button onClick={onBack} className="float-btn" style={{position:'static',width:58,height:58,fontSize:25}}>⚙</button>
@@ -45,7 +45,7 @@ export default function ListViewSheet({segments,center,onSelect,onDirections,onB
               <div className="info-chip" style={{fontSize:17,marginTop:14,background:s.title==='No parking'?'#ffe8e8':'#fff4df'}}>{s.pill}</div>
               <div style={{display:'flex',gap:24,flexWrap:'wrap',marginTop:28,fontSize:18,color:'#77768a',fontWeight:700}}><span>Stay up to <b style={{color:INK}}>{stay(seg)}</b></span><span>Address <b style={{color:INK}}>{seg.name||'Newham'}</b></span>{wm&&<span>Walk <b style={{color:INK}}>{wm} min</b></span>}</div>
             </div>
-            <button onClick={e=>{e.stopPropagation();onDirections?.(seg)}} style={{width:62,height:62,border:'1px solid #eeeaf7',background:'#fff',borderRadius:8;color:BLUE,fontSize:28,fontWeight:900,cursor:'pointer'}}>↱</button>
+            <button onClick={e=>{e.stopPropagation();onDirections?.(seg)}} style={{width:62,height:62,border:'1px solid #eeeaf7',background:'#fff',borderRadius:8,color:BLUE,fontSize:28,fontWeight:900,cursor:'pointer'}}>↱</button>
           </div>
         )})}
         {!rows.length&&<div style={{padding:60,textAlign:'center',color:'#77768a',fontSize:19,fontWeight:700}}>No parking found in this area. Move the map or adjust filters.</div>}

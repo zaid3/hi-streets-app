@@ -1,93 +1,50 @@
 'use client'
 import{useState}from'react'
 import{getCatIcon,getCatColor}from'../data/mockOffers'
-
-const OR='#ff681f'
-
-function timeLeft(exp){
-  if(!exp)return''
-  const diff=new Date(exp)-new Date()
-  if(diff<=0)return'Expired'
-  const h=Math.floor(diff/3600000)
-  const m=Math.floor((diff%3600000)/60000)
-  if(h>=24)return`${Math.floor(h/24)}d left`
-  if(h>0)return`${h}h ${m}m left`
-  return`${m}m left`
-}
-
+const BLUE='#2547d8',OR='#ff681f'
+function timeLeft(exp){if(!exp)return'Live today';const d=new Date(exp)-new Date();if(d<=0)return'Expired';const h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000);return h>0?`${h}h ${m}m left`:`${m}m left`}
 export default function OfferSheet({offer,onClose,onDirections,onLogin}){
   const[claimed,setClaimed]=useState(false)
   const[saved,setSaved]=useState(false)
   if(!offer)return null
-
-  const color=getCatColor(offer.category)
-  const icon=getCatIcon(offer.category)
-  const tl=timeLeft(offer.expiresAt)
-
+  const color=getCatColor(offer.category)||OR,icon=getCatIcon(offer.category)||'🛍️'
   return(
-    <div className="bottom-sheet open">
+    <div className="bottom-sheet">
       <div className="sheet-handle"/>
-      <div style={{padding:'16px 20px 32px'}}>
-
-        {/* Header */}
-        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:16}}>
-          <div style={{display:'flex',alignItems:'center',gap:12,flex:1,minWidth:0}}>
-            <div style={{width:48,height:48,borderRadius:14,background:color+'22',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,flexShrink:0}}>
-              {icon}
-            </div>
+      <div className="card-pad">
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:18}}>
+          <div style={{display:'flex',gap:18,alignItems:'center',minWidth:0}}>
+            <div className="status-tile" style={{background:color,fontSize:42}}>{icon}</div>
             <div style={{minWidth:0}}>
-              <div style={{color:'white',fontSize:16,fontWeight:700,lineHeight:1.2,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                {offer.title}
-              </div>
-              <div style={{color:'rgba(255,255,255,.5)',fontSize:13}}>{offer.businessName}</div>
+              <div style={{fontSize:32,fontWeight:900,lineHeight:1.05}}>{offer.shortLabel||offer.discount||'Live offer'}</div>
+              <div style={{fontSize:22,color:'#77768a',fontWeight:800,marginTop:8}}>{offer.businessName}</div>
+              <div className="info-chip" style={{marginTop:14,background:'#fff4df'}}>{timeLeft(offer.expiresAt)}</div>
             </div>
           </div>
-          <button onClick={onClose} style={{background:'rgba(255,255,255,.1)',border:'none',color:'white',width:32,height:32,borderRadius:50,cursor:'pointer',fontSize:16,flexShrink:0,marginLeft:8}}>✕</button>
+          <button className="close-x" onClick={onClose}>×</button>
         </div>
-
-        {/* Chips */}
-        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
-          <span style={{background:color+'22',color,borderRadius:20,padding:'4px 12px',fontSize:12,fontWeight:600}}>{offer.discount||offer.shortLabel}</span>
-          {tl&&<span style={{background:'rgba(255,255,255,.07)',color:'rgba(255,255,255,.6)',borderRadius:20,padding:'4px 12px',fontSize:12}}>⏱ {tl}</span>}
-          {offer.source==='whatsapp'&&<span style={{background:'#25D36620',color:'#25D366',borderRadius:20,padding:'4px 12px',fontSize:12}}>via WhatsApp</span>}
-        </div>
-
-        {/* Description */}
-        <div style={{background:'rgba(255,255,255,.05)',borderRadius:12,padding:'12px 14px',marginBottom:16,color:'rgba(255,255,255,.8)',fontSize:14,lineHeight:1.6}}>
-          {offer.description}
-        </div>
-
-        {/* Address */}
-        {offer.address&&(
-          <div style={{color:'rgba(255,255,255,.4)',fontSize:13,marginBottom:16}}>
-            📍 {offer.address}
+        <div style={{borderTop:'1px solid #eeeaf7',borderBottom:'1px solid #eeeaf7',padding:'28px 0',marginTop:24}}>
+          <h3 style={{fontSize:27,fontWeight:900,margin:'0 0 10px'}}>{offer.title}</h3>
+          <p style={{fontSize:20,lineHeight:1.45,color:'#39364c',fontWeight:700,margin:0}}>{offer.description}</p>
+          {offer.address&&<div style={{fontSize:18,color:'#77768a',fontWeight:800,marginTop:18}}>📍 {offer.address}</div>}
+          <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:18}}>
+            {offer.source==='whatsapp'&&<span className="info-chip" style={{background:'#e8fff1',fontSize:16}}>WhatsApp AI verified</span>}
+            {offer.googlePlaceId&&<span className="info-chip" style={{background:'#eef2ff',fontSize:16}}>Google place linked</span>}
+            {offer.verified&&<span className="info-chip" style={{background:'#e8fff1',fontSize:16}}>Business verified</span>}
           </div>
-        )}
-
-        {/* Actions */}
-        <button
-          onClick={()=>{
-            if(!localStorage.getItem('hs_guest')&&!document.cookie.includes('supabase'))return onLogin?.()
-            setClaimed(true)
-          }}
-          style={{width:'100%',padding:'14px',borderRadius:12,border:'none',background:claimed?'#2ECC71':OR,color:'white',fontSize:16,fontWeight:700,cursor:'pointer',marginBottom:10,transition:'background .2s'}}>
-          {claimed?'✓ Offer claimed!':'Claim this offer'}
-        </button>
-
-        <div style={{display:'flex',gap:10}}>
-          <button onClick={()=>setSaved(s=>!s)}
-            style={{flex:1,padding:'12px',borderRadius:12,border:'1px solid rgba(255,255,255,.1)',background:saved?'rgba(255,104,31,.15)':'transparent',color:saved?OR:'rgba(255,255,255,.5)',fontSize:14,cursor:'pointer'}}>
-            {saved?'♥ Saved':'♡ Save'}
-          </button>
-          <button onClick={()=>onDirections&&onDirections(offer)}
-            style={{flex:1,padding:'12px',borderRadius:12,border:'1px solid rgba(255,255,255,.1)',background:'transparent',color:'rgba(255,255,255,.5)',fontSize:14,cursor:'pointer'}}>
-            🧭 Directions
-          </button>
-          <button onClick={()=>navigator.share?.({title:offer.title,text:offer.description,url:window.location.href})}
-            style={{flex:1,padding:'12px',borderRadius:12,border:'1px solid rgba(255,255,255,.1)',background:'transparent',color:'rgba(255,255,255,.5)',fontSize:14,cursor:'pointer'}}>
-            ↗ Share
-          </button>
         </div>
+        <div className="stat-grid">
+          <div><div className="stat-label">Claim</div><div className="stat-value">{claimed?'Done':'Free'}</div></div>
+          <div><div className="stat-label">Source</div><div className="stat-value">{offer.source||'portal'}</div></div>
+          <div><div className="stat-label">Status</div><div className="stat-value">Live</div></div>
+        </div>
+        <button onClick={()=>{if(!localStorage.getItem('hs_guest'))return onLogin?.();setClaimed(true)}} className="solid-btn" style={{width:'100%',marginTop:28,background:claimed?'#078d16':OR,borderColor:claimed?'#078d16':OR}}>{claimed?'✓ Offer claimed':'Claim this offer'}</button>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginTop:14}}>
+          <button onClick={()=>setSaved(s=>!s)} className="outline-btn" style={{fontSize:17}}>{saved?'♥ Saved':'♡ Save'}</button>
+          <button onClick={()=>onDirections?.(offer)} className="outline-btn" style={{fontSize:17}}>↱ Directions</button>
+          <button onClick={()=>navigator.share?.({title:offer.title,text:offer.description,url:location.href})} className="outline-btn" style={{fontSize:17}}>Share</button>
+        </div>
+        <div style={{fontSize:13,color:'#77768a',lineHeight:1.4,marginTop:16,textAlign:'center'}}>Offers are shown from verified local businesses or demo seed data. Always check the terms in store.</div>
       </div>
     </div>
   )

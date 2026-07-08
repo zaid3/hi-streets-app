@@ -43,12 +43,12 @@ create index if not exists offers_business_idx on public.offers(business_id);
 alter table public.businesses enable row level security;
 alter table public.offers enable row level security;
 
--- Public map can read only verified businesses.
-create policy if not exists "public read verified businesses" on public.businesses
+drop policy if exists "public read verified businesses" on public.businesses;
+create policy "public read verified businesses" on public.businesses
 for select using (is_verified = true);
 
--- Public map can read only live offers from verified businesses.
-create policy if not exists "public read live offers" on public.offers
+drop policy if exists "public read live offers" on public.offers;
+create policy "public read live offers" on public.offers
 for select using (
   is_active = true
   and expires_at > now()
@@ -58,13 +58,13 @@ for select using (
   )
 );
 
--- Business owners can manage their own business profile.
-create policy if not exists "owners manage businesses" on public.businesses
+drop policy if exists "owners manage businesses" on public.businesses;
+create policy "owners manage businesses" on public.businesses
 for all using (auth.uid() = owner_user_id)
 with check (auth.uid() = owner_user_id);
 
--- Business owners can manage offers belonging to their business.
-create policy if not exists "owners manage offers" on public.offers
+drop policy if exists "owners manage offers" on public.offers;
+create policy "owners manage offers" on public.offers
 for all using (
   exists(select 1 from public.businesses b where b.id = offers.business_id and b.owner_user_id = auth.uid())
 )

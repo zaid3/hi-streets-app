@@ -23,7 +23,8 @@ function authorised(req){
   return Boolean(token)&&((req.headers.get('authorization')||'')===`Bearer ${token}`)
 }
 function bodyJson(req){return req.json().catch(()=>({}))}
-function inBounds(row,bounds=NEWHAM_BOUNDS){return row.lat>=bounds.south&&row.lat<=bounds.north&&row.lng>=bounds.west&&row.lng<=bounds.east}
+function normaliseBounds(bounds){return bounds&&typeof bounds==='object'&&Number.isFinite(Number(bounds.south))?bounds:NEWHAM_BOUNDS}
+function inBounds(row,bounds=NEWHAM_BOUNDS){const b=normaliseBounds(bounds);return row.lat>=b.south&&row.lat<=b.north&&row.lng>=b.west&&row.lng<=b.east}
 function rad(x){return x*Math.PI/180}
 function lineLengthMetres(coords){
   if(!Array.isArray(coords)||coords.length<2)return 0
@@ -94,7 +95,7 @@ async function searchAndNormalise({startPage,pages,pageSize,regulationTypes}){
     try{normalised.push(...normaliseDtroParking(await getDtroById(id)).map(toRow))}
     catch(error){fetchErrors.push({id,error:error?.message||String(error)})}
   }
-  return{rows:normalised.filter(inBounds),totalRowsBeforeBounds:normalised.length,dtros:ids.size,searches,fetchErrors}
+  return{rows:normalised.filter(row=>inBounds(row)),totalRowsBeforeBounds:normalised.length,dtros:ids.size,searches,fetchErrors}
 }
 async function upsertRows(supabase,rows){
   let imported=0

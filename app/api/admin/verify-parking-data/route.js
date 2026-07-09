@@ -27,14 +27,18 @@ function badText(value){
   const text=String(value||'').trim()
   return !text||/\*\*NOT PROVIDED\*\*|not provided|unknown|unnamed|example|^d-tro parking restriction$/i.test(text)
 }
-function safeRow(row){
-  if(row?.source!=='dtro'&&row?.source!=='council')return false
+function rejectReason(row){
+  if(row?.source!=='dtro'&&row?.source!=='council')return'Unsupported source'
   const coords=Array.isArray(row.coords)?row.coords:[]
-  if(coords.length<2)return false
-  if(badText(row.name)||badText(row.restriction))return false
+  if(coords.length<2)return'No line geometry'
+  if(badText(row.name))return'Missing road name'
+  if(badText(row.restriction))return'Missing restriction text'
   const length=lineLengthMetres(coords)
-  return length>0&&length<=1500
+  if(!length)return'Zero length geometry'
+  if(length>1500)return'Line is too long to publish safely'
+  return''
 }
+function safeRow(row){return !rejectReason(row)}
 function parseBounds(value){
   if(!value||typeof value!=='object')return null
   const bounds={south:Number(value.south),west:Number(value.west),north:Number(value.north),east:Number(value.east)}
@@ -45,6 +49,10 @@ function inBounds(row,bounds){
   return row.lat>=bounds.south&&row.lat<=bounds.north&&row.lng>=bounds.west&&row.lng<=bounds.east
 }
 async function bodyJson(req){try{return await req.json()}catch{return{}}}
+function sampleRow(row){
+  const coords=Array.isArray(row.coords)?row.coords:[]
+  return{id:row.id,external_id:row.external_id,name:row.name,restriction:row.restriction,lat:row.lat,lng:row.lng,coords:coords.length,lengthMetres:lineLengthMetres(coords),reason:rejectReason(row)}
+}
 
 export async function POST(req){
   if(!authorised(req))return NextResponse.json({ok:false,error:'Unauthorised'},{status:401})
@@ -85,8 +93,9 @@ export async function POST(req){
     publishable:publishable.length,
     rejected:rejected.length,
     updated,
-    message:dryRun?'Dry run only. Re-run without dryRun after reviewing the sample.':'Safe local parking rows are now public.',
-    sample:publishable.slice(0,8).map(row=>({id:row.id,external_id:row.external_id,name:row.name,restriction:row.restriction,lat:row.lat,lng:row.lng}))
+    message:publishable.length?(dryRun?'Dry run only. Re-run without dryRun after reviewing the sample.':'Safe local parking rows are now public.'):'No safe line-geometry rows found inside these bounds yet. Import more bounded D-TRO pages or add council bay data.',
+    sample:publishable.slice(0,8).map(sampleRow),
+    rejectedSample:rejected.slice(0,8).map(sampleRow)
   })
 }
 

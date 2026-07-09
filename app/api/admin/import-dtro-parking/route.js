@@ -2,6 +2,7 @@ import{NextResponse}from'next/server'
 import{dtroConfig,getDtroById,searchDtros}from'../../../../lib/dtroClient'
 import{normaliseDtroParking}from'../../../../lib/dtroParkingNormaliser'
 import{getSupabaseAdmin,isSupabaseAdminConfigured}from'../../../../lib/supabaseAdmin'
+import{NEWHAM_BOUNDS}from'../../../../lib/newhamSeedData'
 
 export const dynamic='force-dynamic'
 export const runtime='nodejs'
@@ -15,6 +16,16 @@ const DEFAULT_PARKING_TYPES=[
   'kerbsideNoLoading',
   'kerbsideDisabledBadgeHolders',
   'kerbsideParkingPlace',
+]
+
+const NEWHAM_PARKING_TYPES=[
+  'kerbsideParkingPlace',
+  'kerbsideLimitedWaiting',
+  'kerbsidePermitParking',
+  'kerbsideDisabledBadgeHolders',
+  'kerbsideLoading',
+  'kerbsideNoLoading',
+  'kerbsideNoWaiting',
 ]
 
 function authorised(req){
@@ -42,6 +53,11 @@ function parseBounds(value){
   if(!value||typeof value!=='object')return null
   const bounds={south:Number(value.south),west:Number(value.west),north:Number(value.north),east:Number(value.east)}
   return Object.values(bounds).every(Number.isFinite)&&bounds.south<bounds.north&&bounds.west<bounds.east?bounds:null
+}
+
+function areaBounds(area,bounds){
+  if(String(area||'').toLowerCase()==='newham')return NEWHAM_BOUNDS
+  return bounds
 }
 
 function inBounds(row,bounds){
@@ -112,17 +128,19 @@ export async function POST(req){
     if(!cfg.configured)return NextResponse.json({ok:false,error:'D-TRO credentials are not configured',config:safeConfig()},{status:500})
     const body=await bodyJson(req)
     const url=new URL(req.url)
+    const area=body.area||url.searchParams.get('area')
     const dtroId=body.dtroId||url.searchParams.get('dtroId')
     const dryRun=body.dryRun===true||url.searchParams.get('dryRun')==='1'
     const pageSize=Math.min(50,Math.max(1,Number(body.pageSize||25)))
     const pages=Math.min(20,Math.max(1,Number(body.pages||1)))
     const startPage=Math.max(1,Number(body.startPage||1))
-    const bounds=parseBounds(body.bounds)
-    const regulationTypes=Array.isArray(body.regulationTypes)&&body.regulationTypes.length?body.regulationTypes:DEFAULT_PARKING_TYPES
+    const bounds=areaBounds(area,parseBounds(body.bounds))
+    const defaultTypes=String(area||'').toLowerCase()==='newham'?NEWHAM_PARKING_TYPES:DEFAULT_PARKING_TYPES
+    const regulationTypes=Array.isArray(body.regulationTypes)&&body.regulationTypes.length?body.regulationTypes:defaultTypes
     const fetched=dtroId?{dtros:[await getDtroById(dtroId)],searches:[],fetchErrors:[],ids:[dtroId]}:await fetchBySearch({regulationTypes,pageSize,pages,startPage})
     const allRows=fetched.dtros.flatMap(normaliseDtroParking).map(toRow)
     const rows=allRows.filter(row=>inBounds(row,bounds))
-    if(dryRun)return NextResponse.json({ok:true,dryRun:true,dtros:fetched.ids.length,parkingRows:rows.length,totalParkingRowsBeforeBounds:allRows.length,bounds,startPage,pages,pageSize,searches:fetched.searches,fetchErrors:fetched.fetchErrors,sample:rows.slice(0,5),config:safeConfig()})
+    if(dryRun)return NextResponse.json({ok:true,dryRun:true,area:area||null,dtros:fetched.ids.length,parkingRows:rows.length,totalParkingRowsBeforeBounds:allRows.length,bounds,startPage,pages,pageSize,searches:fetched.searches,fetchErrors:fetched.fetchErrors,sample:rows.slice(0,5),config:safeConfig()})
     if(!isSupabaseAdminConfigured)return NextResponse.json({ok:false,error:'Supabase admin is not configured'},{status:500})
     const supabase=getSupabaseAdmin()
     let imported=0
@@ -132,7 +150,7 @@ export async function POST(req){
       if(error)return NextResponse.json({ok:false,error:error.message,imported},{status:500})
       imported+=chunk.length
     }
-    return NextResponse.json({ok:true,source:'dtro',dtros:fetched.ids.length,imported,totalParkingRowsBeforeBounds:allRows.length,bounds,startPage,pages,pageSize,verified:false,searches:fetched.searches,fetchErrors:fetched.fetchErrors,message:'D-TRO parking rows imported as unverified. Review streets before setting is_verified=true.'})
+    return NextResponse.json({ok:true,source:'dtro',area:area||null,dtros:fetched.ids.length,imported,totalParkingRowsBeforeBounds:allRows.length,bounds,startPage,pages,pageSize,verified:false,searches:fetched.searches,fetchErrors:fetched.fetchErrors,message:'D-TRO parking rows imported as unverified. Review streets before setting is_verified=true.'})
   }catch(error){
     return errorJson(error,500,{config:safeConfig()})
   }
@@ -140,5 +158,5 @@ export async function POST(req){
 
 export async function GET(req){
   if(!authorised(req))return NextResponse.json({ok:false,error:'Unauthorised'},{status:401})
-  return NextResponse.json({ok:true,route:'import-dtro-parking',config:safeConfig(),supabaseAdminConfigured:isSupabaseAdminConfigured})
+  return NextResponse.json({ok:true,route:'import-dtro-parking',config:safeConfig(),supabaseAdminConfigured:isSupabaseAdminConfigured,newhamBounds:NEWHAM_BOUNDS})
 }

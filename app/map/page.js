@@ -69,10 +69,10 @@ export default function MapPage(){
   useEffect(()=>{navigator.geolocation?.getCurrentPosition(p=>setCenter({lat:p.coords.latitude,lng:p.coords.longitude}),()=>setCenter(UK),{enableHighAccuracy:true,timeout:9000,maximumAge:10000})},[])
   const handleBoundsChange=useCallback(async(bounds)=>{clearTimeout(loadTimer.current);loadTimer.current=setTimeout(async()=>{try{const[parking,poi]=await Promise.all([getParkingData(bounds),getPlacesData(bounds)]);setSegments(parking);setPlaces(poi)}catch(e){console.error(e)}},450)},[])
   useEffect(()=>{handleBoundsChange(boundsAround(UK));getLiveOffers().then(setOffers);const unsub=subscribeToOffers(setOffers);return unsub},[handleBoundsChange])
+  const selectSeg=useCallback((seg)=>{const lat=seg.lat||seg.coords?.[0]?.[0],lng=seg.lng||seg.coords?.[0]?.[1];if(lat&&lng){setCenter({lat,lng});setZoom(17)}setSelectedOffer(null);setSelectedSeg(seg);setActionCollapsed(true)},[])
   function handleDirections(item){const lat=item.lat||item.coords?.[0]?.[0],lng=item.lng||item.coords?.[0]?.[1];if(!lat||!lng)return;window.open(`https://maps.google.com/?q=${lat},${lng}`,'_blank')}
   function walkMinsTo(seg){const lat=seg.lat||seg.coords?.[0]?.[0],lng=seg.lng||seg.coords?.[0]?.[1];if(!lat||!lng)return 0;const R=6371000,dLat=(lat-center.lat)*Math.PI/180,dLng=(lng-center.lng)*Math.PI/180;const a=Math.sin(dLat/2)**2+Math.cos(center.lat*Math.PI/180)*Math.cos(lat*Math.PI/180)*Math.sin(dLng/2)**2;return Math.max(1,Math.round((R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)))/84))}
   const filteredSegments=segments.filter(s=>{const type=s.isCarPark?'carpark':s.type==='permit'?'resident':s.type;if(!filters.types.includes(type))return false;if(filters.blueBadge&&type!=='disabled')return false;if(filters.maxWalk<30&&walkMinsTo(s)>filters.maxWalk)return false;return true})
-  function selectSeg(seg){const lat=seg.lat||seg.coords?.[0]?.[0],lng=seg.lng||seg.coords?.[0]?.[1];if(lat&&lng){setCenter({lat,lng});setZoom(17)}setSelectedOffer(null);setSelectedSeg(seg);setActionCollapsed(true)}
   const showGoogleMap=Boolean(gmapsKey&&useGoogleMap)
   const visibleGoogleParking=showGoogleMap?googleParking:[]
   const listSegments=uniqueById([...filteredSegments,...visibleGoogleParking])

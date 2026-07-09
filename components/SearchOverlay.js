@@ -31,12 +31,12 @@ export default function SearchOverlay({onClose,onSelect,currentLocation}){
   }
   async function runSearch(value){
     setLoading(true)
-    try{
-      const postcode=await postcodeResult(value)
-      const places=await placeResults(value)
-      const rows=postcode?[postcode,...places.filter(p=>Math.abs(p.lat-postcode.lat)>.0001||Math.abs(p.lng-postcode.lng)>.0001)]:places
-      setResults(rows)
-    }catch{setResults([])}finally{setLoading(false)}
+    let postcode=null,places=[]
+    try{postcode=await postcodeResult(value)}catch{}
+    try{places=await placeResults(value)}catch{}
+    const rows=postcode?[postcode,...places.filter(p=>Math.abs(p.lat-postcode.lat)>.0001||Math.abs(p.lng-postcode.lng)>.0001)]:places
+    setResults(rows)
+    setLoading(false)
   }
   function search(v){
     setQ(v);clearTimeout(timer.current)

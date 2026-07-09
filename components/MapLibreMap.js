@@ -1,5 +1,6 @@
 'use client'
 import{useEffect,useRef}from'react'
+import{NEWHAM_BOUNDS}from'../lib/newhamSeedData'
 const MAP_STYLE_URL='https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
 const GREEN='#078d16',BLUE='#0b73d9',GREY='#9d9da5',PURPLE='#8E44AD',ORANGE='#ff681f'
 function controlledNow(){const d=new Date(),m=d.getHours()*60+d.getMinutes();return m>=8*60&&m<18*60+30}
@@ -7,6 +8,15 @@ function visual(seg){if(seg.isCarPark||seg.type==='carpark')return{color:BLUE,la
 function point(seg){const p=seg.coords?.[Math.floor((seg.coords?.length||1)/2)]||seg.coords?.[0];return{lat:seg.lat||p?.[0],lng:seg.lng||p?.[1]}}
 function drawAsLine(seg){return Array.isArray(seg.coords)&&seg.coords.length>1&&(['dtro','council','curated','field_checked','osm'].includes(seg.source)||seg.confidence==='high')}
 function lineFeatures(segments){return{type:'FeatureCollection',features:(segments||[]).filter(drawAsLine).map(seg=>{const v=visual(seg);return{type:'Feature',properties:{id:String(seg.id),color:seg.color||v.color,label:v.label,type:seg.type||'parking'},geometry:{type:'LineString',coordinates:seg.coords.map(([lat,lng])=>[lng,lat])}}})}}
+function boundaryFallback(){const b=NEWHAM_BOUNDS;return{type:'FeatureCollection',features:[{type:'Feature',properties:{name:'Newham'},geometry:{type:'Polygon',coordinates:[[[b.west,b.south],[b.east,b.south],[b.east,b.north],[b.west,b.north],[b.west,b.south]]]}}]}}
+function addBoundary(map){
+  fetch('/api/newham/boundary').then(r=>r.json()).catch(()=>boundaryFallback()).then(data=>{
+    if(!map||map.getSource('newham-boundary'))return
+    map.addSource('newham-boundary',{type:'geojson',data:data?.features?.length?data:boundaryFallback()})
+    map.addLayer({id:'newham-fill',type:'fill',source:'newham-boundary',paint:{'fill-color':'#e9f4ec','fill-opacity':.18}})
+    map.addLayer({id:'newham-border',type:'line',source:'newham-boundary',paint:{'line-color':'#0b0628','line-width':['interpolate',['linear'],['zoom'],10,2,15,4,19,7],'line-opacity':.92},layout:{'line-join':'round','line-cap':'round'}})
+  })
+}
 function upsertParkingLines(map,segments){
   const data=lineFeatures(segments)
   const source=map.getSource('parking-lines')
@@ -20,7 +30,7 @@ function upsertParkingLines(map,segments){
 export default function MapLibreMap({center,zoom=15,segments=[],offers=[],places=[],onSegmentClick,onOfferClick,onMapMove}){
   const containerRef=useRef(null),mapRef=useRef(null),parkingMarkersRef=useRef([]),offerMarkersRef=useRef([]),placesRef=useRef([]),userMarkerRef=useRef(null),moveTimerRef=useRef(null),initRef=useRef(false),segmentsRef=useRef([])
   useEffect(()=>{segmentsRef.current=segments},[segments])
-  useEffect(()=>{if(initRef.current||!containerRef.current)return;initRef.current=true;import('maplibre-gl').then(({default:ml})=>{const map=new ml.Map({container:containerRef.current,style:MAP_STYLE_URL,center:[center.lng,center.lat],zoom,maxZoom:20,minZoom:5,attributionControl:false});map.on('load',()=>{upsertParkingLines(map,segmentsRef.current);const el=document.createElement('div');el.className='user-dot';el.innerHTML='<div class="user-dot-pulse"></div><div class="user-dot-inner"></div>';userMarkerRef.current=new ml.Marker({element:el,anchor:'center'}).setLngLat([center.lng,center.lat]).addTo(map);const b=map.getBounds();onMapMove?.({south:b.getSouth(),west:b.getWest(),north:b.getNorth(),east:b.getEast()});mapRef.current=map});map.on('click','parking-lines-hit',e=>{const id=e.features?.[0]?.properties?.id;const seg=segmentsRef.current.find(item=>String(item.id)===String(id));if(seg)onSegmentClick?.(seg)});map.on('mouseenter','parking-lines-hit',()=>{map.getCanvas().style.cursor='pointer'});map.on('mouseleave','parking-lines-hit',()=>{map.getCanvas().style.cursor='grab'});map.on('moveend',()=>{clearTimeout(moveTimerRef.current);moveTimerRef.current=setTimeout(()=>{const b=map.getBounds();onMapMove?.({south:b.getSouth(),west:b.getWest(),north:b.getNorth(),east:b.getEast()})},450)})})},[])
+  useEffect(()=>{if(initRef.current||!containerRef.current)return;initRef.current=true;import('maplibre-gl').then(({default:ml})=>{const b=NEWHAM_BOUNDS;const maxBounds=[[b.west-.01,b.south-.01],[b.east+.01,b.north+.01]];const map=new ml.Map({container:containerRef.current,style:MAP_STYLE_URL,center:[center.lng,center.lat],zoom,maxZoom:20,minZoom:12,maxBounds,attributionControl:false});map.on('load',()=>{addBoundary(map);map.fitBounds([[b.west,b.south],[b.east,b.north]],{padding:28,duration:0});upsertParkingLines(map,segmentsRef.current);const el=document.createElement('div');el.className='user-dot';el.innerHTML='<div class="user-dot-pulse"></div><div class="user-dot-inner"></div>';userMarkerRef.current=new ml.Marker({element:el,anchor:'center'}).setLngLat([center.lng,center.lat]).addTo(map);const mb=map.getBounds();onMapMove?.({south:mb.getSouth(),west:mb.getWest(),north:mb.getNorth(),east:mb.getEast()});mapRef.current=map});map.on('click','parking-lines-hit',e=>{const id=e.features?.[0]?.properties?.id;const seg=segmentsRef.current.find(item=>String(item.id)===String(id));if(seg)onSegmentClick?.(seg)});map.on('mouseenter','parking-lines-hit',()=>{map.getCanvas().style.cursor='pointer'});map.on('mouseleave','parking-lines-hit',()=>{map.getCanvas().style.cursor='grab'});map.on('moveend',()=>{clearTimeout(moveTimerRef.current);moveTimerRef.current=setTimeout(()=>{const b=map.getBounds();onMapMove?.({south:b.getSouth(),west:b.getWest(),north:b.getNorth(),east:b.getEast()})},450)})})},[])
   useEffect(()=>{userMarkerRef.current?.setLngLat([center.lng,center.lat])},[center.lat,center.lng])
   const prevC=useRef(null);useEffect(()=>{const map=mapRef.current;if(!map)return;if(prevC.current?.lat===center.lat&&prevC.current?.lng===center.lng)return;prevC.current=center;map.easeTo({center:[center.lng,center.lat],zoom,duration:420})},[center.lat,center.lng,zoom])
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(map.isStyleLoaded())upsertParkingLines(map,segments)},[segments])

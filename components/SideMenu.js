@@ -17,7 +17,7 @@ export default function SideMenu({open,onClose,onAction,user}){
       {open&&<div onClick={onClose} style={{position:'absolute',inset:0,background:'rgba(0,0,0,.35)',zIndex:490}}/>}
       <div style={{position:'absolute',top:0,bottom:0,left:0,width:'min(86vw,430px)',background:'#fff',zIndex:500,transform:open?'translateX(0)':'translateX(-102%)',transition:'transform .28s cubic-bezier(.4,0,.2,1)',boxShadow:'20px 0 50px rgba(12,8,35,.22)',display:'flex',flexDirection:'column'}}>
         <div style={{height:188,background:'linear-gradient(135deg,#fff7ec 0%,#fff 62%,#eef4ff 62%)',padding:'max(48px,env(safe-area-inset-top)) 28px 20px',color:'#231b58',borderBottom:'1px solid #eeeaf7'}}>
-          <div style={{fontSize:31,fontWeight:900,letterSpacing:'-.8px'}}>Hi-Streets<span style={{color:BLUE}}>+</span></div>
+          <div style={{fontSize:31,fontWeight:900,letterSpacing:0}}>Hi-Streets<span style={{color:BLUE}}>+</span></div>
           <div style={{fontSize:16,fontWeight:900,color:'#ff681f',marginTop:8}}>Free parking and local offers for the community</div>
         </div>
         <div style={{padding:'22px 28px',display:'flex',gap:16,alignItems:'center',background:'#f7f6fc'}}>

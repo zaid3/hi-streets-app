@@ -73,10 +73,10 @@ export async function POST(req){
   if(!authorised(req))return NextResponse.json({ok:false,error:'Unauthorised'},{status:401})
   const cfg=dtroConfig()
   if(!cfg.configured)return NextResponse.json({ok:false,error:'D-TRO credentials are not configured'},{status:500})
-  if(!isSupabaseAdminConfigured)return NextResponse.json({ok:false,error:'Supabase admin is not configured'},{status:500})
   const body=await bodyJson(req)
-  const dtroId=body.dtroId||new URL(req.url).searchParams.get('dtroId')
-  const dryRun=body.dryRun===true||new URL(req.url).searchParams.get('dryRun')==='1'
+  const url=new URL(req.url)
+  const dtroId=body.dtroId||url.searchParams.get('dtroId')
+  const dryRun=body.dryRun===true||url.searchParams.get('dryRun')==='1'
   const pageSize=Math.min(50,Math.max(1,Number(body.pageSize||25)))
   const pages=Math.min(20,Math.max(1,Number(body.pages||1)))
   const regulationTypes=Array.isArray(body.regulationTypes)&&body.regulationTypes.length?body.regulationTypes:DEFAULT_PARKING_TYPES
@@ -84,6 +84,7 @@ export async function POST(req){
   const items=fetched.dtros.flatMap(normaliseDtroParking)
   const rows=items.map(toRow)
   if(dryRun)return NextResponse.json({ok:true,dryRun:true,dtros:fetched.ids.length,parkingRows:rows.length,searches:fetched.searches,sample:rows.slice(0,5)})
+  if(!isSupabaseAdminConfigured)return NextResponse.json({ok:false,error:'Supabase admin is not configured'},{status:500})
   const supabase=getSupabaseAdmin()
   let imported=0
   for(let i=0;i<rows.length;i+=250){

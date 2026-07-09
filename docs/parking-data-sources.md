@@ -81,6 +81,59 @@ ADMIN_IMPORT_TOKEN=
 
 The import writes Camden parking bay rows into `parking_segments` with `is_verified = false`. Review sample streets first, then approve checked rows by setting `is_verified = true` in Supabase.
 
+## D-TRO import endpoint
+
+The app includes a protected D-TRO import route:
+
+```text
+POST /api/admin/import-dtro-parking
+Authorization: Bearer <ADMIN_IMPORT_TOKEN>
+```
+
+Required server environment variables:
+
+```bash
+D_TRO_APP_ID=
+D_TRO_API_KEY=
+D_TRO_SECRET_KEY=
+D_TRO_API_BASE_URL=https://dtro.dft.gov.uk/v1
+NEXT_PUBLIC_SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+ADMIN_IMPORT_TOKEN=
+```
+
+The D-TRO client uses OAuth2 client credentials against `/oauth-generator`, then reads D-TROs using a bearer token. The API key and secret must stay server-side only.
+
+Dry run one known D-TRO ID:
+
+```bash
+curl -X POST https://YOUR_DOMAIN/api/admin/import-dtro-parking \
+  -H "Authorization: Bearer YOUR_ADMIN_IMPORT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun":true,"dtroId":"D_TRO_ID_HERE"}'
+```
+
+Import a small batch of parking-like D-TROs:
+
+```bash
+curl -X POST https://YOUR_DOMAIN/api/admin/import-dtro-parking \
+  -H "Authorization: Bearer YOUR_ADMIN_IMPORT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"pages":1,"pageSize":25}'
+```
+
+The import writes rows with `is_verified = false`. Review streets in Supabase first, then approve known-good rows:
+
+```sql
+update public.parking_segments
+set is_verified = true
+where source = 'dtro'
+  and council = 'YOUR_COUNCIL_OR_AUTHORITY'
+  and is_verified = false;
+```
+
+Do not bulk-approve national D-TRO rows without checking samples. D-TRO geometry is legal-order geometry, and the app must not display unchecked restrictions as certain bay availability.
+
 ## Adding a new council
 
 1. Find the council parking bay or TRO open dataset.
@@ -90,22 +143,6 @@ The import writes Camden parking bay rows into `parking_segments` with `is_verif
 5. Add a protected admin import route or scheduled job.
 6. Test the area on the map and compare random results against street signs.
 7. For long-term performance, import verified rows into `parking_segments` instead of relying only on live fetches.
-
-## D-TRO production path
-
-When D-TRO API access is registered:
-
-1. Add server environment variables only:
-
-```bash
-D_TRO_API_BASE_URL=
-D_TRO_API_KEY=
-```
-
-2. Create a server import job that pulls D-TRO records by authority or bounding box.
-3. Convert D-TRO measures into `parking_segments` rows.
-4. Keep `is_verified = false` until the import is checked.
-5. Mark checked rows verified so the public map can display them.
 
 ## User trust rule
 

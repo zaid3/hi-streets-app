@@ -46,25 +46,50 @@ export async function POST(req){
   if(!isSupabaseAdminConfigured)return NextResponse.json({ok:false,error:'Supabase admin is not configured'},{status:500})
   const body=await bodyJson(req)
   const dryRun=body.dryRun===true
+  const includeInactive=body.includeInactive===true
+  const deleteInactive=body.deleteInactive===true
   const supabase=getSupabaseAdmin()
-  const{data,error}=await supabase
+  const query=supabase
     .from('parking_segments')
     .select('id,external_id,source,coords,name,restriction,is_verified')
     .eq('source','dtro')
     .limit(10000)
+  if(!includeInactive)query.eq('is_verified',true)
+  const{data,error}=await query
   if(error)return NextResponse.json({ok:false,error:error.message},{status:500})
   const unsafe=(data||[]).filter(unsafeDtroRow)
-  const ids=unsafe.map(row=>row.id).filter(Boolean)
-  let updated=0
-  if(!dryRun){
+  const unsafeVerified=unsafe.filter(row=>row.is_verified!==false)
+  const ids=unsafeVerified.map(row=>row.id).filter(Boolean)
+  let updated=0,deleted=0
+  if(!dryRun&&ids.length){
     for(let i=0;i<ids.length;i+=500){
       const chunk=ids.slice(i,i+500)
       const{error:updateError}=await supabase.from('parking_segments').update({is_verified:false}).in('id',chunk)
-      if(updateError)return NextResponse.json({ok:false,error:updateError.message,updated},{status:500})
+      if(updateError)return NextResponse.json({ok:false,error:updateError.message,updated,deleted},{status:500})
       updated+=chunk.length
     }
   }
-  return NextResponse.json({ok:true,dryRun,checked:data?.length||0,unsafe:ids.length,updated,sample:unsafe.slice(0,5).map(row=>({id:row.id,external_id:row.external_id,name:row.name,restriction:row.restriction}))})
+  if(!dryRun&&deleteInactive&&includeInactive){
+    const inactiveIds=unsafe.filter(row=>row.is_verified===false).map(row=>row.id).filter(Boolean)
+    for(let i=0;i<inactiveIds.length;i+=500){
+      const chunk=inactiveIds.slice(i,i+500)
+      const{error:deleteError}=await supabase.from('parking_segments').delete().in('id',chunk)
+      if(deleteError)return NextResponse.json({ok:false,error:deleteError.message,updated,deleted},{status:500})
+      deleted+=chunk.length
+    }
+  }
+  return NextResponse.json({
+    ok:true,
+    dryRun,
+    checked:data?.length||0,
+    unsafe:unsafe.length,
+    unsafeVerified:unsafeVerified.length,
+    updated,
+    deleted,
+    includeInactive,
+    message:unsafeVerified.length?'Unsafe verified D-TRO rows still need cleaning.':'No unsafe verified D-TRO rows are public.',
+    sample:unsafe.slice(0,5).map(row=>({id:row.id,external_id:row.external_id,is_verified:row.is_verified,name:row.name,restriction:row.restriction}))
+  })
 }
 
 export async function GET(req){

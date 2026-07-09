@@ -8,10 +8,10 @@ function currentTime(){const d=new Date();return d.getHours().toString().padStar
 function isNoParking(type){return['restricted','no_parking','yellow_double','red_route'].includes(type)}
 function isYellow(type){return['yellow_single','yellow_double'].includes(type)}
 function sourceInfo(seg){
-  if(seg.source==='council')return{label:seg.sourceName||'Council open data',tone:'#e8fff1',color:GREEN,trust:'High confidence'}
-  if(seg.source==='google')return{label:'Google Places',tone:'#eef4ff',color:BLUE,trust:'Medium confidence'}
-  if(seg.source==='osm')return{label:'OpenStreetMap',tone:'#f2f1f8',color:'#635f78',trust:'Medium confidence'}
-  if(seg.source==='verified_seed')return{label:seg.sourceName||'Starter coverage',tone:'#fff4df',color:'#a06400',trust:'MVP coverage'}
+  if(seg.source==='dtro')return{label:'DfT D-TRO',tone:'#e8fff1',color:GREEN,trust:'Official data'}
+  if(seg.source==='council')return{label:seg.sourceName||'Council open data',tone:'#e8fff1',color:GREEN,trust:'Official council data'}
+  if(seg.source==='google')return{label:'Google Places',tone:'#eef4ff',color:BLUE,trust:'Parking place'}
+  if(seg.source==='osm')return{label:'OpenStreetMap',tone:'#f2f1f8',color:'#635f78',trust:'Community map data'}
   return{label:'Parking data',tone:'#f2f1f8',color:'#635f78',trust:'Check signs'}
 }
 function bayKind(seg){

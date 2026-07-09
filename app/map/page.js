@@ -14,9 +14,9 @@ const LEGEND=[['free','#078d16','Free / permit'],['paid','#0b73d9','Paid / car p
 function countLines(items){return items.filter(s=>Array.isArray(s.coords)&&s.coords.length>1).length}
 function uniqueById(items){const seen=new Set();return items.filter(item=>{const id=item.id||item.external_id||`${item.lat},${item.lng}`;if(seen.has(id))return false;seen.add(id);return true})}
 function newhamBoundsAround(center){const b=boundsAround(clampToNewham(center),0.022);return{south:Math.max(b.south,NEWHAM_BOUNDS.south),west:Math.max(b.west,NEWHAM_BOUNDS.west),north:Math.min(b.north,NEWHAM_BOUNDS.north),east:Math.min(b.east,NEWHAM_BOUNDS.east)}}
-function Header({onSearch,parkingCount,lineCount,offersCount}){return <div className="newham-top"><button onClick={onSearch} className="newham-search"><span>⌕</span><b>Search Newham road or postcode</b></button><div className="newham-status"><b>{lineCount}</b> road lines · <b>{parkingCount}</b> parking places · <b>{offersCount}</b> offers</div></div>}
+function Header({onSearch,parkingCount,lineCount,offersCount}){return <div className="newham-top"><button onClick={onSearch} className="newham-search"><span>⌕</span><b>Search Newham road or postcode</b></button><div className="newham-status"><b>{lineCount}</b> road lines · <b>{parkingCount}</b> parking signs · <b>{offersCount}</b> offers</div></div>}
 function Legend(){return <div className="newham-legend">{LEGEND.map(([id,color,label])=><div key={id} className="legend-pill"><span style={{background:color}}/>{label}</div>)}</div>}
-function EmptyNote({count}){if(count)return null;return <div className="coverage-note"><b>Newham map only.</b> Official bay lines appear only where D-TRO, council or OpenStreetMap parking geometry exists. Car parks and local points are shown as P signs.</div>}
+function EmptyNote({count}){if(count)return null;return <div className="coverage-note"><b>Newham only.</b> Official road lines appear when D-TRO, council or OpenStreetMap parking geometry exists. Car parks and local points are shown as P signs.</div>}
 export default function MapPage(){
   const[center,setCenter]=useState(NEWHAM_CENTER)
   const[zoom,setZoom]=useState(14)

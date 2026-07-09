@@ -1,5 +1,6 @@
 import{NextResponse}from'next/server'
 import{getSupabaseAdmin,isSupabaseAdminConfigured}from'../../../../lib/supabaseAdmin'
+import{NEWHAM_BOUNDS}from'../../../../lib/newhamSeedData'
 
 export const dynamic='force-dynamic'
 export const runtime='nodejs'
@@ -44,6 +45,10 @@ function parseBounds(value){
   const bounds={south:Number(value.south),west:Number(value.west),north:Number(value.north),east:Number(value.east)}
   return Object.values(bounds).every(Number.isFinite)&&bounds.south<bounds.north&&bounds.west<bounds.east?bounds:null
 }
+function areaBounds(area,bounds){
+  if(String(area||'').toLowerCase()==='newham')return NEWHAM_BOUNDS
+  return bounds
+}
 function inBounds(row,bounds){
   if(!bounds)return false
   return row.lat>=bounds.south&&row.lat<=bounds.north&&row.lng>=bounds.west&&row.lng<=bounds.east
@@ -59,8 +64,8 @@ export async function POST(req){
   if(!isSupabaseAdminConfigured)return NextResponse.json({ok:false,error:'Supabase admin is not configured'},{status:500})
   const body=await bodyJson(req)
   const dryRun=body.dryRun===true
-  const bounds=parseBounds(body.bounds)
-  if(!bounds)return NextResponse.json({ok:false,error:'Bounds are required so only the reviewed local area is published.'},{status:400})
+  const bounds=areaBounds(body.area,parseBounds(body.bounds))
+  if(!bounds)return NextResponse.json({ok:false,error:'Bounds are required so only the reviewed local area is published. Use {"area":"newham"} for Newham.'},{status:400})
   const source=body.source||'dtro'
   const supabase=getSupabaseAdmin()
   const{data,error}=await supabase
@@ -86,6 +91,7 @@ export async function POST(req){
   return NextResponse.json({
     ok:true,
     dryRun,
+    area:body.area||null,
     source,
     bounds,
     checked:data?.length||0,
@@ -101,5 +107,5 @@ export async function POST(req){
 
 export async function GET(req){
   if(!authorised(req))return NextResponse.json({ok:false,error:'Unauthorised'},{status:401})
-  return NextResponse.json({ok:true,route:'verify-parking-data',supabaseAdminConfigured:isSupabaseAdminConfigured})
+  return NextResponse.json({ok:true,route:'verify-parking-data',supabaseAdminConfigured:isSupabaseAdminConfigured,newhamBounds:NEWHAM_BOUNDS})
 }

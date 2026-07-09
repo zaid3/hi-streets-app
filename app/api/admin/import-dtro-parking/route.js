@@ -38,6 +38,17 @@ function safeConfig(){
   }
 }
 
+function parseBounds(value){
+  if(!value||typeof value!=='object')return null
+  const bounds={south:Number(value.south),west:Number(value.west),north:Number(value.north),east:Number(value.east)}
+  return Object.values(bounds).every(Number.isFinite)&&bounds.south<bounds.north&&bounds.west<bounds.east?bounds:null
+}
+
+function inBounds(row,bounds){
+  if(!bounds)return true
+  return row.lat>=bounds.south&&row.lat<=bounds.north&&row.lng>=bounds.west&&row.lng<=bounds.east
+}
+
 function toRow(item){
   return{
     external_id:item.id,
@@ -105,11 +116,12 @@ export async function POST(req){
     const dryRun=body.dryRun===true||url.searchParams.get('dryRun')==='1'
     const pageSize=Math.min(50,Math.max(1,Number(body.pageSize||25)))
     const pages=Math.min(20,Math.max(1,Number(body.pages||1)))
+    const bounds=parseBounds(body.bounds)
     const regulationTypes=Array.isArray(body.regulationTypes)&&body.regulationTypes.length?body.regulationTypes:DEFAULT_PARKING_TYPES
     const fetched=dtroId?{dtros:[await getDtroById(dtroId)],searches:[],fetchErrors:[],ids:[dtroId]}:await fetchBySearch({regulationTypes,pageSize,pages})
-    const items=fetched.dtros.flatMap(normaliseDtroParking)
-    const rows=items.map(toRow)
-    if(dryRun)return NextResponse.json({ok:true,dryRun:true,dtros:fetched.ids.length,parkingRows:rows.length,searches:fetched.searches,fetchErrors:fetched.fetchErrors,sample:rows.slice(0,5),config:safeConfig()})
+    const allRows=fetched.dtros.flatMap(normaliseDtroParking).map(toRow)
+    const rows=allRows.filter(row=>inBounds(row,bounds))
+    if(dryRun)return NextResponse.json({ok:true,dryRun:true,dtros:fetched.ids.length,parkingRows:rows.length,totalParkingRowsBeforeBounds:allRows.length,bounds,searches:fetched.searches,fetchErrors:fetched.fetchErrors,sample:rows.slice(0,5),config:safeConfig()})
     if(!isSupabaseAdminConfigured)return NextResponse.json({ok:false,error:'Supabase admin is not configured'},{status:500})
     const supabase=getSupabaseAdmin()
     let imported=0
@@ -119,7 +131,7 @@ export async function POST(req){
       if(error)return NextResponse.json({ok:false,error:error.message,imported},{status:500})
       imported+=chunk.length
     }
-    return NextResponse.json({ok:true,source:'dtro',dtros:fetched.ids.length,imported,verified:false,searches:fetched.searches,fetchErrors:fetched.fetchErrors,message:'D-TRO parking rows imported as unverified. Review streets before setting is_verified=true.'})
+    return NextResponse.json({ok:true,source:'dtro',dtros:fetched.ids.length,imported,totalParkingRowsBeforeBounds:allRows.length,bounds,verified:false,searches:fetched.searches,fetchErrors:fetched.fetchErrors,message:'D-TRO parking rows imported as unverified. Review streets before setting is_verified=true.'})
   }catch(error){
     return errorJson(error,500,{config:safeConfig()})
   }

@@ -80,11 +80,11 @@ async function bodyJson(req){
   try{return await req.json()}catch{return{}}
 }
 
-async function fetchBySearch({regulationTypes,pageSize,pages}){
+async function fetchBySearch({regulationTypes,pageSize,pages,startPage}){
   const ids=new Set()
   const searches=[]
   for(const regulationType of regulationTypes){
-    for(let page=1;page<=pages;page++){
+    for(let page=startPage;page<startPage+pages;page++){
       try{
         const result=await searchDtros({regulationType,page,pageSize})
         searches.push({regulationType,page,count:result?.results?.length||0,totalCount:result?.totalCount})
@@ -116,12 +116,13 @@ export async function POST(req){
     const dryRun=body.dryRun===true||url.searchParams.get('dryRun')==='1'
     const pageSize=Math.min(50,Math.max(1,Number(body.pageSize||25)))
     const pages=Math.min(20,Math.max(1,Number(body.pages||1)))
+    const startPage=Math.max(1,Number(body.startPage||1))
     const bounds=parseBounds(body.bounds)
     const regulationTypes=Array.isArray(body.regulationTypes)&&body.regulationTypes.length?body.regulationTypes:DEFAULT_PARKING_TYPES
-    const fetched=dtroId?{dtros:[await getDtroById(dtroId)],searches:[],fetchErrors:[],ids:[dtroId]}:await fetchBySearch({regulationTypes,pageSize,pages})
+    const fetched=dtroId?{dtros:[await getDtroById(dtroId)],searches:[],fetchErrors:[],ids:[dtroId]}:await fetchBySearch({regulationTypes,pageSize,pages,startPage})
     const allRows=fetched.dtros.flatMap(normaliseDtroParking).map(toRow)
     const rows=allRows.filter(row=>inBounds(row,bounds))
-    if(dryRun)return NextResponse.json({ok:true,dryRun:true,dtros:fetched.ids.length,parkingRows:rows.length,totalParkingRowsBeforeBounds:allRows.length,bounds,searches:fetched.searches,fetchErrors:fetched.fetchErrors,sample:rows.slice(0,5),config:safeConfig()})
+    if(dryRun)return NextResponse.json({ok:true,dryRun:true,dtros:fetched.ids.length,parkingRows:rows.length,totalParkingRowsBeforeBounds:allRows.length,bounds,startPage,pages,pageSize,searches:fetched.searches,fetchErrors:fetched.fetchErrors,sample:rows.slice(0,5),config:safeConfig()})
     if(!isSupabaseAdminConfigured)return NextResponse.json({ok:false,error:'Supabase admin is not configured'},{status:500})
     const supabase=getSupabaseAdmin()
     let imported=0
@@ -131,7 +132,7 @@ export async function POST(req){
       if(error)return NextResponse.json({ok:false,error:error.message,imported},{status:500})
       imported+=chunk.length
     }
-    return NextResponse.json({ok:true,source:'dtro',dtros:fetched.ids.length,imported,totalParkingRowsBeforeBounds:allRows.length,bounds,verified:false,searches:fetched.searches,fetchErrors:fetched.fetchErrors,message:'D-TRO parking rows imported as unverified. Review streets before setting is_verified=true.'})
+    return NextResponse.json({ok:true,source:'dtro',dtros:fetched.ids.length,imported,totalParkingRowsBeforeBounds:allRows.length,bounds,startPage,pages,pageSize,verified:false,searches:fetched.searches,fetchErrors:fetched.fetchErrors,message:'D-TRO parking rows imported as unverified. Review streets before setting is_verified=true.'})
   }catch(error){
     return errorJson(error,500,{config:safeConfig()})
   }

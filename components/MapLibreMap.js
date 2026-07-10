@@ -6,8 +6,8 @@ const GREEN='#078d16',BLUE='#0b73d9',GREY='#9d9da5',PURPLE='#8E44AD',ORANGE='#ff
 function controlledNow(){const d=new Date(),m=d.getHours()*60+d.getMinutes();return m>=8*60&&m<18*60+30}
 function visual(seg){if(seg.isCarPark||seg.type==='carpark')return{color:BLUE,label:'P'};if(['restricted','no_parking','yellow_double','red_route'].includes(seg.type))return{color:GREY,label:'X'};if(seg.type==='paid')return{color:controlledNow()?BLUE:GREEN,label:controlledNow()?'£':'P'};if(seg.type==='disabled')return{color:PURPLE,label:'BB'};if(seg.type==='ev')return{color:'#29c9b2',label:'EV'};if(seg.type==='loading')return{color:ORANGE,label:'L'};return{color:GREEN,label:'P'}}
 function point(seg){const p=seg.coords?.[Math.floor((seg.coords?.length||1)/2)]||seg.coords?.[0];return{lat:seg.lat||p?.[0],lng:seg.lng||p?.[1]}}
-function drawAsLine(seg){return Array.isArray(seg.coords)&&seg.coords.length>1&&(['dtro','council','curated','field_checked','osm'].includes(seg.source)||seg.confidence==='high')}
-function lineFeatures(segments){return{type:'FeatureCollection',features:(segments||[]).filter(drawAsLine).map(seg=>{const v=visual(seg);return{type:'Feature',properties:{id:String(seg.id),color:seg.color||v.color,label:v.label,type:seg.type||'parking'},geometry:{type:'LineString',coordinates:seg.coords.map(([lat,lng])=>[lng,lat])}}})}}
+function drawAsLine(seg){return Array.isArray(seg.coords)&&seg.coords.length>1&&(['dtro','council','curated','field_checked','osm','road_guide'].includes(seg.source)||seg.confidence==='high')}
+function lineFeatures(segments){return{type:'FeatureCollection',features:(segments||[]).filter(drawAsLine).map(seg=>{const v=visual(seg);return{type:'Feature',properties:{id:String(seg.id),color:seg.color||v.color,label:v.label,type:seg.type||'parking',source:seg.source||''},geometry:{type:'LineString',coordinates:seg.coords.map(([lat,lng])=>[lng,lat])}}})}}
 function boundaryFallback(){const b=NEWHAM_BOUNDS;return{type:'FeatureCollection',features:[{type:'Feature',properties:{name:'Newham'},geometry:{type:'Polygon',coordinates:[[[b.west,b.south],[b.east,b.south],[b.east,b.north],[b.west,b.north],[b.west,b.south]]]}}]}}
 function addBoundary(map){
   fetch('/api/newham/boundary').then(r=>r.json()).catch(()=>boundaryFallback()).then(data=>{
@@ -22,8 +22,8 @@ function upsertParkingLines(map,segments){
   const source=map.getSource('parking-lines')
   if(source){source.setData(data);return}
   map.addSource('parking-lines',{type:'geojson',data})
-  map.addLayer({id:'parking-lines-casing',type:'line',source:'parking-lines',paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],12,3,16,6,19,8],'line-opacity':.96},layout:{'line-cap':'round','line-join':'round'}})
-  map.addLayer({id:'parking-lines',type:'line',source:'parking-lines',paint:{'line-color':['get','color'],'line-width':['interpolate',['linear'],['zoom'],12,2,16,4,19,6],'line-opacity':.98},layout:{'line-cap':'round','line-join':'round'}})
+  map.addLayer({id:'parking-lines-casing',type:'line',source:'parking-lines',paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],12,3,16,6,19,8],'line-opacity':['case',['==',['get','source'],'road_guide'],.62,.96]},layout:{'line-cap':'round','line-join':'round'}})
+  map.addLayer({id:'parking-lines',type:'line',source:'parking-lines',paint:{'line-color':['get','color'],'line-width':['interpolate',['linear'],['zoom'],12,2,16,4,19,6],'line-opacity':['case',['==',['get','source'],'road_guide'],.78,.98]},layout:{'line-cap':'round','line-join':'round'}})
   map.addLayer({id:'parking-line-labels',type:'symbol',source:'parking-lines',minzoom:15,layout:{'symbol-placement':'line-center','text-field':['get','label'],'text-size':['interpolate',['linear'],['zoom'],15,11,19,13],'text-allow-overlap':true,'text-ignore-placement':true,'text-rotation-alignment':'map','text-keep-upright':true},paint:{'text-color':'#ffffff','text-halo-color':['get','color'],'text-halo-width':8,'text-halo-blur':.5}})
   map.addLayer({id:'parking-lines-hit',type:'line',source:'parking-lines',paint:{'line-color':'#000','line-width':['interpolate',['linear'],['zoom'],12,18,16,24,19,30],'line-opacity':0},layout:{'line-cap':'round','line-join':'round'}})
 }

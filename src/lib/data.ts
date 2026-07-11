@@ -2,6 +2,8 @@ import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
 import type { Business, ParkingPoint, Post } from '../types'
 
+type FeatureCollection = { type: 'FeatureCollection'; features: Array<Record<string, unknown>> }
+
 export const emptyStateText = {
   offers: 'No live offers yet — local businesses can post one from the Profile tab.',
   jobs: 'No Newham jobs posted yet — know a local employer? Ask them to post here.',
@@ -9,50 +11,48 @@ export const emptyStateText = {
   parking: 'Parking details for this street are not verified yet.',
 }
 
-function pointFromGeom(row: any) {
-  if (typeof row.lat === 'number' && typeof row.lng === 'number') return { lat: row.lat, lng: row.lng }
-  if (row.geom_json?.coordinates?.length === 2) return { lng: row.geom_json.coordinates[0], lat: row.geom_json.coordinates[1] }
-  return { lat: null, lng: null }
-}
-
 export async function loadBusinesses(): Promise<Business[]> {
   if (!supabaseConfigured || !supabase) return []
   const { data, error } = await supabase
-    .from('businesses')
-    .select('id, osm_id, name, category, description, address, phone, website, whatsapp, verification_status, photo_url, source, geom_json:geom')
-    .eq('verification_status', 'verified')
+    .from('businesses_public')
+    .select('id,osm_id,name,category,description,address,phone,website,whatsapp,verification_status,photo_url,source,lat,lng')
     .limit(500)
   if (error || !data) return []
-  return data.map((row: any) => ({ ...row, ...pointFromGeom(row) })).filter((b: Business) => inNewham(b.lat, b.lng))
+  return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
 }
 
 export async function loadPosts(type?: Post['type']): Promise<Post[]> {
   if (!supabaseConfigured || !supabase) return []
   let query = supabase
-    .from('posts')
-    .select('id,business_id,type,title,body,category,starts_at,expires_at,apply_url,apply_phone,status,source,geom_json:geom,business:businesses(id,name,category,address,phone,website,whatsapp,verification_status,photo_url,source,geom_json:geom)')
-    .eq('status', 'live')
-    .gt('expires_at', new Date().toISOString())
+    .from('posts_public')
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(100)
   if (type) query = query.eq('type', type)
   const { data, error } = await query
   if (error || !data) return []
-  return data.map((row: any) => {
-    const p = pointFromGeom(row)
-    const businessPoint = row.business ? pointFromGeom(row.business) : { lat: null, lng: null }
-    return {
-      ...row,
-      lat: p.lat ?? businessPoint.lat,
-      lng: p.lng ?? businessPoint.lng,
-      business: row.business ? { ...row.business, ...businessPoint } : null,
-    }
-  })
+  return data.map((row: any) => ({
+    id: row.id,
+    business_id: row.business_id,
+    type: row.type,
+    title: row.title,
+    body: row.body,
+    category: row.category,
+    starts_at: row.starts_at,
+    expires_at: row.expires_at,
+    apply_url: row.apply_url,
+    apply_phone: row.apply_phone,
+    status: row.status,
+    source: row.source,
+    lat: row.lat ?? row.business_lat,
+    lng: row.lng ?? row.business_lng,
+    business: row.business_id ? { id: row.business_id, name: row.business_name, category: row.business_category, address: row.business_address, lat: row.business_lat, lng: row.business_lng, verification_status: 'verified', source: 'osm' } : null,
+  }))
 }
 
-export async function loadCpzGeoJson(): Promise<GeoJSON.FeatureCollection> {
+export async function loadCpzGeoJson(): Promise<FeatureCollection> {
   if (!supabaseConfigured || !supabase) return { type: 'FeatureCollection', features: [] }
-  const { data, error } = await supabase.from('cpz_zones').select('id,name,hours,event_day_hours,source,last_verified_at,geom_json:geom')
+  const { data, error } = await supabase.from('cpz_zones_public').select('*')
   if (error || !data) return { type: 'FeatureCollection', features: [] }
   return {
     type: 'FeatureCollection',
@@ -71,17 +71,15 @@ export async function loadParkingPoints(kind: 'paid_bay' | 'blue_badge' | 'all' 
   if (!supabaseConfigured || !supabase) return []
   const items: ParkingPoint[] = []
   if (kind === 'paid_bay' || kind === 'all') {
-    const { data } = await supabase.from('paid_bays').select('id,paybyphone_code,tariff,max_stay_mins,source,last_verified_at,geom_json:geom').limit(300)
+    const { data } = await supabase.from('paid_bays_public').select('*').limit(300)
     ;(data || []).forEach((row: any) => {
-      const p = pointFromGeom(row)
-      if (inNewham(p.lat, p.lng)) items.push({ id: row.id, kind: 'paid_bay', name: row.paybyphone_code ? `PayByPhone ${row.paybyphone_code}` : 'Paid bay', lat: p.lat, lng: p.lng, source: row.source, last_verified_at: row.last_verified_at, tariff: row.tariff, max_stay_mins: row.max_stay_mins, paybyphone_code: row.paybyphone_code })
+      if (inNewham(row.lat, row.lng)) items.push({ id: row.id, kind: 'paid_bay', name: row.paybyphone_code ? `PayByPhone ${row.paybyphone_code}` : 'Paid bay', lat: row.lat, lng: row.lng, source: row.source, last_verified_at: row.last_verified_at, tariff: row.tariff, max_stay_mins: row.max_stay_mins, paybyphone_code: row.paybyphone_code })
     })
   }
   if (kind === 'blue_badge' || kind === 'all') {
-    const { data } = await supabase.from('blue_badge_bays').select('id,road_name,confidence,source,last_verified_at,geom_json:geom').in('confidence', ['official', 'verified']).limit(300)
+    const { data } = await supabase.from('blue_badge_bays_public').select('*').limit(300)
     ;(data || []).forEach((row: any) => {
-      const p = pointFromGeom(row)
-      if (inNewham(p.lat, p.lng)) items.push({ id: row.id, kind: 'blue_badge', name: `${row.road_name} blue badge bay`, lat: p.lat, lng: p.lng, source: row.source, last_verified_at: row.last_verified_at, confidence: row.confidence })
+      if (inNewham(row.lat, row.lng)) items.push({ id: row.id, kind: 'blue_badge', name: `${row.road_name} blue badge bay`, lat: row.lat, lng: row.lng, source: row.source, last_verified_at: row.last_verified_at, confidence: row.confidence })
     })
   }
   return items

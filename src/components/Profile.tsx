@@ -23,11 +23,9 @@ export default function Profile() {
 
   async function downloadData() {
     if (!supabase) return
-    const { data: userData } = await supabase.auth.getUser()
-    const user = userData.user
-    if (!user) return setMessage('Sign in first')
-    const payload = { user: { id: user.id, email: user.email }, exported_at: new Date().toISOString() }
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const { data, error } = await supabase.rpc('export_my_data')
+    if (error) return setMessage(error.message)
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -37,7 +35,14 @@ export default function Profile() {
   }
 
   async function deleteAccount() {
-    setMessage('Account deletion requires the Supabase delete-account function/admin action. This button is wired in UI but must be connected before public launch.')
+    if (!supabase) return
+    const ok = window.confirm('Delete your HiStreets account? This cannot be undone.')
+    if (!ok) return
+    const { error } = await supabase.rpc('delete_my_account')
+    if (error) return setMessage(error.message)
+    await supabase.auth.signOut()
+    setSignedIn(false)
+    setMessage('Account deleted.')
   }
 
   if (!signedIn) return <section className="profile-screen"><div className="auth-card"><ShieldCheck size={34} /><h1>Sign in to HiStreets</h1><p>Save places, follow businesses, and post content if you are a verified business or charity.</p><input type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} /><button onClick={signIn}><LogIn size={18} /> Send magic link</button>{message && <p className="form-status">{message}</p>}<p className="tiny-links"><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></p></div></section>

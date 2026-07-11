@@ -17,7 +17,7 @@ function pointFeature(item: Business | ParkingPoint, properties: Record<string, 
   return { type: 'Feature' as const, properties, geometry: { type: 'Point' as const, coordinates: [item.lng, item.lat] } }
 }
 
-function businessData(items: Business[], offerIds: Set<string | null>) {
+function businessData(items: Business[], offerIds: Set<string>) {
   return {
     type: 'FeatureCollection' as const,
     features: items.map(item => pointFeature(item, { id: item.id, name: item.name, category: item.category, colour: businessColour(item.category), hasOffer: offerIds.has(item.id) })),
@@ -41,7 +41,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   const mapRef = useRef<MapLibre | null>(null)
   const businessesRef = useRef<Business[]>([])
   const parkingRef = useRef<ParkingPoint[]>([])
-  const offerIdsRef = useRef<Set<string | null>>(new Set())
+  const offerIdsRef = useRef<Set<string>>(new Set())
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [parking, setParking] = useState<ParkingPoint[]>([])
   const [selected, setSelected] = useState<Business | ParkingPoint | null>(null)
@@ -54,7 +54,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   useEffect(() => { businessesRef.current = businesses }, [businesses])
   useEffect(() => { parkingRef.current = parking }, [parking])
 
-  const liveOfferBusinessIds = useMemo(() => new Set(posts.filter(p => p.type === 'offer').map(p => p.business_id).filter(Boolean)), [posts])
+  const liveOfferBusinessIds = useMemo(() => new Set(posts.flatMap(p => (p.type === 'offer' && typeof p.business_id === 'string') ? [p.business_id] : [])), [posts])
   useEffect(() => { offerIdsRef.current = liveOfferBusinessIds }, [liveOfferBusinessIds])
   const filteredBusinesses = businesses.filter(b => {
     if (filter === 'offers') return liveOfferBusinessIds.has(b.id)

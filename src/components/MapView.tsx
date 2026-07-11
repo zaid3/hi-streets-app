@@ -54,7 +54,13 @@ export default function MapView({ posts }: { posts: Post[] }) {
   useEffect(() => { businessesRef.current = businesses }, [businesses])
   useEffect(() => { parkingRef.current = parking }, [parking])
 
-  const liveOfferBusinessIds = useMemo(() => new Set(posts.flatMap(p => (p.type === 'offer' && typeof p.business_id === 'string') ? [p.business_id] : [])), [posts])
+  const liveOfferBusinessIds = useMemo<Set<string>>(() => {
+    const ids = new Set<string>()
+    for (const post of posts) {
+      if (post.type === 'offer' && typeof post.business_id === 'string') ids.add(post.business_id)
+    }
+    return ids
+  }, [posts])
   useEffect(() => { offerIdsRef.current = liveOfferBusinessIds }, [liveOfferBusinessIds])
   const filteredBusinesses = businesses.filter(b => {
     if (filter === 'offers') return liveOfferBusinessIds.has(b.id)

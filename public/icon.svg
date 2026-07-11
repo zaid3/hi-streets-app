@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="HiStreets icon">
+  <rect width="512" height="512" rx="112" fill="#0F6E6B"/>
+  <path d="M134 320c52-88 83-132 122-132s70 44 122 132" fill="none" stroke="#FAFAF7" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="256" cy="188" r="44" fill="#F2762E"/>
+  <path d="M160 366h192" stroke="#FAFAF7" stroke-width="34" stroke-linecap="round"/>
+  <text x="256" y="448" text-anchor="middle" font-family="Arial,sans-serif" font-size="68" font-weight="800" fill="#FAFAF7">Hi</text>
+</svg>

@@ -30,6 +30,67 @@ create table if not exists public.parking_segments (
 create index if not exists parking_segments_location_idx on public.parking_segments(lat,lng);
 create index if not exists parking_segments_verified_idx on public.parking_segments(is_verified,source,council);
 
+create table if not exists public.cpz_hours (
+  id uuid primary key default gen_random_uuid(),
+  zone text not null unique,
+  zone_name text,
+  operating_hours text not null,
+  days text,
+  start_time text,
+  end_time text,
+  source_url text,
+  notes text,
+  updated_at timestamptz default now()
+);
+
+create index if not exists cpz_hours_zone_idx on public.cpz_hours(zone);
+
+create table if not exists public.paid_bays (
+  id uuid primary key default gen_random_uuid(),
+  external_id text unique,
+  provider text not null default 'paybyphone',
+  location_code text,
+  name text not null,
+  address text,
+  lat double precision not null,
+  lng double precision not null,
+  tariff text,
+  max_stay text,
+  hours text,
+  cpz text,
+  source_url text,
+  is_verified boolean default true,
+  updated_at timestamptz default now()
+);
+
+create index if not exists paid_bays_location_idx on public.paid_bays(lat,lng);
+create index if not exists paid_bays_verified_idx on public.paid_bays(is_verified,provider);
+
+create table if not exists public.surveyed_restrictions (
+  id uuid primary key default gen_random_uuid(),
+  external_id text unique,
+  road_name text not null,
+  side_of_road text,
+  restriction_type text not null,
+  coords jsonb not null,
+  lat double precision not null,
+  lng double precision not null,
+  hours text,
+  max_stay text,
+  no_return text,
+  tariff text,
+  cpz text,
+  sign_photo_url text,
+  source text default 'field_survey',
+  confidence text default 'review_required',
+  is_verified boolean default false,
+  surveyed_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create index if not exists surveyed_restrictions_location_idx on public.surveyed_restrictions(lat,lng);
+create index if not exists surveyed_restrictions_verified_idx on public.surveyed_restrictions(is_verified,restriction_type);
+
 create table if not exists public.businesses (
   id uuid primary key default gen_random_uuid(),
   owner_user_id uuid references auth.users(id) on delete cascade,
@@ -68,11 +129,23 @@ create index if not exists offers_live_idx on public.offers(is_active,expires_at
 create index if not exists offers_business_idx on public.offers(business_id);
 
 alter table public.parking_segments enable row level security;
+alter table public.cpz_hours enable row level security;
+alter table public.paid_bays enable row level security;
+alter table public.surveyed_restrictions enable row level security;
 alter table public.businesses enable row level security;
 alter table public.offers enable row level security;
 
 drop policy if exists "public read verified parking segments" on public.parking_segments;
 create policy "public read verified parking segments" on public.parking_segments for select using (is_verified = true);
+
+drop policy if exists "public read cpz hours" on public.cpz_hours;
+create policy "public read cpz hours" on public.cpz_hours for select using (true);
+
+drop policy if exists "public read verified paid bays" on public.paid_bays;
+create policy "public read verified paid bays" on public.paid_bays for select using (is_verified = true);
+
+drop policy if exists "public read verified surveyed restrictions" on public.surveyed_restrictions;
+create policy "public read verified surveyed restrictions" on public.surveyed_restrictions for select using (is_verified = true);
 
 drop policy if exists "public read verified businesses" on public.businesses;
 create policy "public read verified businesses" on public.businesses for select using (is_verified = true);

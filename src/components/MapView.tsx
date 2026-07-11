@@ -36,6 +36,14 @@ function setGeoJson(map: MapLibre | null, sourceId: string, data: unknown) {
   source?.setData(data as any)
 }
 
+function getOfferBusinessIds(posts: Post[]): Set<string> {
+  const ids = new Set<string>()
+  for (const post of posts) {
+    if (post.type === 'offer' && typeof post.business_id === 'string') ids.add(post.business_id)
+  }
+  return ids
+}
+
 export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
@@ -54,13 +62,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   useEffect(() => { businessesRef.current = businesses }, [businesses])
   useEffect(() => { parkingRef.current = parking }, [parking])
 
-  const liveOfferBusinessIds = useMemo<Set<string>>(() => {
-    const ids = new Set<string>()
-    for (const post of posts) {
-      if (post.type === 'offer' && typeof post.business_id === 'string') ids.add(post.business_id)
-    }
-    return ids
-  }, [posts])
+  const liveOfferBusinessIds = useMemo(() => getOfferBusinessIds(posts), [posts])
   useEffect(() => { offerIdsRef.current = liveOfferBusinessIds }, [liveOfferBusinessIds])
   const filteredBusinesses = businesses.filter(b => {
     if (filter === 'offers') return liveOfferBusinessIds.has(b.id)

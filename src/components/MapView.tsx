@@ -17,11 +17,31 @@ function pointFeature(item: Business | ParkingPoint, properties: Record<string, 
   return { type: 'Feature' as const, properties, geometry: { type: 'Point' as const, coordinates: [item.lng, item.lat] } }
 }
 
+function businessData(items: Business[], offerIds: Set<string | null>) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: items.map(item => pointFeature(item, { id: item.id, name: item.name, category: item.category, colour: businessColour(item.category), hasOffer: offerIds.has(item.id) })),
+  }
+}
+
+function parkingData(items: ParkingPoint[]) {
+  return {
+    type: 'FeatureCollection' as const,
+    features: items.map(item => pointFeature(item, { id: item.id, kind: item.kind, name: item.name })),
+  }
+}
+
+function setGeoJson(map: MapLibre | null, sourceId: string, data: unknown) {
+  const source = map?.getSource(sourceId) as maplibregl.GeoJSONSource | undefined
+  source?.setData(data as any)
+}
+
 export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
   const businessesRef = useRef<Business[]>([])
   const parkingRef = useRef<ParkingPoint[]>([])
+  const offerIdsRef = useRef<Set<string | null>>(new Set())
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [parking, setParking] = useState<ParkingPoint[]>([])
   const [selected, setSelected] = useState<Business | ParkingPoint | null>(null)
@@ -35,6 +55,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   useEffect(() => { parkingRef.current = parking }, [parking])
 
   const liveOfferBusinessIds = useMemo(() => new Set(posts.filter(p => p.type === 'offer').map(p => p.business_id).filter(Boolean)), [posts])
+  useEffect(() => { offerIdsRef.current = liveOfferBusinessIds }, [liveOfferBusinessIds])
   const filteredBusinesses = businesses.filter(b => {
     if (filter === 'offers') return liveOfferBusinessIds.has(b.id)
     if (filter === 'food') return /restaurant|cafe|food|fast/i.test(b.category)
@@ -67,11 +88,11 @@ export default function MapView({ posts }: { posts: Post[] }) {
       map.addLayer({ id: 'cpz-line', type: 'line', source: 'cpz', paint: { 'line-color': '#0F6E6B', 'line-width': 1.5, 'line-opacity': 0.72 } })
       map.addLayer({ id: 'cpz-label', type: 'symbol', source: 'cpz', minzoom: 12, layout: { 'text-field': ['coalesce', ['get', 'name'], ['get', 'zone'], 'CPZ'], 'text-size': 12 }, paint: { 'text-color': '#0F6E6B', 'text-halo-color': '#fff', 'text-halo-width': 2 } })
 
-      map.addSource('businesses', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addSource('businesses', { type: 'geojson', data: businessData(businessesRef.current, offerIdsRef.current) as any })
       map.addLayer({ id: 'business-pins', type: 'circle', source: 'businesses', paint: { 'circle-radius': ['case', ['get', 'hasOffer'], 9, 7], 'circle-color': ['get', 'colour'], 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
       map.addLayer({ id: 'offer-pulse', type: 'circle', source: 'businesses', filter: ['==', ['get', 'hasOffer'], true], paint: { 'circle-radius': 15, 'circle-color': '#F2762E', 'circle-opacity': 0.22 } })
 
-      map.addSource('parking', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      map.addSource('parking', { type: 'geojson', data: parkingData(parkingRef.current) as any })
       map.addLayer({ id: 'parking-pins', type: 'circle', source: 'parking', paint: { 'circle-radius': 8, 'circle-color': ['case', ['==', ['get', 'kind'], 'blue_badge'], '#8E44AD', '#2D6CDF'], 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
       map.addLayer({ id: 'parking-labels', type: 'symbol', source: 'parking', layout: { 'text-field': ['case', ['==', ['get', 'kind'], 'blue_badge'], 'BB', '£'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#fff' } })
 
@@ -96,16 +117,8 @@ export default function MapView({ posts }: { posts: Post[] }) {
   useEffect(() => {
     const map = mapRef.current
     if (!map?.isStyleLoaded()) return
-    const businessData = {
-      type: 'FeatureCollection' as const,
-      features: filteredBusinesses.map(item => pointFeature(item, { id: item.id, name: item.name, category: item.category, colour: businessColour(item.category), hasOffer: liveOfferBusinessIds.has(item.id) })),
-    }
-    const parkingData = {
-      type: 'FeatureCollection' as const,
-      features: visibleParking.map(item => pointFeature(item, { id: item.id, kind: item.kind, name: item.name })),
-    }
-    ;(map.getSource('businesses') as maplibregl.GeoJSONSource | undefined)?.setData(businessData as any)
-    ;(map.getSource('parking') as maplibregl.GeoJSONSource | undefined)?.setData(parkingData as any)
+    setGeoJson(map, 'businesses', businessData(filteredBusinesses, liveOfferBusinessIds))
+    setGeoJson(map, 'parking', parkingData(visibleParking))
   }, [filteredBusinesses, visibleParking, liveOfferBusinessIds])
 
   const chips: Array<{ key: LayerFilter; label: string }> = [

@@ -1,57 +1,90 @@
-# Hi-Streets UK
+# HiStreets — Newham Community Map
 
-Hi-Streets UK is a mobile-first parking and local offers map.
+HiStreets is a free, mobile-first community map for the London Borough of Newham only.
 
-The MVP combines:
+It shows:
 
-- Zone, bay and list views for parking discovery
-- Parking bay, paid bay, disabled bay, EV bay, loading bay, resident bay, yellow line, red route and no-parking visual states
-- Destination search, planned arrival time and parking duration
-- Bottom sheets for operating hours, walking time, payment, no-return and directions
-- Live local business offers shown directly on the map
-- Business portal for posting offers through an AI assistant
-- WhatsApp webhook route for verified businesses to text offers into the platform
-- Optional Google Maps rendering when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is configured, with MapLibre fallback
+- local businesses and services seeded from OpenStreetMap
+- verified local offers
+- Newham jobs, especially entry-level and youth-friendly opportunities
+- free meals and community support
+- official CPZ polygons and manually entered paid bays
 
-## Privacy-first MVP approach
+The app follows the uploaded Phase 1 specification: MapLibre, no Google Maps, no ads, no paid APIs, no invented parking data, and no expansion beyond Newham.
 
-The public parking map can be used without an account. Browser location is used to centre the map and is not stored by the app in the MVP.
+## Stack
 
-Business-side data is kept intentionally small:
-
-- Business name
-- Address
-- Phone or approved WhatsApp sender
-- Optional website
-- Google Place ID or Maps link
-- Offer content and expiry time
-
-The WhatsApp flow is designed so raw customer data is not needed. A business sends an offer from an approved number, the server parses the offer, and only the structured offer is published to the map.
-
-Before production, add a proper privacy notice, cookie notice if analytics are added, and a retention policy for business messages and logs.
-
-## Business verification flow
-
-For the MVP, verification is simple:
-
-1. Business enters name, address, phone, category and Google Place ID or Maps link.
-2. Admin or automated check confirms the business exists and matches the submitted details.
-3. Approved WhatsApp sender is linked to that business.
-4. Only verified businesses can publish WhatsApp offers.
-
-This keeps the product trustworthy without asking customers to create accounts or share unnecessary personal data.
+- React + Vite + TypeScript
+- MapLibre GL JS
+- OpenFreeMap vector tiles
+- Supabase Postgres/PostGIS/Auth/Storage
+- PWA manifest + service worker
+- Docker/nginx for Coolify or any static host
 
 ## Environment variables
 
+Frontend runtime:
+
 ```bash
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-GEMINI_API_KEY=
-WHATSAPP_VERIFY_TOKEN=
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
 ```
 
-Optional WhatsApp production credentials can be added when the Meta WhatsApp Business Platform app is configured.
+Seed scripts:
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=
+# plus either VITE_SUPABASE_URL or SUPABASE_URL
+```
+
+Never commit service keys or tokens.
+
+## Database setup
+
+Run this in Supabase SQL editor:
+
+```bash
+supabase/schema_v1.sql
+```
+
+It creates:
+
+- profiles
+- businesses
+- posts
+- cpz_zones
+- paid_bays
+- blue_badge_bays
+- saved_places
+- reports
+- verification_events
+- admin_audit_log
+- RLS policies
+- frontend public views
+- data import RPCs
+- GDPR export/delete RPCs
+
+## Seed official/free data
+
+Install locally:
+
+```bash
+npm install
+```
+
+Import Newham CPZ polygons from Newham ArcGIS and reproject EPSG:27700 to WGS84:
+
+```bash
+VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run seed:cpz
+```
+
+Seed businesses/services from OpenStreetMap Overpass inside the Newham bounding box:
+
+```bash
+VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run seed:osm-businesses
+```
+
+Paid bays are entered manually from the PayByPhone public map. Blue badge bays must only be added from official EIR/FOI data or photo-verified survey data.
 
 ## Development
 
@@ -60,6 +93,30 @@ npm install
 npm run dev
 ```
 
-## Notes
+## Production build
 
-The current parking data contains Newham demo seed data and adapter-based loading. Production should connect to verified council, operator or commercial kerbside datasets before public launch.
+```bash
+npm run build
+```
+
+Docker exposes port 3000 through nginx.
+
+## Operator checklist
+
+- [ ] Create Supabase project in UK/EU region
+- [ ] Run `supabase/schema_v1.sql`
+- [ ] Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Coolify
+- [ ] Run CPZ seed script
+- [ ] Run OSM business seed script
+- [ ] Manually enter PayByPhone paid bays
+- [ ] File EIR request to Newham for disabled bay locations and TMO schedule plans
+- [ ] Email AppyWay asking about a donated community licence
+- [ ] Complete ICO data protection fee self-assessment
+
+## Hard rules
+
+- No Google Maps or Google Places data
+- No fake businesses, offers, jobs, meals or parking
+- No estimated blue badge bays
+- No trackers, ads or monetisation
+- No map expansion beyond Newham

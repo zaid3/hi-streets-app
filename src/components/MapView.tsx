@@ -56,7 +56,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
       minZoom: 11.5,
       maxZoom: 19,
       maxBounds: [[b.west - 0.01, b.south - 0.01], [b.east + 0.01, b.north + 0.01]],
-      attributionControl: true,
+      attributionControl: { compact: true },
     })
     mapRef.current = map
     map.on('load', async () => {

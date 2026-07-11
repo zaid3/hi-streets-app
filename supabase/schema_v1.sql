@@ -165,6 +165,92 @@ select id,lat,lng,road_name,side_of_road,confidence,evidence_photo_url,source,la
 from public.blue_badge_bays
 where confidence in ('official','verified');
 
+-- ---------- Import RPCs for free official/community data ----------
+create or replace function public.upsert_osm_business(
+  p_osm_id bigint,
+  p_name text,
+  p_category text,
+  p_lat double precision,
+  p_lng double precision,
+  p_address text default null,
+  p_phone text default null,
+  p_website text default null
+) returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_id uuid;
+begin
+  insert into public.businesses(osm_id,name,category,geom,address,phone,website,verification_status,source)
+  values(p_osm_id,p_name,coalesce(p_category,'other'),st_setsrid(st_makepoint(p_lng,p_lat),4326),p_address,p_phone,p_website,'verified','osm')
+  on conflict(osm_id) do update set
+    name=excluded.name, category=excluded.category, geom=excluded.geom, address=coalesce(excluded.address,public.businesses.address), phone=coalesce(excluded.phone,public.businesses.phone), website=coalesce(excluded.website,public.businesses.website), updated_at=now()
+  returning id into v_id;
+  return v_id;
+end $$;
+
+grant execute on function public.upsert_osm_business(bigint,text,text,double precision,double precision,text,text,text) to service_role;
+
+create or replace function public.upsert_cpz_zone(
+  p_name text,
+  p_geojson jsonb,
+  p_hours jsonb default '{}'::jsonb,
+  p_event_day_hours jsonb default '{}'::jsonb,
+  p_source text default 'Newham Council ArcGIS CPZ'
+) returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_id uuid;
+begin
+  insert into public.cpz_zones(name,geom,hours,event_day_hours,source,last_verified_at)
+  values(p_name,st_multi(st_setsrid(st_geomfromgeojson(p_geojson::text),4326))::geometry(MultiPolygon,4326),coalesce(p_hours,'{}'::jsonb),coalesce(p_event_day_hours,'{}'::jsonb),p_source,now())
+  on conflict(name) do update set geom=excluded.geom,hours=excluded.hours,event_day_hours=excluded.event_day_hours,source=excluded.source,last_verified_at=now()
+  returning id into v_id;
+  return v_id;
+end $$;
+
+grant execute on function public.upsert_cpz_zone(text,jsonb,jsonb,jsonb,text) to service_role;
+
+-- ---------- GDPR RPCs ----------
+create or replace function public.export_my_data() returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  return jsonb_build_object(
+    'profile',(select to_jsonb(p) from public.profiles p where p.id=uid),
+    'saved_places',coalesce((select jsonb_agg(to_jsonb(s)) from public.saved_places s where s.user_id=uid),'[]'::jsonb),
+    'posts',coalesce((select jsonb_agg(to_jsonb(p)) from public.posts p where p.author_id=uid),'[]'::jsonb),
+    'reports',coalesce((select jsonb_agg(to_jsonb(r)) from public.reports r where r.reporter_id=uid),'[]'::jsonb),
+    'exported_at',now()
+  );
+end $$;
+
+grant execute on function public.export_my_data() to authenticated;
+
+create or replace function public.delete_my_account() returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'not authenticated'; end if;
+  update public.posts set author_id=null where author_id=uid;
+  update public.reports set reporter_id=null where reporter_id=uid;
+  delete from public.saved_places where user_id=uid;
+  delete from public.profiles where id=uid;
+  delete from auth.users where id=uid;
+end $$;
+
+grant execute on function public.delete_my_account() to authenticated;
+
 -- ---------- RLS ----------
 alter table public.profiles enable row level security;
 alter table public.businesses enable row level security;
@@ -193,11 +279,8 @@ drop policy if exists public_read_live_posts on public.posts;
 create policy public_read_live_posts on public.posts for select using (status='live' and expires_at > now());
 drop policy if exists verified_business_insert_posts on public.posts;
 create policy verified_business_insert_posts on public.posts for insert with check (
-  auth.uid() = author_id and exists (
-    select 1 from public.profiles pr where pr.id = auth.uid() and pr.role in ('business','charity','admin')
-  ) and (
-    business_id is null or exists (select 1 from public.businesses b where b.id=business_id and b.claimed_by=auth.uid() and b.verification_status='verified')
-  )
+  auth.uid() = author_id and exists (select 1 from public.profiles pr where pr.id = auth.uid() and pr.role in ('business','charity','admin'))
+  and (business_id is null or exists (select 1 from public.businesses b where b.id=business_id and b.claimed_by=auth.uid() and b.verification_status='verified'))
 );
 drop policy if exists owners_update_own_posts on public.posts;
 create policy owners_update_own_posts on public.posts for update using (author_id = auth.uid());

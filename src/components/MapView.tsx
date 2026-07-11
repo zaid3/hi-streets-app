@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
-import { Briefcase, HandHeart, Layers, Tag } from 'lucide-react'
+import { Layers, Tag } from 'lucide-react'
 import { directionsUrl, MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER } from '../lib/newham'
 import { loadBusinesses, loadCpzGeoJson, loadParkingPoints } from '../lib/data'
 import type { Business, ParkingPoint, Post } from '../types'
@@ -20,6 +20,8 @@ function pointFeature(item: Business | ParkingPoint, properties: Record<string, 
 export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
+  const businessesRef = useRef<Business[]>([])
+  const parkingRef = useRef<ParkingPoint[]>([])
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [parking, setParking] = useState<ParkingPoint[]>([])
   const [selected, setSelected] = useState<Business | ParkingPoint | null>(null)
@@ -29,6 +31,8 @@ export default function MapView({ posts }: { posts: Post[] }) {
     loadBusinesses().then(setBusinesses)
     loadParkingPoints('all').then(setParking)
   }, [])
+  useEffect(() => { businessesRef.current = businesses }, [businesses])
+  useEffect(() => { parkingRef.current = parking }, [parking])
 
   const liveOfferBusinessIds = useMemo(() => new Set(posts.filter(p => p.type === 'offer').map(p => p.business_id).filter(Boolean)), [posts])
   const filteredBusinesses = businesses.filter(b => {
@@ -57,9 +61,8 @@ export default function MapView({ posts }: { posts: Post[] }) {
     mapRef.current = map
     map.on('load', async () => {
       map.fitBounds([[b.west, b.south], [b.east, b.north]], { padding: 34, duration: 0 })
-      map.addSource('borough-mask', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       const cpz = await loadCpzGeoJson()
-      map.addSource('cpz', { type: 'geojson', data: cpz })
+      map.addSource('cpz', { type: 'geojson', data: cpz as any })
       map.addLayer({ id: 'cpz-fill', type: 'fill', source: 'cpz', paint: { 'fill-color': '#0F6E6B', 'fill-opacity': 0.12 } })
       map.addLayer({ id: 'cpz-line', type: 'line', source: 'cpz', paint: { 'line-color': '#0F6E6B', 'line-width': 1.5, 'line-opacity': 0.72 } })
       map.addLayer({ id: 'cpz-label', type: 'symbol', source: 'cpz', minzoom: 12, layout: { 'text-field': ['coalesce', ['get', 'name'], ['get', 'zone'], 'CPZ'], 'text-size': 12 }, paint: { 'text-color': '#0F6E6B', 'text-halo-color': '#fff', 'text-halo-width': 2 } })
@@ -74,12 +77,12 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
       map.on('click', 'business-pins', e => {
         const id = e.features?.[0]?.properties?.id
-        const item = businesses.find(biz => biz.id === id)
+        const item = businessesRef.current.find(biz => biz.id === id)
         if (item) setSelected(item)
       })
       map.on('click', 'parking-pins', e => {
         const id = e.features?.[0]?.properties?.id
-        const item = parking.find(p => p.id === id)
+        const item = parkingRef.current.find(p => p.id === id)
         if (item) setSelected(item)
       })
       ;['business-pins', 'parking-pins'].forEach(layer => {
@@ -87,22 +90,22 @@ export default function MapView({ posts }: { posts: Post[] }) {
         map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
       })
     })
-    return () => map.remove()
-  }, [businesses, parking])
+    return () => { mapRef.current = null; map.remove() }
+  }, [])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map?.isStyleLoaded()) return
-    const businessData: GeoJSON.FeatureCollection = {
-      type: 'FeatureCollection',
+    const businessData = {
+      type: 'FeatureCollection' as const,
       features: filteredBusinesses.map(item => pointFeature(item, { id: item.id, name: item.name, category: item.category, colour: businessColour(item.category), hasOffer: liveOfferBusinessIds.has(item.id) })),
     }
-    const parkingData: GeoJSON.FeatureCollection = {
-      type: 'FeatureCollection',
+    const parkingData = {
+      type: 'FeatureCollection' as const,
       features: visibleParking.map(item => pointFeature(item, { id: item.id, kind: item.kind, name: item.name })),
     }
-    ;(map.getSource('businesses') as maplibregl.GeoJSONSource | undefined)?.setData(businessData)
-    ;(map.getSource('parking') as maplibregl.GeoJSONSource | undefined)?.setData(parkingData)
+    ;(map.getSource('businesses') as maplibregl.GeoJSONSource | undefined)?.setData(businessData as any)
+    ;(map.getSource('parking') as maplibregl.GeoJSONSource | undefined)?.setData(parkingData as any)
   }, [filteredBusinesses, visibleParking, liveOfferBusinessIds])
 
   const chips: Array<{ key: LayerFilter; label: string }> = [

@@ -1,0 +1,2 @@
+business_id,business_name,address,phone,website,whatsapp,email,opening_hours,category,source_type,evidence_note
+example-uuid,Example Pharmacy,"123 High Street, E6 1AA",02000000000,https://example.com,,info@example.com,"Mon-Fri 09:00-18:00; Sat 10:00-16:00",pharmacy,official_website,"Checked official website on 2026-07-12"

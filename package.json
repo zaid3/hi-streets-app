@@ -9,8 +9,8 @@
     "start": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "seed:boundary": "tsx scripts/import-newham-boundary.ts",
-    "seed:cpz": "tsx scripts/import-cpz.ts",
-    "seed:osm-businesses": "tsx scripts/seed-osm-businesses.ts"
+    "seed:osm-businesses": "tsx scripts/seed-osm-businesses.ts",
+    "seed:phase0": "npm run seed:boundary && npm run seed:osm-businesses"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.0",

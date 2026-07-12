@@ -37,6 +37,20 @@ export interface Business {
   company_status?: string | null
 }
 
+export interface BusinessProfileInput {
+  business_id: string
+  name?: string
+  category?: string
+  description?: string
+  address?: string
+  phone?: string
+  website?: string
+  whatsapp?: string
+  email?: string
+  opening_hours?: string
+  photo_url?: string
+}
+
 export interface BusinessClaimOption {
   id: string
   name: string

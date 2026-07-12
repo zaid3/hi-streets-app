@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
-import { Accessibility, Layers, LocateFixed } from 'lucide-react'
+import { Accessibility, Layers, LocateFixed, Search } from 'lucide-react'
 import { directionsUrl, MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER, paddedBounds } from '../lib/newham'
 import { createBlueBadgeBay, fetchBusinessById, getCurrentRole, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson, loadParkingPoints } from '../lib/data'
 import type { Business, ParkingPoint, Post, Role } from '../types'
@@ -47,10 +47,17 @@ function getBusinessPostKinds(posts: Post[]): BusinessPostKinds {
 function categoryGroup(category?: string) {
   const c = (category || '').toLowerCase()
   if (/restaurant|cafe|fast_food|food|bar|pub|bakery|takeaway/.test(c)) return 'food'
-  if (/shop|retail|supermarket|grocery|clothes|hairdresser|beauty/.test(c)) return 'shop'
-  if (/pharmacy|clinic|dentist|doctors|hospital|health/.test(c)) return 'health'
-  if (/office|service|solicitor|account|bank|library|community/.test(c)) return 'service'
+  if (/shop|retail|supermarket|grocery|clothes|hairdresser|beauty|store|market|mall/.test(c)) return 'shop'
+  if (/pharmacy|clinic|dentist|doctors|hospital|health|medical|care/.test(c)) return 'health'
+  if (/office|service|solicitor|account|bank|library|community|repair|estate|insurance|school|college/.test(c)) return 'service'
   return 'default'
+}
+
+function groupMatchesFilter(group: string, filter: LayerFilter) {
+  if (filter === 'food') return group === 'food'
+  if (filter === 'shops') return group === 'shop'
+  if (filter === 'services') return group === 'service' || group === 'health' || group === 'default'
+  return false
 }
 
 function svgIcon(label: string, fill: string) {
@@ -101,6 +108,7 @@ function enrichBusinessGeoJson(data: FeatureCollection, postKinds: BusinessPostK
       const props = feature.properties || {}
       const id = String(props.id || feature.id || '')
       const kinds = postKinds[id] || { offer: false, job: false, community: false }
+      const group = props.category_group || categoryGroup(props.category)
       const hasOffer = Boolean(props.has_offer) || kinds.offer
       const hasJob = Boolean(props.has_job) || kinds.job
       const hasCommunity = Boolean(props.has_community) || kinds.community
@@ -109,28 +117,33 @@ function enrichBusinessGeoJson(data: FeatureCollection, postKinds: BusinessPostK
         ...feature,
         properties: {
           ...props,
-          category_group: props.category_group || categoryGroup(props.category),
+          category_group: group,
           has_offer: hasOffer,
           has_job: hasJob,
           has_community: hasCommunity,
           primary_kind: primaryKind,
+          searchable: `${props.name || ''} ${props.category || ''} ${group}`.toLowerCase(),
         },
       }
     }),
   }
 }
 
-function filteredBusinessGeoJson(data: FeatureCollection, filter: LayerFilter): FeatureCollection {
-  if (filter === 'all') return data
+function filteredBusinessGeoJson(data: FeatureCollection, filter: LayerFilter, query: string): FeatureCollection {
   if (filter === 'parking') return EMPTY_FC
+  const q = query.trim().toLowerCase()
   return {
     type: 'FeatureCollection',
     features: data.features.filter(feature => {
       const props = feature.properties || {}
+      const group = String(props.category_group || categoryGroup(String(props.category || '')))
+      const matchesQuery = !q || String(props.searchable || '').includes(q)
+      if (!matchesQuery) return false
+      if (filter === 'all') return true
       if (filter === 'offers') return Boolean(props.has_offer)
       if (filter === 'jobs') return Boolean(props.has_job)
       if (filter === 'community') return Boolean(props.has_community)
-      return categoryGroup(String(props.category || props.category_group || '')) === filter || props.category_group === filter
+      return groupMatchesFilter(group, filter)
     }),
   }
 }
@@ -157,6 +170,7 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
   const [parking, setParking] = useState<ParkingPoint[]>([])
   const [selected, setSelected] = useState<Business | ParkingPoint | null>(null)
   const [filter, setFilter] = useState<LayerFilter>('all')
+  const [searchTerm, setSearchTerm] = useState('')
   const [role, setRole] = useState<Role | null>(null)
   const [pendingBay, setPendingBay] = useState<PendingBay>(null)
   const [refreshFlag, setRefreshFlag] = useState(0)
@@ -167,7 +181,7 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
 
   const businessPostKinds = useMemo(() => getBusinessPostKinds(posts), [posts])
   const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
-  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter), [enrichedBusinesses, filter])
+  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter, searchTerm), [enrichedBusinesses, filter, searchTerm])
   const visibleParking = filter === 'parking' || filter === 'all' ? parking : []
 
   function applyMapData(nextBusinesses = visibleBusinesses, nextParking = visibleParking, nextUserPoint = userPoint) {
@@ -341,7 +355,10 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
 
   return (
     <section className="map-screen">
-      <div className="map-search"><strong>Search HiStreets…</strong></div>
+      <label className="map-search" aria-label="Search HiStreets">
+        <Search size={18} />
+        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search business, food, shop, service…" />
+      </label>
       <div className="chip-row map-chips">{chips.map(c => <button key={c.key} className={filter === c.key ? 'active' : ''} onClick={() => setFilter(c.key)}>{c.label}</button>)}</div>
       <div className="map-debug-pill">{mapStatus}</div>
       <button className="locate-button" onClick={requestUserLocation} aria-label="Use my location"><LocateFixed size={17} /> Near me</button>

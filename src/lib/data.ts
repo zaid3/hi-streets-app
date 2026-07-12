@@ -116,14 +116,12 @@ export async function createBlueBadgeBay(input: { lat: number; lng: number; road
   const { data: publicUrl } = supabase.storage.from('bay-photos').getPublicUrl(path)
   const photo_url = publicUrl.publicUrl
 
-  const { error } = await supabase.from('blue_badge_bays').insert({
-    geom: `POINT(${input.lng} ${input.lat})`,
-    road_name: input.road_name.trim(),
-    notes: input.notes?.trim() || null,
-    photo_url,
-    source: 'survey',
-    is_published: true,
-    created_by: user.id,
+  const { error } = await supabase.rpc('add_blue_badge_bay', {
+    p_lat: input.lat,
+    p_lng: input.lng,
+    p_road_name: input.road_name.trim(),
+    p_notes: input.notes?.trim() || '',
+    p_photo_url: photo_url,
   })
   if (error) throw error
 }

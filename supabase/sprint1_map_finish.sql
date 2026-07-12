@@ -27,7 +27,31 @@ begin
   end if;
 end $$;
 
--- Run this manually after the Newham boundary has been inserted.
+create or replace function public.upsert_boundary(
+  p_name text,
+  p_geojson jsonb,
+  p_source text default 'ONS Open Geography / London borough boundary'
+) returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_id uuid;
+begin
+  insert into public.boundaries(name, geom, source, updated_at)
+  values (
+    p_name,
+    st_multi(st_setsrid(st_geomfromgeojson(p_geojson::text),4326))::geometry(MultiPolygon,4326),
+    p_source,
+    now()
+  )
+  on conflict(name) do update set geom=excluded.geom, source=excluded.source, updated_at=now()
+  returning id into v_id;
+  return v_id;
+end $$;
+
+grant execute on function public.upsert_boundary(text,jsonb,text) to service_role;
+
 create or replace function public.filter_businesses_to_newham() returns integer
 language plpgsql
 security definer
@@ -36,7 +60,7 @@ as $$
 declare deleted_count integer;
 begin
   if not exists (select 1 from public.boundaries where name='Newham') then
-    raise exception 'Newham boundary missing. Run seed:newham-boundary first.';
+    raise exception 'Newham boundary missing. Run seed:boundary first.';
   end if;
 
   delete from public.businesses b
@@ -47,6 +71,19 @@ begin
 end $$;
 
 grant execute on function public.filter_businesses_to_newham() to service_role;
+
+create or replace function public.business_category_group(p_category text) returns text
+language sql
+immutable
+as $$
+  select case
+    when coalesce(p_category,'') ~* '(restaurant|cafe|fast_food|food|bar|pub|bakery|takeaway)' then 'food'
+    when coalesce(p_category,'') ~* '(shop|retail|supermarket|grocery|clothes|hairdresser|beauty)' then 'shop'
+    when coalesce(p_category,'') ~* '(pharmacy|clinic|dentist|doctors|hospital|health)' then 'health'
+    when coalesce(p_category,'') ~* '(office|service|solicitor|account|bank|library|community)' then 'service'
+    else 'default'
+  end
+$$;
 
 -- One full GeoJSON FeatureCollection for clustered map rendering.
 create or replace function public.businesses_geojson() returns jsonb
@@ -65,6 +102,7 @@ as $$
           'id', b.id,
           'name', b.name,
           'category', b.category,
+          'category_group', public.business_category_group(b.category),
           'has_offer', exists (
             select 1 from public.posts p
             where p.business_id = b.id and p.status='live' and p.expires_at > now() and p.type='offer'
@@ -129,6 +167,7 @@ alter table public.blue_badge_bays add column if not exists created_by uuid refe
 alter table public.blue_badge_bays add column if not exists created_at timestamptz default now();
 alter table public.blue_badge_bays add column if not exists updated_at timestamptz default now();
 
+delete from public.blue_badge_bays where photo_url is null or road_name is null;
 update public.blue_badge_bays set source = coalesce(source, 'survey');
 
 alter table public.blue_badge_bays alter column road_name set not null;
@@ -156,6 +195,41 @@ using (public.current_user_role() = 'admin') with check (public.current_user_rol
 drop policy if exists admin_delete_blue_badge_bays on public.blue_badge_bays;
 create policy admin_delete_blue_badge_bays on public.blue_badge_bays for delete
 using (public.current_user_role() = 'admin');
+
+create or replace function public.add_blue_badge_bay(
+  p_lat double precision,
+  p_lng double precision,
+  p_road_name text,
+  p_notes text,
+  p_photo_url text
+) returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_id uuid;
+declare v_geom geometry(Point,4326) := st_setsrid(st_makepoint(p_lng, p_lat),4326);
+begin
+  if public.current_user_role() <> 'admin' then
+    raise exception 'admin only';
+  end if;
+  if nullif(trim(p_road_name),'') is null then
+    raise exception 'road name required';
+  end if;
+  if nullif(trim(p_photo_url),'') is null then
+    raise exception 'photo required';
+  end if;
+  if exists (select 1 from public.boundaries where name='Newham') and not st_contains((select geom from public.boundaries where name='Newham'), v_geom) then
+    raise exception 'point outside Newham boundary';
+  end if;
+
+  insert into public.blue_badge_bays(geom, road_name, notes, photo_url, source, is_published, created_by)
+  values(v_geom, trim(p_road_name), nullif(trim(coalesce(p_notes,'')),''), trim(p_photo_url), 'survey', true, auth.uid())
+  returning id into v_id;
+  return v_id;
+end $$;
+
+grant execute on function public.add_blue_badge_bay(double precision,double precision,text,text,text) to authenticated;
 
 create or replace view public.blue_badge_bays_public with (security_invoker=true) as
 select id,

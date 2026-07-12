@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BadgeCheck, Globe, Mail, MapPin, Phone, ShieldCheck, Tag } from 'lucide-react'
+import { BadgeCheck, Globe, Mail, MapPin, Phone, ShieldCheck } from 'lucide-react'
 import { directionsUrl } from '../lib/newham'
 import { fetchBusinessClaimOption, startBusinessClaim } from '../lib/data'
 import type { Business, BusinessClaimOption, ClaimMethod, Post, PostType } from '../types'
@@ -52,7 +52,25 @@ function listingStatus(business: Business) {
   return 'Unclaimed listing'
 }
 
-function categoryLabel(category?: string | null) {
+function categoryLabel(category?: string | null, name?: string | null) {
+  const text = `${category || ''} ${name || ''}`.toLowerCase()
+  if (/mcdonald|kfc|burger king|subway|domino|pizza hut|takeaway|fast.?food|chicken|pizza|kebab|burger/.test(text)) return 'Takeaway / fast food'
+  if (/cafe|coffee|tea|costa|starbucks|nero/.test(text)) return 'Cafe'
+  if (/bakery|greggs|cake|dessert/.test(text)) return 'Bakery'
+  if (/restaurant|bar|pub|grill|bistro/.test(text)) return 'Restaurant'
+  if (/supermarket|grocery|convenience|off.?licen[cs]e|mini.?market|butcher|greengrocer/.test(text)) return 'Grocery / convenience'
+  if (/tailor|tailoring|alteration|sewing/.test(text)) return 'Tailoring'
+  if (/hairdresser|barber|beauty|nail|salon|spa/.test(text)) return 'Beauty / barber'
+  if (/dentist|dental/.test(text)) return 'Dentist'
+  if (/optician|optical|glasses/.test(text)) return 'Optician'
+  if (/pharmacy|chemist/.test(text)) return 'Pharmacy'
+  if (/clinic|doctor|gp|health|medical|care/.test(text)) return 'Health'
+  if (/solicitor|lawyer|legal|immigration/.test(text)) return 'Solicitor / legal'
+  if (/accountant|accounting|tax|book.?keeping/.test(text)) return 'Accountant'
+  if (/estate agent|real estate|letting|property/.test(text)) return 'Estate agent'
+  if (/mechanic|garage|mot|car repair|vehicle|tyre|motorcycle|bike/.test(text)) return 'Mechanic / vehicle service'
+  if (/laundry|dry.?clean/.test(text)) return 'Laundry / cleaning'
+  if (/church|mosque|temple|place.?of.?worship|charity|community/.test(text)) return 'Community place'
   if (!category) return 'Local business'
   const c = category.replace(/_/g, ' ').trim()
   return c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Local business'
@@ -102,7 +120,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
 
       <header className="business-hero">
         <div>
-          <p className="eyebrow">{categoryLabel(business.category)}</p>
+          <p className="eyebrow">{categoryLabel(business.category, business.name)}</p>
           <h2>{business.name}</h2>
           <div className="listing-meta-row">
             <span className={isVerified ? 'status-pill verified' : 'status-pill'}>{isVerified && <BadgeCheck size={14} />} {listingStatus(business)}</span>

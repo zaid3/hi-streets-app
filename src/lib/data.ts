@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
-import type { Business, BusinessClaimOption, ClaimMethod, ParkingPoint, Post, Role } from '../types'
+import type { Business, BusinessClaimOption, BusinessProfileInput, ClaimMethod, ParkingPoint, Post, Role } from '../types'
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 
@@ -95,6 +95,27 @@ export async function startBusinessClaim(businessId: string, method: ClaimMethod
   })
   if (error) throw error
   return String(data)
+}
+
+export async function saveMyBusinessProfile(input: BusinessProfileInput): Promise<Business> {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) throw new Error('Sign in first')
+  const { data, error } = await supabase.rpc('update_my_business_profile', {
+    p_business_id: input.business_id,
+    p_name: input.name || '',
+    p_category: input.category || '',
+    p_description: input.description || '',
+    p_address: input.address || '',
+    p_phone: input.phone || '',
+    p_website: input.website || '',
+    p_whatsapp: input.whatsapp || '',
+    p_email: input.email || '',
+    p_opening_hours: input.opening_hours || '',
+    p_photo_url: input.photo_url || '',
+  })
+  if (error) throw error
+  return data as Business
 }
 
 export async function getCurrentRole(): Promise<Role | null> {

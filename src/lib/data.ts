@@ -1,14 +1,14 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
-import type { Business, ParkingPoint, Post } from '../types'
+import type { Business, ParkingPoint, Post, Role } from '../types'
 
-type FeatureCollection = { type: 'FeatureCollection'; features: Array<Record<string, unknown>> }
+type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 
 export const emptyStateText = {
-  offers: 'No live offers yet — local businesses can post one from the Profile tab.',
+  offers: 'No live offers yet — know of one? Tell us.',
   jobs: 'No Newham jobs posted yet — know a local employer? Ask them to post here.',
   community: 'No free meals or community support posts this week — tell us about one.',
-  parking: 'Parking details for this street are not verified yet.',
+  parking: 'No verified Blue Badge bays here yet — know of one? Help us verify it with a photo.',
 }
 
 export async function loadBusinesses(): Promise<Business[]> {
@@ -19,6 +19,40 @@ export async function loadBusinesses(): Promise<Business[]> {
     .limit(500)
   if (error || !data) return []
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
+}
+
+export async function loadBusinessesGeoJson(): Promise<FeatureCollection> {
+  if (!supabaseConfigured || !supabase) return { type: 'FeatureCollection', features: [] }
+  const { data, error } = await supabase.rpc('businesses_geojson')
+  if (error || !data) return { type: 'FeatureCollection', features: [] }
+  return data as FeatureCollection
+}
+
+export async function loadNewhamBoundaryGeoJson(): Promise<FeatureCollection> {
+  if (!supabaseConfigured || !supabase) return { type: 'FeatureCollection', features: [] }
+  const { data, error } = await supabase.rpc('newham_boundary_geojson')
+  if (error || !data) return { type: 'FeatureCollection', features: [] }
+  return data as FeatureCollection
+}
+
+export async function fetchBusinessById(id: string): Promise<Business | null> {
+  if (!supabaseConfigured || !supabase) return null
+  const { data, error } = await supabase
+    .from('businesses_public')
+    .select('id,osm_id,name,category,description,address,phone,website,whatsapp,verification_status,photo_url,source,lat,lng')
+    .eq('id', id)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as Business
+}
+
+export async function getCurrentRole(): Promise<Role | null> {
+  if (!supabaseConfigured || !supabase) return null
+  const { data: userData } = await supabase.auth.getUser()
+  const user = userData.user
+  if (!user) return null
+  const { data } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+  return (data?.role as Role | undefined) || null
 }
 
 export async function loadPosts(type?: Post['type']): Promise<Post[]> {
@@ -51,38 +85,47 @@ export async function loadPosts(type?: Post['type']): Promise<Post[]> {
 }
 
 export async function loadCpzGeoJson(): Promise<FeatureCollection> {
-  if (!supabaseConfigured || !supabase) return { type: 'FeatureCollection', features: [] }
-  const { data, error } = await supabase.from('cpz_zones_public').select('*')
-  if (error || !data) return { type: 'FeatureCollection', features: [] }
-  return {
-    type: 'FeatureCollection',
-    features: data
-      .filter((row: any) => row.geom_json)
-      .map((row: any) => ({
-        type: 'Feature',
-        id: row.id,
-        properties: { id: row.id, name: row.name, hours: row.hours, event_day_hours: row.event_day_hours, source: row.source, last_verified_at: row.last_verified_at },
-        geometry: row.geom_json,
-      })),
-  }
+  return { type: 'FeatureCollection', features: [] }
 }
 
-export async function loadParkingPoints(kind: 'paid_bay' | 'blue_badge' | 'all' = 'all'): Promise<ParkingPoint[]> {
+export async function loadParkingPoints(kind: 'blue_badge' | 'all' = 'all'): Promise<ParkingPoint[]> {
   if (!supabaseConfigured || !supabase) return []
   const items: ParkingPoint[] = []
-  if (kind === 'paid_bay' || kind === 'all') {
-    const { data } = await supabase.from('paid_bays_public').select('*').limit(300)
-    ;(data || []).forEach((row: any) => {
-      if (inNewham(row.lat, row.lng)) items.push({ id: row.id, kind: 'paid_bay', name: row.paybyphone_code ? `PayByPhone ${row.paybyphone_code}` : 'Paid bay', lat: row.lat, lng: row.lng, source: row.source, last_verified_at: row.last_verified_at, tariff: row.tariff, max_stay_mins: row.max_stay_mins, paybyphone_code: row.paybyphone_code })
-    })
-  }
   if (kind === 'blue_badge' || kind === 'all') {
-    const { data } = await supabase.from('blue_badge_bays_public').select('*').limit(300)
+    const { data } = await supabase.from('blue_badge_bays_public').select('*').limit(1000)
     ;(data || []).forEach((row: any) => {
-      if (inNewham(row.lat, row.lng)) items.push({ id: row.id, kind: 'blue_badge', name: `${row.road_name} blue badge bay`, lat: row.lat, lng: row.lng, source: row.source, last_verified_at: row.last_verified_at, confidence: row.confidence })
+      if (inNewham(row.lat, row.lng)) items.push({ id: row.id, kind: 'blue_badge', name: `${row.road_name} Blue Badge bay`, lat: row.lat, lng: row.lng, source: row.source, last_verified_at: row.last_verified_at, photo_url: row.photo_url, notes: row.notes, road_name: row.road_name })
     })
   }
   return items
+}
+
+export async function createBlueBadgeBay(input: { lat: number; lng: number; road_name: string; notes?: string; file: File }) {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  const { data: userData } = await supabase.auth.getUser()
+  const user = userData.user
+  if (!user) throw new Error('Sign in first')
+  const role = await getCurrentRole()
+  if (role !== 'admin') throw new Error('Admin only')
+  if (!input.file) throw new Error('Photo is required')
+
+  const ext = input.file.name.split('.').pop()?.toLowerCase() || 'jpg'
+  const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const upload = await supabase.storage.from('bay-photos').upload(path, input.file, { upsert: false, contentType: input.file.type || 'image/jpeg' })
+  if (upload.error) throw upload.error
+  const { data: publicUrl } = supabase.storage.from('bay-photos').getPublicUrl(path)
+  const photo_url = publicUrl.publicUrl
+
+  const { error } = await supabase.from('blue_badge_bays').insert({
+    geom: `POINT(${input.lng} ${input.lat})`,
+    road_name: input.road_name.trim(),
+    notes: input.notes?.trim() || null,
+    photo_url,
+    source: 'survey',
+    is_published: true,
+    created_by: user.id,
+  })
+  if (error) throw error
 }
 
 export async function createPost(input: Pick<Post, 'type' | 'title' | 'body' | 'category' | 'expires_at' | 'apply_url' | 'apply_phone'>) {

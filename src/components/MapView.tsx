@@ -14,6 +14,42 @@ type CategoryInfo = { group: string; marker: string; label: string; icon: string
 
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
 
+const markerDefinitions: Array<{ id: string; label: string; color: string }> = [
+  { id: 'restaurant', label: '🍽', color: '#F2762E' },
+  { id: 'takeaway', label: '🥡', color: '#F2762E' },
+  { id: 'cafe', label: '☕', color: '#C97826' },
+  { id: 'bakery', label: '🥐', color: '#C97826' },
+  { id: 'grocery', label: '🛒', color: '#3C8D2F' },
+  { id: 'butcher', label: '🥩', color: '#3C8D2F' },
+  { id: 'tailor', label: '🧵', color: '#2D6CDF' },
+  { id: 'fashion', label: '👕', color: '#2D6CDF' },
+  { id: 'electronics', label: '📱', color: '#2D6CDF' },
+  { id: 'furniture', label: '🛋', color: '#2D6CDF' },
+  { id: 'jewellery', label: '💎', color: '#2D6CDF' },
+  { id: 'florist', label: '🌸', color: '#2D6CDF' },
+  { id: 'hardware', label: '🔩', color: '#2D6CDF' },
+  { id: 'retail', label: '🛍', color: '#2D6CDF' },
+  { id: 'beauty', label: '✂', color: '#B03A8B' },
+  { id: 'dentist', label: '🦷', color: '#2E9E5B' },
+  { id: 'optician', label: '👓', color: '#2E9E5B' },
+  { id: 'pharmacy', label: '⚕', color: '#2E9E5B' },
+  { id: 'health', label: '✚', color: '#2E9E5B' },
+  { id: 'solicitor', label: '⚖', color: '#5B4FC4' },
+  { id: 'accountant', label: '£', color: '#5B4FC4' },
+  { id: 'estate', label: '⌂', color: '#5B4FC4' },
+  { id: 'finance', label: '£', color: '#5B4FC4' },
+  { id: 'mechanic', label: '🔧', color: '#0F6E6B' },
+  { id: 'laundry', label: '🧺', color: '#0F6E6B' },
+  { id: 'repair', label: '🛠', color: '#0F6E6B' },
+  { id: 'printing', label: '🖨', color: '#0F6E6B' },
+  { id: 'post', label: '📮', color: '#0F6E6B' },
+  { id: 'education', label: '🎓', color: '#0F6E6B' },
+  { id: 'community-service', label: '🤝', color: '#0F6E6B' },
+  { id: 'travel', label: '✈', color: '#0F6E6B' },
+  { id: 'service', label: '•', color: '#0F6E6B' },
+  { id: 'default', label: '•', color: '#1A1A1A' },
+]
+
 function pointFeature(item: ParkingPoint, properties: Record<string, unknown>) {
   return { type: 'Feature' as const, properties, geometry: { type: 'Point' as const, coordinates: [item.lng, item.lat] } }
 }
@@ -116,42 +152,6 @@ function addImage(map: MapLibre, id: string, src: string) {
   })
 }
 
-const markerDefinitions: Array<{ id: string; label: string; color: string }> = [
-  { id: 'restaurant', label: '🍽', color: '#F2762E' },
-  { id: 'takeaway', label: '🥡', color: '#F2762E' },
-  { id: 'cafe', label: '☕', color: '#C97826' },
-  { id: 'bakery', label: '🥐', color: '#C97826' },
-  { id: 'grocery', label: '🛒', color: '#3C8D2F' },
-  { id: 'butcher', label: '🥩', color: '#3C8D2F' },
-  { id: 'tailor', label: '🧵', color: '#2D6CDF' },
-  { id: 'fashion', label: '👕', color: '#2D6CDF' },
-  { id: 'electronics', label: '📱', color: '#2D6CDF' },
-  { id: 'furniture', label: '🛋', color: '#2D6CDF' },
-  { id: 'jewellery', label: '💎', color: '#2D6CDF' },
-  { id: 'florist', label: '🌸', color: '#2D6CDF' },
-  { id: 'hardware', label: '🔩', color: '#2D6CDF' },
-  { id: 'retail', label: '🛍', color: '#2D6CDF' },
-  { id: 'beauty', label: '✂', color: '#B03A8B' },
-  { id: 'dentist', label: '🦷', color: '#2E9E5B' },
-  { id: 'optician', label: '👓', color: '#2E9E5B' },
-  { id: 'pharmacy', label: '⚕', color: '#2E9E5B' },
-  { id: 'health', label: '✚', color: '#2E9E5B' },
-  { id: 'solicitor', label: '⚖', color: '#5B4FC4' },
-  { id: 'accountant', label: '£', color: '#5B4FC4' },
-  { id: 'estate', label: '⌂', color: '#5B4FC4' },
-  { id: 'finance', label: '£', color: '#5B4FC4' },
-  { id: 'mechanic', label: '🔧', color: '#0F6E6B' },
-  { id: 'laundry', label: '🧺', color: '#0F6E6B' },
-  { id: 'repair', label: '🛠', color: '#0F6E6B' },
-  { id: 'printing', label: '🖨', color: '#0F6E6B' },
-  { id: 'post', label: '📮', color: '#0F6E6B' },
-  { id: 'education', label: '🎓', color: '#0F6E6B' },
-  { id: 'community-service', label: '🤝', color: '#0F6E6B' },
-  { id: 'travel', label: '✈', color: '#0F6E6B' },
-  { id: 'service', label: '•', color: '#0F6E6B' },
-  { id: 'default', label: '•', color: '#1A1A1A' },
-]
-
 async function addCategoryImages(map: MapLibre) {
   await Promise.all([
     ...markerDefinitions.map(marker => addImage(map, `cat-${marker.id}`, svgIcon(marker.label, marker.color))),
@@ -162,12 +162,14 @@ async function addCategoryImages(map: MapLibre) {
   ])
 }
 
-function markerIconExpression() {
-  const expression: any[] = ['match', ['get', 'marker_icon']]
+function markerIconExpression(): any {
+  const expression: unknown[] = ['match', ['get', 'marker_icon']]
   for (const marker of markerDefinitions) expression.push(marker.id, `cat-${marker.id}`)
   expression.push('cat-default')
-  return expression
+  return expression as any
 }
+
+const actionBadgeExpression: any = ['match', ['get', 'primary_kind'], 'offer', 'offer-icon', 'job', 'job-icon', 'community', 'community-icon', 'offer-icon']
 
 function maskFromBoundary(boundary: FeatureCollection): FeatureCollection {
   const holes: number[][][] = []
@@ -294,9 +296,6 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
     setGeoJson(map, 'user-location', userLocationData(nextUserPoint))
     if (pushedBusinesses || pushedDots) setMapStatus(`${nextBusinesses.features.length.toLocaleString()} businesses loaded`)
     if (!pushedBusinesses && !pushedDots && mapReady) setMapStatus('Map source not ready yet')
-    if (!pushedParking && mapReady) {
-      // Blue Badge table can be empty; no user-facing warning needed.
-    }
   }
 
   async function openBusinessById(id: string, coords?: [number, number] | null) {
@@ -377,10 +376,10 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
 
       const boundary = await loadNewhamBoundaryGeoJson()
       map.addSource('newham-mask', { type: 'geojson', data: maskFromBoundary(boundary) as any })
-      map.addLayer({ id: 'newham-mask-fill', type: 'fill', source: 'newham-mask', paint: { 'fill-color': '#000000', 'fill-opacity': 0.55 } })
+      map.addLayer({ id: 'newham-mask-fill', type: 'fill', source: 'newham-mask', paint: { 'fill-color': '#000000', 'fill-opacity': 0.55 } } as any)
 
       map.addSource('business-dots', { type: 'geojson', data: businessesGeoJsonRef.current as any })
-      map.addLayer({ id: 'business-visible-dots', type: 'circle', source: 'business-dots', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 5], 'circle-color': ['case', ['get', 'has_offer'], '#F2762E', ['get', 'has_job'], '#2D6CDF', ['get', 'has_community'], '#2E9E5B', '#0F6E6B'], 'circle-opacity': 0.56, 'circle-stroke-width': 1.4, 'circle-stroke-color': '#ffffff' } })
+      map.addLayer({ id: 'business-visible-dots', type: 'circle', source: 'business-dots', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 5], 'circle-color': ['case', ['get', 'has_offer'], '#F2762E', ['get', 'has_job'], '#2D6CDF', ['get', 'has_community'], '#2E9E5B', '#0F6E6B'], 'circle-opacity': 0.56, 'circle-stroke-width': 1.4, 'circle-stroke-color': '#ffffff' } } as any)
 
       map.addSource('businesses', {
         type: 'geojson',
@@ -389,17 +388,17 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
         clusterMaxZoom: 15,
         clusterRadius: 50,
       })
-      map.addLayer({ id: 'business-clusters', type: 'circle', source: 'businesses', filter: ['has', 'point_count'], paint: { 'circle-color': '#0F6E6B', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28, 200, 34] } })
-      map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'businesses', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 }, paint: { 'text-color': '#ffffff' } })
-      map.addLayer({ id: 'business-pins', type: 'symbol', source: 'businesses', filter: ['!', ['has', 'point_count']], layout: { 'icon-image': markerIconExpression(), 'icon-size': 0.64, 'icon-allow-overlap': false } })
-      map.addLayer({ id: 'business-action-badges', type: 'symbol', source: 'businesses', filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'primary_kind'], '']], layout: { 'icon-image': ['match', ['get', 'primary_kind'], 'offer', 'offer-icon', 'job', 'job-icon', 'community', 'community-icon', 'offer-icon'], 'icon-size': 0.44, 'icon-offset': [18, -18], 'icon-allow-overlap': true } })
+      map.addLayer({ id: 'business-clusters', type: 'circle', source: 'businesses', filter: ['has', 'point_count'], paint: { 'circle-color': '#0F6E6B', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28, 200, 34] } } as any)
+      map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'businesses', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 }, paint: { 'text-color': '#ffffff' } } as any)
+      map.addLayer({ id: 'business-pins', type: 'symbol', source: 'businesses', filter: ['!', ['has', 'point_count']], layout: { 'icon-image': markerIconExpression(), 'icon-size': 0.64, 'icon-allow-overlap': false } } as any)
+      map.addLayer({ id: 'business-action-badges', type: 'symbol', source: 'businesses', filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'primary_kind'], '']], layout: { 'icon-image': actionBadgeExpression, 'icon-size': 0.44, 'icon-offset': [18, -18], 'icon-allow-overlap': true } } as any)
 
       map.addSource('parking', { type: 'geojson', data: parkingData(parkingRef.current) as any })
-      map.addLayer({ id: 'blue-badge-pins', type: 'symbol', source: 'parking', layout: { 'icon-image': 'bb-icon', 'icon-size': 0.62, 'icon-allow-overlap': true } })
+      map.addLayer({ id: 'blue-badge-pins', type: 'symbol', source: 'parking', layout: { 'icon-image': 'bb-icon', 'icon-size': 0.62, 'icon-allow-overlap': true } } as any)
 
       map.addSource('user-location', { type: 'geojson', data: userLocationData(userPoint) as any })
-      map.addLayer({ id: 'user-location-pulse', type: 'circle', source: 'user-location', paint: { 'circle-radius': 18, 'circle-color': '#2D6CDF', 'circle-opacity': 0.2 } })
-      map.addLayer({ id: 'user-location-dot', type: 'circle', source: 'user-location', paint: { 'circle-radius': 7, 'circle-color': '#2D6CDF', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } })
+      map.addLayer({ id: 'user-location-pulse', type: 'circle', source: 'user-location', paint: { 'circle-radius': 18, 'circle-color': '#2D6CDF', 'circle-opacity': 0.2 } } as any)
+      map.addLayer({ id: 'user-location-dot', type: 'circle', source: 'user-location', paint: { 'circle-radius': 7, 'circle-color': '#2D6CDF', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } } as any)
 
       setMapReady(true)
       requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, parkingRef.current, userPoint))

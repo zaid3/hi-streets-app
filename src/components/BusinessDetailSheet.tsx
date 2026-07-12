@@ -22,6 +22,15 @@ function fsaBadge(business: Business) {
   return <span className="trust-badge hygiene">Hygiene {business.fsa_rating}/5</span>
 }
 
+function missingFields(business: Business) {
+  const missing: string[] = []
+  if (!business.address) missing.push('address')
+  if (!business.phone) missing.push('phone')
+  if (!business.website) missing.push('website')
+  if (!business.opening_hours) missing.push('opening hours')
+  return missing
+}
+
 export default function BusinessDetailSheet({ business, posts }: { business: Business; posts: Post[] }) {
   const [claimOption, setClaimOption] = useState<BusinessClaimOption | null>(null)
   const [claimStatus, setClaimStatus] = useState('')
@@ -53,6 +62,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
   const isVerified = business.verification_status === 'verified'
   const isClaimed = Boolean(business.is_claimed) || isVerified || business.verification_status === 'contested'
   const canClaim = claimOption && !isVerified && business.verification_status !== 'contested'
+  const missing = missingFields(business)
 
   return (
     <>
@@ -65,6 +75,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
 
       <div className="business-chip-row">
         <span className="trust-badge">{business.category}</span>
+        {!isVerified && <span className="trust-badge">Unclaimed listing</span>}
         {business.cuisine && <span className="trust-badge">{business.cuisine}</span>}
         {business.brand && <span className="trust-badge">{business.brand}</span>}
         {business.wheelchair && <span className="trust-badge">Wheelchair: {business.wheelchair}</span>}
@@ -76,6 +87,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
       {business.phone && <p className="business-info"><Phone size={16} /> <a href={`tel:${business.phone}`}>{business.phone}</a></p>}
       {business.email && <p className="business-info"><Mail size={16} /> <a href={`mailto:${business.email}`}>{business.email}</a></p>}
       {website && <p className="business-info"><Globe size={16} /> <a href={website} target="_blank" rel="noreferrer">Website</a></p>}
+      {missing.length > 0 && <p className="trust">Some details are not available yet: {missing.join(', ')}. The verified owner can add these after claiming this listing.</p>}
       {business.fsa_rating_date && business.fsa_rating != null && Number(business.fsa_match_confidence || 0) >= 0.85 && <p className="trust">Food hygiene source: Food Standards Agency · Rated on {new Date(business.fsa_rating_date).toLocaleDateString()}</p>}
 
       {offers.map(p => <article className="mini-card" key={p.id}><Tag size={16} /> <strong>{p.title}</strong><span>{p.body}</span></article>)}
@@ -91,6 +103,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
         <h3>{isClaimed ? 'Business ownership' : 'Claim this business'}</h3>
         {isVerified && <p className="muted">This listing is verified. New ownership requests will be treated as contested claims.</p>}
         {business.verification_status === 'contested' && <p className="muted">Ownership is contested. New posts are frozen until admin review.</p>}
+        {canClaim && <p className="muted">After verification, the owner can complete missing details such as phone, website, opening hours, photos and WhatsApp, then post offers/jobs.</p>}
         {canClaim && <p className="muted">Verification only uses phone/website already stored before the claim starts. You cannot add your own number to verify someone else’s business.</p>}
         {canClaim && claimOption?.can_phone_otp && <button onClick={() => startClaim('phone_otp')} disabled={loadingMethod !== null}>{loadingMethod === 'phone_otp' ? 'Starting…' : 'Verify by existing phone'}</button>}
         {canClaim && claimOption?.website_domain && <button onClick={() => startClaim('website_code')} disabled={loadingMethod !== null}>{loadingMethod === 'website_code' ? 'Starting…' : `Verify website ${claimOption.website_domain}`}</button>}

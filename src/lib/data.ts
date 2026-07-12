@@ -58,6 +58,13 @@ export async function loadNewhamBoundaryGeoJson(): Promise<FeatureCollection> {
 
 export async function fetchBusinessById(id: string): Promise<Business | null> {
   if (!supabaseConfigured || !supabase) return null
+
+  // Use the RPC as the source of truth for map clicks. It returns any real Newham business
+  // that is unclaimed/pending/verified/contested, while posting remains verified-only.
+  const rpc = await supabase.rpc('business_detail', { p_business_id: id })
+  if (!rpc.error && rpc.data) return rpc.data as Business
+
+  // Fallback for deployments where the RPC has not been run yet.
   const { data, error } = await supabase
     .from('businesses_public')
     .select(businessSelect)

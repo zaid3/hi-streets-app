@@ -14,6 +14,20 @@ function defaultExpiry() {
   return d.toISOString().slice(0, 10)
 }
 
+function titlePlaceholder(type: PostType) {
+  if (type === 'job') return 'e.g. Part-time counter assistant wanted'
+  if (type === 'free_meal') return 'e.g. Free hot meals every Friday'
+  if (type === 'community') return 'e.g. Free CV help for local youth'
+  return 'e.g. 20% off lunch today'
+}
+
+function bodyPlaceholder(type: PostType) {
+  if (type === 'job') return 'Write the role, hours, pay if available, and how local people can apply…'
+  if (type === 'free_meal') return 'Write who it is for, when it is available, and any simple conditions…'
+  if (type === 'community') return 'Write the support clearly so residents can understand quickly…'
+  return 'Write the offer clearly, e.g. what is discounted, when it ends, and how to claim…'
+}
+
 export default function PostComposer({ onClose, onSubmitted }: Props) {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [businessId, setBusinessId] = useState('')
@@ -32,7 +46,7 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
     loadMyVerifiedBusinesses().then(rows => {
       setBusinesses(rows)
       setBusinessId(rows[0]?.id || '')
-      setStatus(rows.length ? '' : 'No verified business found. Claim and verify a business before posting.')
+      setStatus(rows.length ? '' : 'No verified business found. Claim and verify a business before posting offers, jobs, free meals or community help.')
     }).catch(() => setStatus('Could not load your verified businesses.'))
   }, [])
 
@@ -51,7 +65,7 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
         apply_phone: applyPhone.trim(),
         recurrence: recurrence.trim(),
       })
-      setStatus('Submitted. It is pending admin review.')
+      setStatus('Submitted. First posts are held for review before going live on the map.')
       onSubmitted()
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not submit post')
@@ -68,8 +82,8 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
     <div className="bottom-sheet post-composer">
       <button className="sheet-close" onClick={onClose}>×</button>
       <div className="sheet-handle" />
-      <h2>Post from verified business</h2>
-      <p className="muted">Offers, jobs and community posts must come from a verified claimed listing.</p>
+      <h2>Post locally</h2>
+      <p className="muted">Fast local posting for verified businesses: offers, nearby jobs, free meals and community support. Posts are attached to your map listing.</p>
 
       <label>Verified business
         <select value={businessId} onChange={e => setBusinessId(e.target.value)}>
@@ -78,20 +92,29 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
       </label>
 
       <label>Post type
-        <select value={type} onChange={e => setType(e.target.value as PostType)}>
-          <option value="offer">Offer</option>
-          <option value="job">Job</option>
+        <select value={type} onChange={e => {
+          const next = e.target.value as PostType
+          setType(next)
+          if (!category.trim()) {
+            if (next === 'job') setCategory('Local job')
+            if (next === 'free_meal') setCategory('Free meal')
+            if (next === 'community') setCategory('Community support')
+            if (next === 'offer') setCategory('Local offer')
+          }
+        }}>
+          <option value="offer">Offer / discount</option>
+          <option value="job">Local job</option>
           <option value="free_meal">Free meal</option>
           <option value="community">Community support</option>
         </select>
       </label>
 
       <label>Title
-        <input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. 20% off lunch today" maxLength={90} />
+        <input value={title} onChange={e => setTitle(e.target.value)} placeholder={titlePlaceholder(type)} maxLength={90} />
       </label>
 
       <label>Description
-        <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Write the key details clearly…" />
+        <textarea value={body} onChange={e => setBody(e.target.value)} placeholder={bodyPlaceholder(type)} />
       </label>
 
       <label>Category
@@ -106,16 +129,16 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
         <label>Apply link
           <input value={applyUrl} onChange={e => setApplyUrl(e.target.value)} placeholder="https://…" />
         </label>
-        <label>Apply phone
-          <input value={applyPhone} onChange={e => setApplyPhone(e.target.value)} placeholder="Phone number for applications" />
+        <label>Apply phone or WhatsApp
+          <input value={applyPhone} onChange={e => setApplyPhone(e.target.value)} placeholder="Phone or WhatsApp number for applications" />
         </label>
       </>}
 
-      {needsRecurrence && <label>Recurrence
+      {needsRecurrence && <label>When is this available?
         <input value={recurrence} onChange={e => setRecurrence(e.target.value)} placeholder="e.g. Every Saturday 12–2pm" />
       </label>}
 
-      <button onClick={submit} disabled={disabled}><Send size={17} /> Submit for review</button>
+      <button onClick={submit} disabled={disabled}><Send size={17} /> Submit local post</button>
       {status && <p className="form-status">{status}</p>}
     </div>
   )

@@ -118,6 +118,18 @@ export async function saveMyBusinessProfile(input: BusinessProfileInput): Promis
   return data as Business
 }
 
+export async function exportBusinessResearchCsv(): Promise<string> {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) throw new Error('Sign in first')
+  const { data, error } = await supabase.rpc('business_research_export')
+  if (error) throw error
+  const headers = ['business_id','business_name','address','postcode','category','source','lat','lng','has_phone','has_website','has_opening_hours','has_email','data_score']
+  const escapeCsv = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
+  const rows = (data || []).map((row: any) => headers.map(key => escapeCsv(row[key])).join(','))
+  return [headers.join(','), ...rows].join('\n')
+}
+
 export async function getCurrentRole(): Promise<Role | null> {
   if (!supabaseConfigured || !supabase) return null
   const { data: userData } = await supabase.auth.getUser()

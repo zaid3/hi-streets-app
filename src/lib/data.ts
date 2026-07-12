@@ -126,11 +126,22 @@ export async function createBlueBadgeBay(input: { lat: number; lng: number; road
   if (error) throw error
 }
 
-export async function createPost(input: Pick<Post, 'type' | 'title' | 'body' | 'category' | 'expires_at' | 'apply_url' | 'apply_phone'>) {
+export async function createPost(input: Pick<Post, 'type' | 'title' | 'body' | 'category' | 'expires_at' | 'apply_url' | 'apply_phone' | 'recurrence'> & { business_id: string }) {
   if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
   const { data: userData } = await supabase.auth.getUser()
   const user = userData.user
   if (!user) throw new Error('Sign in first')
-  const { error } = await supabase.from('posts').insert({ ...input, author_id: user.id, status: 'pending', source: 'web' })
+  if (!input.business_id) throw new Error('Verified business required')
+  const { error } = await supabase.rpc('create_verified_business_post', {
+    p_business_id: input.business_id,
+    p_type: input.type,
+    p_title: input.title,
+    p_body: input.body,
+    p_category: input.category || '',
+    p_expires_at: input.expires_at,
+    p_apply_url: input.apply_url || '',
+    p_apply_phone: input.apply_phone || '',
+    p_recurrence: input.recurrence || '',
+  })
   if (error) throw error
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
-import { Accessibility, Layers, Tag } from 'lucide-react'
+import { Accessibility, Layers, LocateFixed, Tag } from 'lucide-react'
 import { directionsUrl, MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER, paddedBounds } from '../lib/newham'
 import { createBlueBadgeBay, fetchBusinessById, getCurrentRole, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson, loadParkingPoints } from '../lib/data'
 import type { Business, ParkingPoint, Post, Role } from '../types'
@@ -19,6 +19,14 @@ function parkingData(items: ParkingPoint[]) {
   return {
     type: 'FeatureCollection' as const,
     features: items.map(item => pointFeature(item, { id: item.id, kind: item.kind, name: item.name, road_name: item.road_name, photo_url: item.photo_url })),
+  }
+}
+
+function userLocationData(point: { lat: number; lng: number } | null): FeatureCollection {
+  if (!point) return EMPTY_FC
+  return {
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', properties: { id: 'user-location' }, geometry: { type: 'Point', coordinates: [point.lng, point.lat] } }],
   }
 }
 
@@ -109,6 +117,11 @@ function setGeoJson(map: MapLibre | null, sourceId: string, data: FeatureCollect
   return true
 }
 
+function isInsidePaddedNewham(point: { lat: number; lng: number }) {
+  const b = paddedBounds(0.1)
+  return point.lat >= b.south && point.lat <= b.north && point.lng >= b.west && point.lng <= b.east
+}
+
 export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
@@ -124,22 +137,52 @@ export default function MapView({ posts }: { posts: Post[] }) {
   const [refreshFlag, setRefreshFlag] = useState(0)
   const [mapReady, setMapReady] = useState(false)
   const [mapStatus, setMapStatus] = useState('Loading businesses…')
+  const [userPoint, setUserPoint] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationStatus, setLocationStatus] = useState('')
 
   const liveOfferBusinessIds = useMemo(() => getOfferBusinessIds(posts), [posts])
   const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson), [businessesGeoJson])
   const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter), [enrichedBusinesses, filter, liveOfferBusinessIds])
   const visibleParking = filter === 'parking' || filter === 'all' ? parking : []
 
-  function applyMapData(nextBusinesses = visibleBusinesses, nextParking = visibleParking) {
+  function applyMapData(nextBusinesses = visibleBusinesses, nextParking = visibleParking, nextUserPoint = userPoint) {
     const map = mapRef.current
     if (!map) return
     const pushedBusinesses = setGeoJson(map, 'businesses', nextBusinesses)
+    const pushedDots = setGeoJson(map, 'business-dots', nextBusinesses)
     const pushedParking = setGeoJson(map, 'parking', parkingData(nextParking) as FeatureCollection)
-    if (pushedBusinesses) setMapStatus(`${nextBusinesses.features.length.toLocaleString()} businesses loaded`)
-    if (!pushedBusinesses && mapReady) setMapStatus('Map source not ready yet')
+    setGeoJson(map, 'user-location', userLocationData(nextUserPoint))
+    if (pushedBusinesses || pushedDots) setMapStatus(`${nextBusinesses.features.length.toLocaleString()} businesses loaded`)
+    if (!pushedBusinesses && !pushedDots && mapReady) setMapStatus('Map source not ready yet')
     if (!pushedParking && mapReady) {
       // Blue Badge table can be empty; no user-facing warning needed.
     }
+  }
+
+  function requestUserLocation() {
+    if (!navigator.geolocation) {
+      setLocationStatus('Location not supported on this browser')
+      return
+    }
+    setLocationStatus('Finding your location…')
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const point = { lat: position.coords.latitude, lng: position.coords.longitude }
+        setUserPoint(point)
+        setLocationStatus('')
+        requestAnimationFrame(() => {
+          applyMapData(visibleBusinesses, visibleParking, point)
+          const map = mapRef.current
+          if (map && isInsidePaddedNewham(point)) map.easeTo({ center: [point.lng, point.lat], zoom: 15 })
+          if (map && !isInsidePaddedNewham(point)) {
+            setLocationStatus('You are outside Newham — showing Newham map')
+            map.easeTo({ center: [NEWHAM_CENTER.lng, NEWHAM_CENTER.lat], zoom: 12.5 })
+          }
+        })
+      },
+      error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied' : 'Could not get location'),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    )
   }
 
   useEffect(() => {
@@ -148,12 +191,12 @@ export default function MapView({ posts }: { posts: Post[] }) {
       businessesGeoJsonRef.current = enriched
       setBusinessesGeoJson(enriched)
       setMapStatus(`${enriched.features.length.toLocaleString()} businesses loaded`)
-      requestAnimationFrame(() => applyMapData(enriched, parkingRef.current))
+      requestAnimationFrame(() => applyMapData(enriched, parkingRef.current, userPoint))
     }).catch(() => setMapStatus('Could not load businesses'))
     loadParkingPoints('blue_badge').then(data => {
       parkingRef.current = data
       setParking(data)
-      requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, data))
+      requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, data, userPoint))
     })
     getCurrentRole().then(setRole)
   }, [refreshFlag])
@@ -181,6 +224,9 @@ export default function MapView({ posts }: { posts: Post[] }) {
       map.addSource('newham-mask', { type: 'geojson', data: maskFromBoundary(boundary) as any })
       map.addLayer({ id: 'newham-mask-fill', type: 'fill', source: 'newham-mask', paint: { 'fill-color': '#000000', 'fill-opacity': 0.55 } })
 
+      map.addSource('business-dots', { type: 'geojson', data: businessesGeoJsonRef.current as any })
+      map.addLayer({ id: 'business-visible-dots', type: 'circle', source: 'business-dots', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 5], 'circle-color': '#0F6E6B', 'circle-opacity': 0.76, 'circle-stroke-width': 1.4, 'circle-stroke-color': '#ffffff' } })
+
       map.addSource('businesses', {
         type: 'geojson',
         data: businessesGeoJsonRef.current as any,
@@ -194,8 +240,13 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
       map.addSource('parking', { type: 'geojson', data: parkingData(parkingRef.current) as any })
       map.addLayer({ id: 'blue-badge-pins', type: 'symbol', source: 'parking', layout: { 'icon-image': 'bb-icon', 'icon-size': 0.62, 'icon-allow-overlap': true } })
+
+      map.addSource('user-location', { type: 'geojson', data: userLocationData(userPoint) as any })
+      map.addLayer({ id: 'user-location-pulse', type: 'circle', source: 'user-location', paint: { 'circle-radius': 18, 'circle-color': '#2D6CDF', 'circle-opacity': 0.2 } })
+      map.addLayer({ id: 'user-location-dot', type: 'circle', source: 'user-location', paint: { 'circle-radius': 7, 'circle-color': '#2D6CDF', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } })
+
       setMapReady(true)
-      requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, parkingRef.current))
+      requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, parkingRef.current, userPoint))
 
       map.on('click', 'business-clusters', async e => {
         const features = map.queryRenderedFeatures(e.point, { layers: ['business-clusters'] })
@@ -212,6 +263,12 @@ export default function MapView({ posts }: { posts: Post[] }) {
       })
 
       map.on('click', 'business-pins', async e => {
+        const id = String(e.features?.[0]?.properties?.id || '')
+        if (!id) return
+        const business = await fetchBusinessById(id)
+        if (business) setSelected(business)
+      })
+      map.on('click', 'business-visible-dots', async e => {
         const id = String(e.features?.[0]?.properties?.id || '')
         if (!id) return
         const business = await fetchBusinessById(id)
@@ -237,7 +294,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
       map.on('touchend', () => { if (holdTimer.current) window.clearTimeout(holdTimer.current) })
       map.on('touchmove', () => { if (holdTimer.current) window.clearTimeout(holdTimer.current) })
 
-      ;['business-clusters', 'business-pins', 'blue-badge-pins'].forEach(layer => {
+      ;['business-clusters', 'business-pins', 'business-visible-dots', 'blue-badge-pins'].forEach(layer => {
         map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
         map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
       })
@@ -247,8 +304,8 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
   useEffect(() => {
     if (!mapReady) return
-    applyMapData(visibleBusinesses, visibleParking)
-  }, [mapReady, visibleBusinesses, visibleParking])
+    applyMapData(visibleBusinesses, visibleParking, userPoint)
+  }, [mapReady, visibleBusinesses, visibleParking, userPoint])
 
   const chips: Array<{ key: LayerFilter; label: string }> = [
     { key: 'all', label: 'All' }, { key: 'food', label: 'Food' }, { key: 'shops', label: 'Shops' }, { key: 'services', label: 'Services' }, { key: 'offers', label: 'Offers 🔥' }, { key: 'jobs', label: 'Jobs' }, { key: 'community', label: 'Free meals' }, { key: 'parking', label: 'Blue Badge' },
@@ -259,6 +316,8 @@ export default function MapView({ posts }: { posts: Post[] }) {
       <div className="map-search"><strong>Search HiStreets…</strong></div>
       <div className="chip-row map-chips">{chips.map(c => <button key={c.key} className={filter === c.key ? 'active' : ''} onClick={() => setFilter(c.key)}>{c.label}</button>)}</div>
       <div className="map-debug-pill">{mapStatus}</div>
+      <button className="locate-button" onClick={requestUserLocation} aria-label="Use my location"><LocateFixed size={17} /> Near me</button>
+      {locationStatus && <div className="location-status">{locationStatus}</div>}
       <div ref={nodeRef} className="map-canvas" />
       <button className="fab" aria-label="Post"><Layers size={20} />＋ Post</button>
       {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button>{'kind' in selected ? <ParkingDetail item={selected} /> : <BusinessDetail business={selected} posts={posts.filter(p => p.business_id === selected.id)} />}</div>}

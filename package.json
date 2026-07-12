@@ -11,6 +11,7 @@
     "seed:boundary": "tsx scripts/import-newham-boundary.ts",
     "seed:osm-businesses": "tsx scripts/seed-osm-businesses.ts",
     "seed:overture-places": "tsx scripts/import-overture-places.ts",
+    "seed:one-go": "bash scripts/histreets-one-go.sh",
     "seed:phase0": "npm run seed:boundary && npm run seed:osm-businesses"
   },
   "dependencies": {

@@ -231,7 +231,10 @@ end $$;
 
 grant execute on function public.add_blue_badge_bay(double precision,double precision,text,text,text) to authenticated;
 
-create or replace view public.blue_badge_bays_public with (security_invoker=true) as
+-- Drop/recreate because old versions of this view used different column names
+-- (for example side_of_road). CREATE OR REPLACE VIEW cannot rename columns.
+drop view if exists public.blue_badge_bays_public cascade;
+create view public.blue_badge_bays_public with (security_invoker=true) as
 select id,
        st_y(geom) as lat,
        st_x(geom) as lng,

@@ -6,8 +6,18 @@ export const NEWHAM_BOUNDS = {
 }
 
 export const NEWHAM_CENTER = { lat: 51.537, lng: 0.0325 }
-export const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
-export const CPZ_ARCGIS_URL = 'https://mapping.newham.gov.uk/ArcGIS/rest/services/CPZ/MapServer/0/query?where=1=1&outFields=*&f=geojson'
+export const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron'
+
+export function paddedBounds(paddingRatio = 0.1) {
+  const latPad = (NEWHAM_BOUNDS.north - NEWHAM_BOUNDS.south) * paddingRatio
+  const lngPad = (NEWHAM_BOUNDS.east - NEWHAM_BOUNDS.west) * paddingRatio
+  return {
+    south: NEWHAM_BOUNDS.south - latPad,
+    west: NEWHAM_BOUNDS.west - lngPad,
+    north: NEWHAM_BOUNDS.north + latPad,
+    east: NEWHAM_BOUNDS.east + lngPad,
+  }
+}
 
 export function inNewham(lat?: number | null, lng?: number | null) {
   if (typeof lat !== 'number' || typeof lng !== 'number') return false
@@ -19,7 +29,7 @@ export function clampToNewham(point: { lat: number; lng: number }) {
 }
 
 export function directionsUrl(lat: number, lng: number) {
-  return `https://www.openstreetmap.org/directions?to=${lat}%2C${lng}`
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
 }
 
 export function distanceLabel(lat?: number | null, lng?: number | null) {

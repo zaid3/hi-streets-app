@@ -9,6 +9,8 @@ type LayerFilter = 'all' | 'food' | 'shops' | 'services' | 'offers' | 'jobs' | '
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 type PendingBay = { lat: number; lng: number } | null
 
+const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
+
 function pointFeature(item: ParkingPoint, properties: Record<string, unknown>) {
   return { type: 'Feature' as const, properties, geometry: { type: 'Point' as const, coordinates: [item.lng, item.lat] } }
 }
@@ -73,23 +75,10 @@ function maskFromBoundary(boundary: FeatureCollection): FeatureCollection {
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [world[0], ...holes] } }] }
 }
 
-function filteredBusinessGeoJson(data: FeatureCollection, filter: LayerFilter, offerIds: Set<string>): FeatureCollection {
-  if (filter === 'all') return data
-  if (filter === 'jobs' || filter === 'community' || filter === 'parking') return { type: 'FeatureCollection', features: [] }
-  return {
-    type: 'FeatureCollection',
-    features: data.features.filter(feature => {
-      const props = feature.properties || {}
-      if (filter === 'offers') return Boolean(props.has_offer)
-      return categoryGroup(String(props.category || '')) === filter
-    }),
-  }
-}
-
 function enrichBusinessGeoJson(data: FeatureCollection): FeatureCollection {
   return {
-    ...data,
-    features: data.features.map(feature => ({
+    type: 'FeatureCollection',
+    features: (data.features || []).filter(feature => feature?.geometry).map(feature => ({
       ...feature,
       properties: {
         ...(feature.properties || {}),
@@ -100,34 +89,74 @@ function enrichBusinessGeoJson(data: FeatureCollection): FeatureCollection {
   }
 }
 
-function setGeoJson(map: MapLibre | null, sourceId: string, data: unknown) {
+function filteredBusinessGeoJson(data: FeatureCollection, filter: LayerFilter): FeatureCollection {
+  if (filter === 'all') return data
+  if (filter === 'jobs' || filter === 'community' || filter === 'parking') return EMPTY_FC
+  return {
+    type: 'FeatureCollection',
+    features: data.features.filter(feature => {
+      const props = feature.properties || {}
+      if (filter === 'offers') return Boolean(props.has_offer)
+      return categoryGroup(String(props.category || props.category_group || '')) === filter || props.category_group === filter
+    }),
+  }
+}
+
+function setGeoJson(map: MapLibre | null, sourceId: string, data: FeatureCollection) {
   const source = map?.getSource(sourceId) as maplibregl.GeoJSONSource | undefined
-  source?.setData(data as any)
+  if (!source) return false
+  source.setData(data as any)
+  return true
 }
 
 export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
-  const businessesGeoJsonRef = useRef<FeatureCollection>({ type: 'FeatureCollection', features: [] })
+  const businessesGeoJsonRef = useRef<FeatureCollection>(EMPTY_FC)
   const parkingRef = useRef<ParkingPoint[]>([])
   const holdTimer = useRef<number | null>(null)
-  const [businessesGeoJson, setBusinessesGeoJson] = useState<FeatureCollection>({ type: 'FeatureCollection', features: [] })
+  const [businessesGeoJson, setBusinessesGeoJson] = useState<FeatureCollection>(EMPTY_FC)
   const [parking, setParking] = useState<ParkingPoint[]>([])
   const [selected, setSelected] = useState<Business | ParkingPoint | null>(null)
   const [filter, setFilter] = useState<LayerFilter>('all')
   const [role, setRole] = useState<Role | null>(null)
   const [pendingBay, setPendingBay] = useState<PendingBay>(null)
   const [refreshFlag, setRefreshFlag] = useState(0)
-
-  useEffect(() => {
-    loadBusinessesGeoJson().then(data => { businessesGeoJsonRef.current = data; setBusinessesGeoJson(data) })
-    loadParkingPoints('blue_badge').then(data => { parkingRef.current = data; setParking(data) })
-    getCurrentRole().then(setRole)
-  }, [refreshFlag])
+  const [mapReady, setMapReady] = useState(false)
+  const [mapStatus, setMapStatus] = useState('Loading businesses…')
 
   const liveOfferBusinessIds = useMemo(() => getOfferBusinessIds(posts), [posts])
-  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(businessesGeoJson, filter, liveOfferBusinessIds), [businessesGeoJson, filter, liveOfferBusinessIds])
+  const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson), [businessesGeoJson])
+  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter), [enrichedBusinesses, filter, liveOfferBusinessIds])
   const visibleParking = filter === 'parking' || filter === 'all' ? parking : []
+
+  function applyMapData(nextBusinesses = visibleBusinesses, nextParking = visibleParking) {
+    const map = mapRef.current
+    if (!map) return
+    const pushedBusinesses = setGeoJson(map, 'businesses', nextBusinesses)
+    const pushedParking = setGeoJson(map, 'parking', parkingData(nextParking) as FeatureCollection)
+    if (pushedBusinesses) setMapStatus(`${nextBusinesses.features.length.toLocaleString()} businesses loaded`)
+    if (!pushedBusinesses && mapReady) setMapStatus('Map source not ready yet')
+    if (!pushedParking && mapReady) {
+      // Blue Badge table can be empty; no user-facing warning needed.
+    }
+  }
+
+  useEffect(() => {
+    loadBusinessesGeoJson().then(data => {
+      const enriched = enrichBusinessGeoJson(data)
+      businessesGeoJsonRef.current = enriched
+      setBusinessesGeoJson(enriched)
+      setMapStatus(`${enriched.features.length.toLocaleString()} businesses loaded`)
+      requestAnimationFrame(() => applyMapData(enriched, parkingRef.current))
+    }).catch(() => setMapStatus('Could not load businesses'))
+    loadParkingPoints('blue_badge').then(data => {
+      parkingRef.current = data
+      setParking(data)
+      requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, data))
+    })
+    getCurrentRole().then(setRole)
+  }, [refreshFlag])
 
   useEffect(() => {
     if (!nodeRef.current || mapRef.current) return
@@ -154,7 +183,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
       map.addSource('businesses', {
         type: 'geojson',
-        data: enrichBusinessGeoJson(businessesGeoJsonRef.current) as any,
+        data: businessesGeoJsonRef.current as any,
         cluster: true,
         clusterMaxZoom: 15,
         clusterRadius: 50,
@@ -165,6 +194,8 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
       map.addSource('parking', { type: 'geojson', data: parkingData(parkingRef.current) as any })
       map.addLayer({ id: 'blue-badge-pins', type: 'symbol', source: 'parking', layout: { 'icon-image': 'bb-icon', 'icon-size': 0.62, 'icon-allow-overlap': true } })
+      setMapReady(true)
+      requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, parkingRef.current))
 
       map.on('click', 'business-clusters', async e => {
         const features = map.queryRenderedFeatures(e.point, { layers: ['business-clusters'] })
@@ -215,19 +246,9 @@ export default function MapView({ posts }: { posts: Post[] }) {
   }, [role])
 
   useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-
-    const apply = () => {
-      if (!map.getSource('businesses')) return
-      setGeoJson(map, 'businesses', enrichBusinessGeoJson(visibleBusinesses))
-      setGeoJson(map, 'parking', parkingData(visibleParking))
-    }
-
-    apply()
-    map.once('idle', apply)
-    return () => { map.off('idle', apply) }
-  }, [visibleBusinesses, visibleParking])
+    if (!mapReady) return
+    applyMapData(visibleBusinesses, visibleParking)
+  }, [mapReady, visibleBusinesses, visibleParking])
 
   const chips: Array<{ key: LayerFilter; label: string }> = [
     { key: 'all', label: 'All' }, { key: 'food', label: 'Food' }, { key: 'shops', label: 'Shops' }, { key: 'services', label: 'Services' }, { key: 'offers', label: 'Offers 🔥' }, { key: 'jobs', label: 'Jobs' }, { key: 'community', label: 'Free meals' }, { key: 'parking', label: 'Blue Badge' },
@@ -237,6 +258,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
     <section className="map-screen">
       <div className="map-search"><strong>Search HiStreets…</strong></div>
       <div className="chip-row map-chips">{chips.map(c => <button key={c.key} className={filter === c.key ? 'active' : ''} onClick={() => setFilter(c.key)}>{c.label}</button>)}</div>
+      <div className="map-debug-pill">{mapStatus}</div>
       <div ref={nodeRef} className="map-canvas" />
       <button className="fab" aria-label="Post"><Layers size={20} />＋ Post</button>
       {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button>{'kind' in selected ? <ParkingDetail item={selected} /> : <BusinessDetail business={selected} posts={posts.filter(p => p.business_id === selected.id)} />}</div>}

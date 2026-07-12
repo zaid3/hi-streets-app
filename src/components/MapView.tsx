@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
-import { Accessibility, Layers, LocateFixed, Tag } from 'lucide-react'
+import { Accessibility, Layers, LocateFixed } from 'lucide-react'
 import { directionsUrl, MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER, paddedBounds } from '../lib/newham'
 import { createBlueBadgeBay, fetchBusinessById, getCurrentRole, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson, loadParkingPoints } from '../lib/data'
 import type { Business, ParkingPoint, Post, Role } from '../types'
+import BusinessDetailSheet from './BusinessDetailSheet'
 
 type LayerFilter = 'all' | 'food' | 'shops' | 'services' | 'offers' | 'jobs' | 'community' | 'parking'
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
@@ -320,14 +321,10 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
       {locationStatus && <div className="location-status">{locationStatus}</div>}
       <div ref={nodeRef} className="map-canvas" />
       <button className="fab" aria-label="Post" onClick={onOpenPostForm}><Layers size={20} />＋ Post</button>
-      {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button>{'kind' in selected ? <ParkingDetail item={selected} /> : <BusinessDetail business={selected} posts={posts.filter(p => p.business_id === selected.id)} />}</div>}
+      {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button>{'kind' in selected ? <ParkingDetail item={selected} /> : <BusinessDetailSheet business={selected} posts={posts.filter(p => p.business_id === selected.id)} />}</div>}
       {pendingBay && <BayForm point={pendingBay} onClose={() => setPendingBay(null)} onSaved={() => { setPendingBay(null); setRefreshFlag(v => v + 1) }} />}
     </section>
   )
-}
-
-function BusinessDetail({ business, posts }: { business: Business; posts: Post[] }) {
-  return <><div className="sheet-handle" /><h2>{business.name}</h2><p className="muted">{business.category} · {business.address || 'Newham'}</p>{posts.filter(p => p.type === 'offer').map(p => <article className="mini-card" key={p.id}><Tag size={16} /> <strong>{p.title}</strong><span>{p.body}</span></article>)}<div className="sheet-actions"><a href={directionsUrl(business.lat, business.lng)} target="_blank" rel="noreferrer">Open in Google Maps</a><button>Claim this business</button></div></>
 }
 
 function ParkingDetail({ item }: { item: ParkingPoint }) {

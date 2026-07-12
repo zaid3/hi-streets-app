@@ -10,6 +10,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "seed:boundary": "tsx scripts/import-newham-boundary.ts",
     "seed:osm-businesses": "tsx scripts/seed-osm-businesses.ts",
+    "seed:overture-places": "tsx scripts/import-overture-places.ts",
     "seed:phase0": "npm run seed:boundary && npm run seed:osm-businesses"
   },
   "dependencies": {

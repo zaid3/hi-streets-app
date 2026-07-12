@@ -37,25 +37,15 @@ export interface Post {
   business?: Business | null
 }
 
-export interface CpzZoneProperties {
-  id?: string
-  name?: string
-  hours?: Record<string, unknown> | null
-  source?: string
-  last_verified_at?: string | null
-  [key: string]: unknown
-}
-
 export interface ParkingPoint {
   id: string
-  kind: 'paid_bay' | 'blue_badge'
+  kind: 'blue_badge'
   name: string
   lat: number
   lng: number
+  road_name?: string | null
+  notes?: string | null
+  photo_url?: string | null
   source: string
   last_verified_at?: string | null
-  tariff?: Record<string, unknown> | null
-  max_stay_mins?: number | null
-  paybyphone_code?: string | null
-  confidence?: 'official' | 'verified'
 }

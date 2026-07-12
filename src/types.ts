@@ -28,6 +28,7 @@ export interface Post {
   category?: string | null
   starts_at?: string | null
   expires_at: string
+  recurrence?: string | null
   apply_url?: string | null
   apply_phone?: string | null
   status: 'pending' | 'live' | 'expired' | 'rejected' | 'removed'

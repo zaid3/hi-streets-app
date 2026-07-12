@@ -1,6 +1,7 @@
 export type TabKey = 'map' | 'offers' | 'jobs' | 'community' | 'profile'
 export type PostType = 'offer' | 'job' | 'free_meal' | 'community'
 export type Role = 'user' | 'business' | 'charity' | 'admin'
+export type ClaimMethod = 'phone_otp' | 'domain_email' | 'website_code' | 'document'
 
 export interface Business {
   id: string
@@ -12,11 +13,40 @@ export interface Business {
   phone?: string | null
   website?: string | null
   whatsapp?: string | null
+  email?: string | null
+  opening_hours?: string | null
+  opening_hours_json?: Record<string, unknown> | null
+  cuisine?: string | null
+  wheelchair?: string | null
+  brand?: string | null
+  operator?: string | null
   lat: number
   lng: number
-  verification_status?: 'unclaimed' | 'pending' | 'verified' | 'rejected'
+  verification_status?: 'unclaimed' | 'pending' | 'verified' | 'contested' | 'revoked' | 'rejected'
+  verified_at?: string | null
+  verified_via?: string | null
+  is_claimed?: boolean | null
   photo_url?: string | null
   source?: string
+  fsa_fhrsid?: string | null
+  fsa_rating?: number | null
+  fsa_rating_date?: string | null
+  fsa_match_confidence?: number | null
+  companies_house_number?: string | null
+  incorporation_date?: string | null
+  company_status?: string | null
+}
+
+export interface BusinessClaimOption {
+  id: string
+  name: string
+  category: string
+  address?: string | null
+  can_phone_otp: boolean
+  can_website_code: boolean
+  website_domain?: string | null
+  verification_status: Business['verification_status']
+  is_claimed: boolean
 }
 
 export interface Post {

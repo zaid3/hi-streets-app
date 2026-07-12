@@ -152,15 +152,18 @@ export default function MapView({ posts }: { posts: Post[] }) {
       map.addSource('parking', { type: 'geojson', data: parkingData(parkingRef.current) as any })
       map.addLayer({ id: 'blue-badge-pins', type: 'symbol', source: 'parking', layout: { 'icon-image': 'bb-icon', 'icon-size': 0.62, 'icon-allow-overlap': true } })
 
-      map.on('click', 'business-clusters', e => {
+      map.on('click', 'business-clusters', async e => {
         const features = map.queryRenderedFeatures(e.point, { layers: ['business-clusters'] })
         const clusterId = features[0]?.properties?.cluster_id
         const source = map.getSource('businesses') as maplibregl.GeoJSONSource
-        if (typeof clusterId !== 'number') return
-        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err || typeof zoom !== 'number') return
-          map.easeTo({ center: (features[0].geometry as any).coordinates, zoom })
-        })
+        const coordinates = (features[0]?.geometry as any)?.coordinates
+        if (typeof clusterId !== 'number' || !coordinates) return
+        try {
+          const zoom = await source.getClusterExpansionZoom(clusterId)
+          if (typeof zoom === 'number') map.easeTo({ center: coordinates, zoom })
+        } catch {
+          // Keep cluster clicks non-fatal if MapLibre cannot resolve expansion zoom.
+        }
       })
 
       map.on('click', 'business-pins', async e => {

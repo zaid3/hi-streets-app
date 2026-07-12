@@ -52,6 +52,12 @@ function listingStatus(business: Business) {
   return 'Unclaimed listing'
 }
 
+function categoryLabel(category?: string | null) {
+  if (!category) return 'Local business'
+  const c = category.replace(/_/g, ' ').trim()
+  return c ? c.charAt(0).toUpperCase() + c.slice(1) : 'Local business'
+}
+
 export default function BusinessDetailSheet({ business, posts }: { business: Business; posts: Post[] }) {
   const [claimOption, setClaimOption] = useState<BusinessClaimOption | null>(null)
   const [claimLoaded, setClaimLoaded] = useState(false)
@@ -96,7 +102,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
 
       <header className="business-hero">
         <div>
-          <p className="eyebrow">{business.category || 'Local business'}</p>
+          <p className="eyebrow">{categoryLabel(business.category)}</p>
           <h2>{business.name}</h2>
           <div className="listing-meta-row">
             <span className={isVerified ? 'status-pill verified' : 'status-pill'}>{isVerified && <BadgeCheck size={14} />} {listingStatus(business)}</span>
@@ -126,24 +132,25 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
         </div>
       )}
 
-      <section className="business-facts">
-        {business.address && <p><MapPin size={16} /> <span>{business.address}</span></p>}
-        {business.opening_hours && <p><ShieldCheck size={16} /> <span>Opening hours: {business.opening_hours}</span></p>}
-        {business.phone && <p><Phone size={16} /> <a href={`tel:${business.phone}`}>{business.phone}</a></p>}
+      <section className="business-facts" aria-label="Business information">
+        <h3>Contact & visit</h3>
+        {business.address ? <p><MapPin size={16} /> <span>{business.address}</span></p> : <p><MapPin size={16} /> <span>Address not available yet</span></p>}
+        {business.opening_hours ? <p><ShieldCheck size={16} /> <span>Opening hours: {business.opening_hours}</span></p> : <p><ShieldCheck size={16} /> <span>Opening hours not available yet</span></p>}
+        {business.phone ? <p><Phone size={16} /> <a href={`tel:${business.phone}`}>{business.phone}</a></p> : <p><Phone size={16} /> <span>Phone not available yet</span></p>}
         {business.email && <p><Mail size={16} /> <a href={`mailto:${business.email}`}>{business.email}</a></p>}
-        {website && <p><Globe size={16} /> <a href={website} target="_blank" rel="noreferrer">Website</a></p>}
+        {website ? <p><Globe size={16} /> <a href={website} target="_blank" rel="noreferrer">Website</a></p> : <p><Globe size={16} /> <span>Website not available yet</span></p>}
       </section>
-
-      <div className="listing-chip-row">
-        {business.cuisine && <span className="listing-chip">{business.cuisine}</span>}
-        {business.brand && <span className="listing-chip">{business.brand}</span>}
-        {fsaBadge(business)}
-      </div>
 
       <div className="sheet-actions primary-actions">
         <a href={directionsUrl(business.lat, business.lng)} target="_blank" rel="noreferrer">Directions</a>
         {business.phone && <a href={`tel:${business.phone}`}>Call</a>}
         {website && <a href={website} target="_blank" rel="noreferrer">Website</a>}
+      </div>
+
+      <div className="listing-chip-row">
+        {business.cuisine && <span className="listing-chip">{business.cuisine}</span>}
+        {business.brand && <span className="listing-chip">{business.brand}</span>}
+        {fsaBadge(business)}
       </div>
 
       {missing.length > 0 && <p className="missing-note">Missing: {missing.join(', ')}. The verified owner can complete these details after claiming the listing.</p>}

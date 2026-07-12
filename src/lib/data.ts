@@ -21,6 +21,24 @@ export async function loadBusinesses(): Promise<Business[]> {
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
 }
 
+export async function loadMyVerifiedBusinesses(): Promise<Business[]> {
+  if (!supabaseConfigured || !supabase) return []
+  const { data: userData } = await supabase.auth.getUser()
+  const user = userData.user
+  if (!user) return []
+  const role = await getCurrentRole()
+  let query = supabase
+    .from('businesses')
+    .select('id,osm_id,name,category,description,address,phone,website,whatsapp,verification_status,photo_url,source,lat,lng')
+    .eq('verification_status', 'verified')
+    .order('name', { ascending: true })
+    .limit(100)
+  if (role !== 'admin') query = query.eq('claimed_by', user.id)
+  const { data, error } = await query
+  if (error || !data) return []
+  return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
+}
+
 export async function loadBusinessesGeoJson(): Promise<FeatureCollection> {
   if (!supabaseConfigured || !supabase) return { type: 'FeatureCollection', features: [] }
   const { data, error } = await supabase.rpc('businesses_geojson')

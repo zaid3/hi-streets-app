@@ -9,6 +9,7 @@ import BusinessDetailSheet from './BusinessDetailSheet'
 type LayerFilter = 'all' | 'food' | 'shops' | 'services' | 'offers' | 'jobs' | 'community' | 'parking'
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 type PendingBay = { lat: number; lng: number } | null
+type BusinessPostKinds = Record<string, { offer: boolean; job: boolean; community: boolean }>
 
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
 
@@ -31,10 +32,16 @@ function userLocationData(point: { lat: number; lng: number } | null): FeatureCo
   }
 }
 
-function getOfferBusinessIds(posts: Post[]): Set<string> {
-  const ids = new Set<string>()
-  for (const post of posts) if (post.type === 'offer' && typeof post.business_id === 'string') ids.add(post.business_id)
-  return ids
+function getBusinessPostKinds(posts: Post[]): BusinessPostKinds {
+  const kinds: BusinessPostKinds = {}
+  for (const post of posts) {
+    if (typeof post.business_id !== 'string') continue
+    kinds[post.business_id] ||= { offer: false, job: false, community: false }
+    if (post.type === 'offer') kinds[post.business_id].offer = true
+    if (post.type === 'job') kinds[post.business_id].job = true
+    if (post.type === 'free_meal' || post.type === 'community') kinds[post.business_id].community = true
+  }
+  return kinds
 }
 
 function categoryGroup(category?: string) {
@@ -68,6 +75,9 @@ async function addCategoryImages(map: MapLibre) {
     addImage(map, 'cat-service', svgIcon('£', '#0F6E6B')),
     addImage(map, 'cat-health', svgIcon('+', '#2E9E5B')),
     addImage(map, 'cat-default', svgIcon('•', '#1A1A1A')),
+    addImage(map, 'offer-icon', svgIcon('%', '#F2762E')),
+    addImage(map, 'job-icon', svgIcon('J', '#2D6CDF')),
+    addImage(map, 'community-icon', svgIcon('❤', '#2E9E5B')),
     addImage(map, 'bb-icon', svgIcon('♿', '#2D6CDF')),
   ])
 }
@@ -84,28 +94,42 @@ function maskFromBoundary(boundary: FeatureCollection): FeatureCollection {
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [world[0], ...holes] } }] }
 }
 
-function enrichBusinessGeoJson(data: FeatureCollection): FeatureCollection {
+function enrichBusinessGeoJson(data: FeatureCollection, postKinds: BusinessPostKinds = {}): FeatureCollection {
   return {
     type: 'FeatureCollection',
-    features: (data.features || []).filter(feature => feature?.geometry).map(feature => ({
-      ...feature,
-      properties: {
-        ...(feature.properties || {}),
-        category_group: feature.properties?.category_group || categoryGroup(feature.properties?.category),
-        has_offer: Boolean(feature.properties?.has_offer),
-      },
-    })),
+    features: (data.features || []).filter(feature => feature?.geometry).map(feature => {
+      const props = feature.properties || {}
+      const id = String(props.id || feature.id || '')
+      const kinds = postKinds[id] || { offer: false, job: false, community: false }
+      const hasOffer = Boolean(props.has_offer) || kinds.offer
+      const hasJob = Boolean(props.has_job) || kinds.job
+      const hasCommunity = Boolean(props.has_community) || kinds.community
+      const primaryKind = hasOffer ? 'offer' : hasJob ? 'job' : hasCommunity ? 'community' : ''
+      return {
+        ...feature,
+        properties: {
+          ...props,
+          category_group: props.category_group || categoryGroup(props.category),
+          has_offer: hasOffer,
+          has_job: hasJob,
+          has_community: hasCommunity,
+          primary_kind: primaryKind,
+        },
+      }
+    }),
   }
 }
 
 function filteredBusinessGeoJson(data: FeatureCollection, filter: LayerFilter): FeatureCollection {
   if (filter === 'all') return data
-  if (filter === 'jobs' || filter === 'community' || filter === 'parking') return EMPTY_FC
+  if (filter === 'parking') return EMPTY_FC
   return {
     type: 'FeatureCollection',
     features: data.features.filter(feature => {
       const props = feature.properties || {}
       if (filter === 'offers') return Boolean(props.has_offer)
+      if (filter === 'jobs') return Boolean(props.has_job)
+      if (filter === 'community') return Boolean(props.has_community)
       return categoryGroup(String(props.category || props.category_group || '')) === filter || props.category_group === filter
     }),
   }
@@ -141,9 +165,9 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
   const [userPoint, setUserPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState('')
 
-  const liveOfferBusinessIds = useMemo(() => getOfferBusinessIds(posts), [posts])
-  const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson), [businessesGeoJson])
-  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter), [enrichedBusinesses, filter, liveOfferBusinessIds])
+  const businessPostKinds = useMemo(() => getBusinessPostKinds(posts), [posts])
+  const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
+  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter), [enrichedBusinesses, filter])
   const visibleParking = filter === 'parking' || filter === 'all' ? parking : []
 
   function applyMapData(nextBusinesses = visibleBusinesses, nextParking = visibleParking, nextUserPoint = userPoint) {
@@ -188,9 +212,9 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
 
   useEffect(() => {
     loadBusinessesGeoJson().then(data => {
-      const enriched = enrichBusinessGeoJson(data)
+      const enriched = enrichBusinessGeoJson(data, businessPostKinds)
       businessesGeoJsonRef.current = enriched
-      setBusinessesGeoJson(enriched)
+      setBusinessesGeoJson(data)
       setMapStatus(`${enriched.features.length.toLocaleString()} businesses loaded`)
       requestAnimationFrame(() => applyMapData(enriched, parkingRef.current, userPoint))
     }).catch(() => setMapStatus('Could not load businesses'))
@@ -200,7 +224,11 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
       requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, data, userPoint))
     })
     getCurrentRole().then(setRole)
-  }, [refreshFlag])
+  }, [refreshFlag, businessPostKinds])
+
+  useEffect(() => {
+    businessesGeoJsonRef.current = enrichedBusinesses
+  }, [enrichedBusinesses])
 
   useEffect(() => {
     if (!nodeRef.current || mapRef.current) return
@@ -226,7 +254,7 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
       map.addLayer({ id: 'newham-mask-fill', type: 'fill', source: 'newham-mask', paint: { 'fill-color': '#000000', 'fill-opacity': 0.55 } })
 
       map.addSource('business-dots', { type: 'geojson', data: businessesGeoJsonRef.current as any })
-      map.addLayer({ id: 'business-visible-dots', type: 'circle', source: 'business-dots', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 5], 'circle-color': '#0F6E6B', 'circle-opacity': 0.76, 'circle-stroke-width': 1.4, 'circle-stroke-color': '#ffffff' } })
+      map.addLayer({ id: 'business-visible-dots', type: 'circle', source: 'business-dots', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 5], 'circle-color': ['case', ['get', 'has_offer'], '#F2762E', ['get', 'has_job'], '#2D6CDF', ['get', 'has_community'], '#2E9E5B', '#0F6E6B'], 'circle-opacity': 0.76, 'circle-stroke-width': 1.4, 'circle-stroke-color': '#ffffff' } })
 
       map.addSource('businesses', {
         type: 'geojson',
@@ -238,6 +266,7 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
       map.addLayer({ id: 'business-clusters', type: 'circle', source: 'businesses', filter: ['has', 'point_count'], paint: { 'circle-color': '#0F6E6B', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28, 200, 34] } })
       map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'businesses', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 }, paint: { 'text-color': '#ffffff' } })
       map.addLayer({ id: 'business-pins', type: 'symbol', source: 'businesses', filter: ['!', ['has', 'point_count']], layout: { 'icon-image': ['match', ['get', 'category_group'], 'food', 'cat-food', 'shop', 'cat-shop', 'service', 'cat-service', 'health', 'cat-health', 'cat-default'], 'icon-size': 0.58, 'icon-allow-overlap': false } })
+      map.addLayer({ id: 'business-action-badges', type: 'symbol', source: 'businesses', filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'primary_kind'], '']], layout: { 'icon-image': ['match', ['get', 'primary_kind'], 'offer', 'offer-icon', 'job', 'job-icon', 'community', 'community-icon', 'offer-icon'], 'icon-size': 0.42, 'icon-offset': [18, -18], 'icon-allow-overlap': true } })
 
       map.addSource('parking', { type: 'geojson', data: parkingData(parkingRef.current) as any })
       map.addLayer({ id: 'blue-badge-pins', type: 'symbol', source: 'parking', layout: { 'icon-image': 'bb-icon', 'icon-size': 0.62, 'icon-allow-overlap': true } })
@@ -263,18 +292,16 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
         }
       })
 
-      map.on('click', 'business-pins', async e => {
+      async function openBusinessFromMap(e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) {
         const id = String(e.features?.[0]?.properties?.id || '')
         if (!id) return
         const business = await fetchBusinessById(id)
         if (business) setSelected(business)
-      })
-      map.on('click', 'business-visible-dots', async e => {
-        const id = String(e.features?.[0]?.properties?.id || '')
-        if (!id) return
-        const business = await fetchBusinessById(id)
-        if (business) setSelected(business)
-      })
+      }
+
+      map.on('click', 'business-pins', openBusinessFromMap)
+      map.on('click', 'business-action-badges', openBusinessFromMap)
+      map.on('click', 'business-visible-dots', openBusinessFromMap)
 
       map.on('click', 'blue-badge-pins', e => {
         const id = String(e.features?.[0]?.properties?.id || '')
@@ -295,7 +322,7 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
       map.on('touchend', () => { if (holdTimer.current) window.clearTimeout(holdTimer.current) })
       map.on('touchmove', () => { if (holdTimer.current) window.clearTimeout(holdTimer.current) })
 
-      ;['business-clusters', 'business-pins', 'business-visible-dots', 'blue-badge-pins'].forEach(layer => {
+      ;['business-clusters', 'business-pins', 'business-action-badges', 'business-visible-dots', 'blue-badge-pins'].forEach(layer => {
         map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
         map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
       })

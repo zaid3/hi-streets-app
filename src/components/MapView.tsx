@@ -86,6 +86,20 @@ function filteredBusinessGeoJson(data: FeatureCollection, filter: LayerFilter, o
   }
 }
 
+function enrichBusinessGeoJson(data: FeatureCollection): FeatureCollection {
+  return {
+    ...data,
+    features: data.features.map(feature => ({
+      ...feature,
+      properties: {
+        ...(feature.properties || {}),
+        category_group: feature.properties?.category_group || categoryGroup(feature.properties?.category),
+        has_offer: Boolean(feature.properties?.has_offer),
+      },
+    })),
+  }
+}
+
 function setGeoJson(map: MapLibre | null, sourceId: string, data: unknown) {
   const source = map?.getSource(sourceId) as maplibregl.GeoJSONSource | undefined
   source?.setData(data as any)
@@ -140,7 +154,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
       map.addSource('businesses', {
         type: 'geojson',
-        data: businessesGeoJsonRef.current as any,
+        data: enrichBusinessGeoJson(businessesGeoJsonRef.current) as any,
         cluster: true,
         clusterMaxZoom: 15,
         clusterRadius: 50,
@@ -202,10 +216,17 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map?.isStyleLoaded()) return
-    const enriched = { ...visibleBusinesses, features: visibleBusinesses.features.map(feature => ({ ...feature, properties: { ...(feature.properties || {}), category_group: categoryGroup(feature.properties?.category), has_offer: Boolean(feature.properties?.has_offer) } })) }
-    setGeoJson(map, 'businesses', enriched)
-    setGeoJson(map, 'parking', parkingData(visibleParking))
+    if (!map) return
+
+    const apply = () => {
+      if (!map.getSource('businesses')) return
+      setGeoJson(map, 'businesses', enrichBusinessGeoJson(visibleBusinesses))
+      setGeoJson(map, 'parking', parkingData(visibleParking))
+    }
+
+    apply()
+    map.once('idle', apply)
+    return () => { map.off('idle', apply) }
   }, [visibleBusinesses, visibleParking])
 
   const chips: Array<{ key: LayerFilter; label: string }> = [

@@ -1,33 +1,88 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
-import { Layers, Tag } from 'lucide-react'
-import { directionsUrl, MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER } from '../lib/newham'
-import { loadBusinesses, loadCpzGeoJson, loadParkingPoints } from '../lib/data'
-import type { Business, ParkingPoint, Post } from '../types'
+import { Accessibility, Layers, Tag } from 'lucide-react'
+import { directionsUrl, MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER, paddedBounds } from '../lib/newham'
+import { createBlueBadgeBay, fetchBusinessById, getCurrentRole, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson, loadParkingPoints } from '../lib/data'
+import type { Business, ParkingPoint, Post, Role } from '../types'
 
 type LayerFilter = 'all' | 'food' | 'shops' | 'services' | 'offers' | 'jobs' | 'community' | 'parking'
+type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
+type PendingBay = { lat: number; lng: number } | null
 
-function businessColour(category: string) {
-  if (/restaurant|cafe|food|fast/i.test(category)) return '#F2762E'
-  if (/service|office|solicitor|account/i.test(category)) return '#0F6E6B'
-  return '#2D6CDF'
-}
-
-function pointFeature(item: Business | ParkingPoint, properties: Record<string, unknown>) {
+function pointFeature(item: ParkingPoint, properties: Record<string, unknown>) {
   return { type: 'Feature' as const, properties, geometry: { type: 'Point' as const, coordinates: [item.lng, item.lat] } }
-}
-
-function businessData(items: Business[], offerIds: Set<string>) {
-  return {
-    type: 'FeatureCollection' as const,
-    features: items.map(item => pointFeature(item, { id: item.id, name: item.name, category: item.category, colour: businessColour(item.category), hasOffer: offerIds.has(item.id) })),
-  }
 }
 
 function parkingData(items: ParkingPoint[]) {
   return {
     type: 'FeatureCollection' as const,
-    features: items.map(item => pointFeature(item, { id: item.id, kind: item.kind, name: item.name })),
+    features: items.map(item => pointFeature(item, { id: item.id, kind: item.kind, name: item.name, road_name: item.road_name, photo_url: item.photo_url })),
+  }
+}
+
+function getOfferBusinessIds(posts: Post[]): Set<string> {
+  const ids = new Set<string>()
+  for (const post of posts) if (post.type === 'offer' && typeof post.business_id === 'string') ids.add(post.business_id)
+  return ids
+}
+
+function categoryGroup(category?: string) {
+  const c = (category || '').toLowerCase()
+  if (/restaurant|cafe|fast_food|food|bar|pub|bakery|takeaway/.test(c)) return 'food'
+  if (/shop|retail|supermarket|grocery|clothes|hairdresser|beauty/.test(c)) return 'shop'
+  if (/pharmacy|clinic|dentist|doctors|hospital|health/.test(c)) return 'health'
+  if (/office|service|solicitor|account|bank|library|community/.test(c)) return 'service'
+  return 'default'
+}
+
+function svgIcon(label: string, fill: string) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="${fill}" stroke="white" stroke-width="6"/><text x="32" y="39" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="white">${label}</text></svg>`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
+function addImage(map: MapLibre, id: string, src: string) {
+  return new Promise<void>((resolve, reject) => {
+    if (map.hasImage(id)) return resolve()
+    const image = new Image(64, 64)
+    image.onload = () => { map.addImage(id, image); resolve() }
+    image.onerror = () => reject(new Error(`Could not load ${id}`))
+    image.src = src
+  })
+}
+
+async function addCategoryImages(map: MapLibre) {
+  await Promise.all([
+    addImage(map, 'cat-food', svgIcon('F', '#F2762E')),
+    addImage(map, 'cat-shop', svgIcon('S', '#2D6CDF')),
+    addImage(map, 'cat-service', svgIcon('£', '#0F6E6B')),
+    addImage(map, 'cat-health', svgIcon('+', '#2E9E5B')),
+    addImage(map, 'cat-default', svgIcon('•', '#1A1A1A')),
+    addImage(map, 'bb-icon', svgIcon('♿', '#2D6CDF')),
+  ])
+}
+
+function maskFromBoundary(boundary: FeatureCollection): FeatureCollection {
+  const holes: number[][][] = []
+  for (const feature of boundary.features || []) {
+    const geom = feature.geometry
+    if (geom?.type === 'Polygon') holes.push(...geom.coordinates.slice(0, 1))
+    if (geom?.type === 'MultiPolygon') for (const poly of geom.coordinates) holes.push(poly[0])
+  }
+  if (!holes.length) return { type: 'FeatureCollection', features: [] }
+  const world = [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]]
+  return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [world[0], ...holes] } }] }
+}
+
+function filteredBusinessGeoJson(data: FeatureCollection, filter: LayerFilter, offerIds: Set<string>): FeatureCollection {
+  if (filter === 'all') return data
+  if (filter === 'jobs' || filter === 'community' || filter === 'parking') return { type: 'FeatureCollection', features: [] }
+  return {
+    type: 'FeatureCollection',
+    features: data.features.filter(feature => {
+      const props = feature.properties || {}
+      if (filter === 'offers') return Boolean(props.has_offer)
+      return categoryGroup(String(props.category || '')) === filter
+    }),
   }
 }
 
@@ -36,47 +91,33 @@ function setGeoJson(map: MapLibre | null, sourceId: string, data: unknown) {
   source?.setData(data as any)
 }
 
-function getOfferBusinessIds(posts: Post[]): Set<string> {
-  const ids = new Set<string>()
-  for (const post of posts) {
-    if (post.type === 'offer' && typeof post.business_id === 'string') ids.add(post.business_id)
-  }
-  return ids
-}
-
 export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
-  const businessesRef = useRef<Business[]>([])
+  const businessesGeoJsonRef = useRef<FeatureCollection>({ type: 'FeatureCollection', features: [] })
   const parkingRef = useRef<ParkingPoint[]>([])
-  const offerIdsRef = useRef<Set<string>>(new Set())
-  const [businesses, setBusinesses] = useState<Business[]>([])
+  const holdTimer = useRef<number | null>(null)
+  const [businessesGeoJson, setBusinessesGeoJson] = useState<FeatureCollection>({ type: 'FeatureCollection', features: [] })
   const [parking, setParking] = useState<ParkingPoint[]>([])
   const [selected, setSelected] = useState<Business | ParkingPoint | null>(null)
   const [filter, setFilter] = useState<LayerFilter>('all')
+  const [role, setRole] = useState<Role | null>(null)
+  const [pendingBay, setPendingBay] = useState<PendingBay>(null)
+  const [refreshFlag, setRefreshFlag] = useState(0)
 
   useEffect(() => {
-    loadBusinesses().then(setBusinesses)
-    loadParkingPoints('all').then(setParking)
-  }, [])
-  useEffect(() => { businessesRef.current = businesses }, [businesses])
-  useEffect(() => { parkingRef.current = parking }, [parking])
+    loadBusinessesGeoJson().then(data => { businessesGeoJsonRef.current = data; setBusinessesGeoJson(data) })
+    loadParkingPoints('blue_badge').then(data => { parkingRef.current = data; setParking(data) })
+    getCurrentRole().then(setRole)
+  }, [refreshFlag])
 
   const liveOfferBusinessIds = useMemo(() => getOfferBusinessIds(posts), [posts])
-  useEffect(() => { offerIdsRef.current = liveOfferBusinessIds }, [liveOfferBusinessIds])
-  const filteredBusinesses = businesses.filter(b => {
-    if (filter === 'offers') return liveOfferBusinessIds.has(b.id)
-    if (filter === 'food') return /restaurant|cafe|food|fast/i.test(b.category)
-    if (filter === 'shops') return /shop|retail|grocery|supermarket/i.test(b.category)
-    if (filter === 'services') return /service|office|solicitor|account|bank|pharmacy/i.test(b.category)
-    if (['jobs', 'community', 'parking'].includes(filter)) return false
-    return true
-  })
+  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(businessesGeoJson, filter, liveOfferBusinessIds), [businessesGeoJson, filter, liveOfferBusinessIds])
   const visibleParking = filter === 'parking' || filter === 'all' ? parking : []
 
   useEffect(() => {
     if (!nodeRef.current || mapRef.current) return
-    const b = NEWHAM_BOUNDS
+    const b = paddedBounds(0.1)
     const map = new maplibregl.Map({
       container: nodeRef.current,
       style: MAP_STYLE_URL,
@@ -84,53 +125,88 @@ export default function MapView({ posts }: { posts: Post[] }) {
       zoom: 12.3,
       minZoom: 11.5,
       maxZoom: 19,
-      maxBounds: [[b.west - 0.01, b.south - 0.01], [b.east + 0.01, b.north + 0.01]],
+      maxBounds: [[b.west, b.south], [b.east, b.north]],
       attributionControl: { compact: true },
     })
     mapRef.current = map
-    map.on('load', async () => {
-      map.fitBounds([[b.west, b.south], [b.east, b.north]], { padding: 34, duration: 0 })
-      const cpz = await loadCpzGeoJson()
-      map.addSource('cpz', { type: 'geojson', data: cpz as any })
-      map.addLayer({ id: 'cpz-fill', type: 'fill', source: 'cpz', paint: { 'fill-color': '#0F6E6B', 'fill-opacity': 0.12 } })
-      map.addLayer({ id: 'cpz-line', type: 'line', source: 'cpz', paint: { 'line-color': '#0F6E6B', 'line-width': 1.5, 'line-opacity': 0.72 } })
-      map.addLayer({ id: 'cpz-label', type: 'symbol', source: 'cpz', minzoom: 12, layout: { 'text-field': ['coalesce', ['get', 'name'], ['get', 'zone'], 'CPZ'], 'text-size': 12 }, paint: { 'text-color': '#0F6E6B', 'text-halo-color': '#fff', 'text-halo-width': 2 } })
 
-      map.addSource('businesses', { type: 'geojson', data: businessData(businessesRef.current, offerIdsRef.current) as any })
-      map.addLayer({ id: 'business-pins', type: 'circle', source: 'businesses', paint: { 'circle-radius': ['case', ['get', 'hasOffer'], 9, 7], 'circle-color': ['get', 'colour'], 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
-      map.addLayer({ id: 'offer-pulse', type: 'circle', source: 'businesses', filter: ['==', ['get', 'hasOffer'], true], paint: { 'circle-radius': 15, 'circle-color': '#F2762E', 'circle-opacity': 0.22 } })
+    map.on('load', async () => {
+      map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 26, duration: 0 })
+      await addCategoryImages(map)
+
+      const boundary = await loadNewhamBoundaryGeoJson()
+      map.addSource('newham-mask', { type: 'geojson', data: maskFromBoundary(boundary) as any })
+      map.addLayer({ id: 'newham-mask-fill', type: 'fill', source: 'newham-mask', paint: { 'fill-color': '#000000', 'fill-opacity': 0.55 } })
+
+      map.addSource('businesses', {
+        type: 'geojson',
+        data: businessesGeoJsonRef.current as any,
+        cluster: true,
+        clusterMaxZoom: 15,
+        clusterRadius: 50,
+      })
+      map.addLayer({ id: 'business-clusters', type: 'circle', source: 'businesses', filter: ['has', 'point_count'], paint: { 'circle-color': '#0F6E6B', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28, 200, 34] } })
+      map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'businesses', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 }, paint: { 'text-color': '#ffffff' } })
+      map.addLayer({ id: 'business-pins', type: 'symbol', source: 'businesses', filter: ['!', ['has', 'point_count']], layout: { 'icon-image': ['match', ['get', 'category_group'], 'food', 'cat-food', 'shop', 'cat-shop', 'service', 'cat-service', 'health', 'cat-health', 'cat-default'], 'icon-size': 0.58, 'icon-allow-overlap': false } })
 
       map.addSource('parking', { type: 'geojson', data: parkingData(parkingRef.current) as any })
-      map.addLayer({ id: 'parking-pins', type: 'circle', source: 'parking', paint: { 'circle-radius': 8, 'circle-color': ['case', ['==', ['get', 'kind'], 'blue_badge'], '#8E44AD', '#2D6CDF'], 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
-      map.addLayer({ id: 'parking-labels', type: 'symbol', source: 'parking', layout: { 'text-field': ['case', ['==', ['get', 'kind'], 'blue_badge'], 'BB', '£'], 'text-size': 11, 'text-allow-overlap': true }, paint: { 'text-color': '#fff' } })
+      map.addLayer({ id: 'blue-badge-pins', type: 'symbol', source: 'parking', layout: { 'icon-image': 'bb-icon', 'icon-size': 0.62, 'icon-allow-overlap': true } })
 
-      map.on('click', 'business-pins', e => {
-        const id = e.features?.[0]?.properties?.id
-        const item = businessesRef.current.find(biz => biz.id === id)
-        if (item) setSelected(item)
+      map.on('click', 'business-clusters', e => {
+        const features = map.queryRenderedFeatures(e.point, { layers: ['business-clusters'] })
+        const clusterId = features[0]?.properties?.cluster_id
+        const source = map.getSource('businesses') as maplibregl.GeoJSONSource
+        if (typeof clusterId !== 'number') return
+        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+          if (err || typeof zoom !== 'number') return
+          map.easeTo({ center: (features[0].geometry as any).coordinates, zoom })
+        })
       })
-      map.on('click', 'parking-pins', e => {
-        const id = e.features?.[0]?.properties?.id
+
+      map.on('click', 'business-pins', async e => {
+        const id = String(e.features?.[0]?.properties?.id || '')
+        if (!id) return
+        const business = await fetchBusinessById(id)
+        if (business) setSelected(business)
+      })
+
+      map.on('click', 'blue-badge-pins', e => {
+        const id = String(e.features?.[0]?.properties?.id || '')
         const item = parkingRef.current.find(p => p.id === id)
         if (item) setSelected(item)
       })
-      ;['business-pins', 'parking-pins'].forEach(layer => {
+
+      map.on('contextmenu', e => {
+        if (role !== 'admin') return
+        e.preventDefault()
+        setPendingBay({ lng: e.lngLat.lng, lat: e.lngLat.lat })
+      })
+
+      map.on('touchstart', e => {
+        if (role !== 'admin' || !e.lngLat) return
+        holdTimer.current = window.setTimeout(() => setPendingBay({ lng: e.lngLat.lng, lat: e.lngLat.lat }), 650)
+      })
+      map.on('touchend', () => { if (holdTimer.current) window.clearTimeout(holdTimer.current) })
+      map.on('touchmove', () => { if (holdTimer.current) window.clearTimeout(holdTimer.current) })
+
+      ;['business-clusters', 'business-pins', 'blue-badge-pins'].forEach(layer => {
         map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
         map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
       })
     })
     return () => { mapRef.current = null; map.remove() }
-  }, [])
+  }, [role])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map?.isStyleLoaded()) return
-    setGeoJson(map, 'businesses', businessData(filteredBusinesses, liveOfferBusinessIds))
+    const enriched = { ...visibleBusinesses, features: visibleBusinesses.features.map(feature => ({ ...feature, properties: { ...(feature.properties || {}), category_group: categoryGroup(feature.properties?.category), has_offer: Boolean(feature.properties?.has_offer) } })) }
+    setGeoJson(map, 'businesses', enriched)
     setGeoJson(map, 'parking', parkingData(visibleParking))
-  }, [filteredBusinesses, visibleParking, liveOfferBusinessIds])
+  }, [visibleBusinesses, visibleParking])
 
   const chips: Array<{ key: LayerFilter; label: string }> = [
-    { key: 'all', label: 'All' }, { key: 'food', label: 'Food' }, { key: 'shops', label: 'Shops' }, { key: 'services', label: 'Services' }, { key: 'offers', label: 'Offers 🔥' }, { key: 'jobs', label: 'Jobs' }, { key: 'community', label: 'Free meals' }, { key: 'parking', label: 'Parking' },
+    { key: 'all', label: 'All' }, { key: 'food', label: 'Food' }, { key: 'shops', label: 'Shops' }, { key: 'services', label: 'Services' }, { key: 'offers', label: 'Offers 🔥' }, { key: 'jobs', label: 'Jobs' }, { key: 'community', label: 'Free meals' }, { key: 'parking', label: 'Blue Badge' },
   ]
 
   return (
@@ -140,14 +216,34 @@ export default function MapView({ posts }: { posts: Post[] }) {
       <div ref={nodeRef} className="map-canvas" />
       <button className="fab" aria-label="Post"><Layers size={20} />＋ Post</button>
       {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button>{'kind' in selected ? <ParkingDetail item={selected} /> : <BusinessDetail business={selected} posts={posts.filter(p => p.business_id === selected.id)} />}</div>}
+      {pendingBay && <BayForm point={pendingBay} onClose={() => setPendingBay(null)} onSaved={() => { setPendingBay(null); setRefreshFlag(v => v + 1) }} />}
     </section>
   )
 }
 
 function BusinessDetail({ business, posts }: { business: Business; posts: Post[] }) {
-  return <><div className="sheet-handle" /><h2>{business.name}</h2><p className="muted">{business.category} · {business.address || 'Newham'}</p>{posts.filter(p => p.type === 'offer').map(p => <article className="mini-card" key={p.id}><Tag size={16} /> <strong>{p.title}</strong><span>{p.body}</span></article>)}<div className="sheet-actions"><a href={directionsUrl(business.lat, business.lng)} target="_blank" rel="noreferrer">Directions</a><button>Claim this business</button></div></>
+  return <><div className="sheet-handle" /><h2>{business.name}</h2><p className="muted">{business.category} · {business.address || 'Newham'}</p>{posts.filter(p => p.type === 'offer').map(p => <article className="mini-card" key={p.id}><Tag size={16} /> <strong>{p.title}</strong><span>{p.body}</span></article>)}<div className="sheet-actions"><a href={directionsUrl(business.lat, business.lng)} target="_blank" rel="noreferrer">Open in Google Maps</a><button>Claim this business</button></div></>
 }
 
 function ParkingDetail({ item }: { item: ParkingPoint }) {
-  return <><div className="sheet-handle" /><h2>{item.kind === 'blue_badge' ? 'Blue Badge bay' : 'Paid bay'}</h2><p className="muted">{item.name}</p>{item.kind === 'paid_bay' && <p>PayByPhone: <strong>{item.paybyphone_code || 'Check sign'}</strong><br />Max stay: <strong>{item.max_stay_mins ? `${item.max_stay_mins} mins` : 'Check sign'}</strong></p>}<p className="trust">Source: {item.source}. Last verified: {item.last_verified_at ? new Date(item.last_verified_at).toLocaleDateString() : 'not recorded'}.</p><a href={directionsUrl(item.lat, item.lng)} target="_blank" rel="noreferrer">Directions</a></>
+  return <><div className="sheet-handle" /><h2><Accessibility size={20} /> Blue Badge bay</h2><p className="muted">{item.road_name || item.name}</p>{item.photo_url && <img className="bay-photo" src={item.photo_url} alt="Blue Badge bay evidence" />}{item.notes && <p>{item.notes}</p>}<p className="trust">Community verified · {item.last_verified_at ? new Date(item.last_verified_at).toLocaleDateString() : 'not recorded'}.</p><a href={directionsUrl(item.lat, item.lng)} target="_blank" rel="noreferrer">Open in Google Maps</a></>
+}
+
+function BayForm({ point, onClose, onSaved }: { point: { lat: number; lng: number }; onClose: () => void; onSaved: () => void }) {
+  const [road, setRoad] = useState('')
+  const [notes, setNotes] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [status, setStatus] = useState('')
+  async function submit() {
+    try {
+      setStatus('Saving…')
+      if (!file) throw new Error('Photo is required')
+      await createBlueBadgeBay({ lat: point.lat, lng: point.lng, road_name: road, notes, file })
+      setStatus('Saved')
+      onSaved()
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Could not save bay')
+    }
+  }
+  return <div className="bottom-sheet"><button className="sheet-close" onClick={onClose}>×</button><div className="sheet-handle" /><h2>Add Blue Badge bay</h2><p className="muted">Admin only · photo required · community verified</p><label>Road name<input value={road} onChange={e => setRoad(e.target.value)} placeholder="e.g. High Street North" /></label><label>Notes<textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Bay sign details, side of road, nearby shop…" /></label><label>Photo<input type="file" accept="image/*" required onChange={e => setFile(e.target.files?.[0] || null)} /></label><button onClick={submit} disabled={!road.trim() || !file}>Save bay</button>{status && <p className="form-status">{status}</p>}</div>
 }

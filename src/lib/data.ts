@@ -1,8 +1,11 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
-import type { Business, ParkingPoint, Post, Role } from '../types'
+import type { Business, BusinessClaimOption, ClaimMethod, ParkingPoint, Post, Role } from '../types'
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
+
+const businessSelect = 'id,osm_id,name,category,description,address,phone,website,whatsapp,email,opening_hours,opening_hours_json,cuisine,wheelchair,brand,operator,verification_status,verified_at,verified_via,is_claimed,photo_url,source,lat,lng,fsa_fhrsid,fsa_rating,fsa_rating_date,fsa_match_confidence,companies_house_number,incorporation_date,company_status'
+const ownBusinessSelect = 'id,osm_id,name,category,description,address,phone,website,whatsapp,email,opening_hours,opening_hours_json,cuisine,wheelchair,brand,operator,verification_status,verified_at,verified_via,photo_url,source,lat,lng,fsa_fhrsid,fsa_rating,fsa_rating_date,fsa_match_confidence,companies_house_number,incorporation_date,company_status'
 
 export const emptyStateText = {
   offers: 'No live offers yet — know of one? Tell us.',
@@ -15,7 +18,7 @@ export async function loadBusinesses(): Promise<Business[]> {
   if (!supabaseConfigured || !supabase) return []
   const { data, error } = await supabase
     .from('businesses_public')
-    .select('id,osm_id,name,category,description,address,phone,website,whatsapp,verification_status,photo_url,source,lat,lng')
+    .select(businessSelect)
     .limit(500)
   if (error || !data) return []
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
@@ -29,7 +32,7 @@ export async function loadMyVerifiedBusinesses(): Promise<Business[]> {
   const role = await getCurrentRole()
   let query = supabase
     .from('businesses')
-    .select('id,osm_id,name,category,description,address,phone,website,whatsapp,verification_status,photo_url,source,lat,lng')
+    .select(ownBusinessSelect)
     .eq('verification_status', 'verified')
     .order('name', { ascending: true })
     .limit(100)
@@ -57,11 +60,34 @@ export async function fetchBusinessById(id: string): Promise<Business | null> {
   if (!supabaseConfigured || !supabase) return null
   const { data, error } = await supabase
     .from('businesses_public')
-    .select('id,osm_id,name,category,description,address,phone,website,whatsapp,verification_status,photo_url,source,lat,lng')
+    .select(businessSelect)
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
   return data as Business
+}
+
+export async function fetchBusinessClaimOption(id: string): Promise<BusinessClaimOption | null> {
+  if (!supabaseConfigured || !supabase) return null
+  const { data, error } = await supabase
+    .from('business_claim_options_public')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as BusinessClaimOption
+}
+
+export async function startBusinessClaim(businessId: string, method: ClaimMethod): Promise<string> {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) throw new Error('Sign in first')
+  const { data, error } = await supabase.rpc('start_business_claim', {
+    p_business_id: businessId,
+    p_method: method,
+  })
+  if (error) throw error
+  return String(data)
 }
 
 export async function getCurrentRole(): Promise<Role | null> {
@@ -92,6 +118,7 @@ export async function loadPosts(type?: Post['type']): Promise<Post[]> {
     category: row.category,
     starts_at: row.starts_at,
     expires_at: row.expires_at,
+    recurrence: row.recurrence,
     apply_url: row.apply_url,
     apply_phone: row.apply_phone,
     status: row.status,

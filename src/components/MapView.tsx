@@ -6,11 +6,11 @@ import { createBlueBadgeBay, fetchBusinessById, getCurrentRole, loadBusinessesGe
 import type { Business, ParkingPoint, Post, Role } from '../types'
 import BusinessDetailSheet from './BusinessDetailSheet'
 
-type LayerFilter = 'all' | 'food' | 'grocery' | 'shops' | 'beauty' | 'health' | 'professional' | 'services' | 'offers' | 'jobs' | 'community' | 'parking'
+type LayerFilter = 'all' | 'food' | 'grocery' | 'shops' | 'beauty' | 'health' | 'professional' | 'services' | 'community' | 'parking'
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 type PendingBay = { lat: number; lng: number } | null
 type BusinessPostKinds = Record<string, { offer: boolean; job: boolean; community: boolean }>
-type CategoryInfo = { group: string; marker: string; label: string; icon: string }
+type CategoryInfo = { group: string; marker: string; label: string; icon: string; aliases: string }
 
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
 
@@ -50,6 +50,21 @@ const markerDefinitions: Array<{ id: string; label: string; color: string }> = [
   { id: 'default', label: '•', color: '#1A1A1A' },
 ]
 
+const categoryOptions: Array<{ key: LayerFilter; label: string }> = [
+  { key: 'all', label: 'All categories' },
+  { key: 'food', label: 'Restaurants & takeaway' },
+  { key: 'grocery', label: 'Grocery & convenience' },
+  { key: 'shops', label: 'Retail shops' },
+  { key: 'beauty', label: 'Beauty & barbers' },
+  { key: 'health', label: 'Health, pharmacy & dental' },
+  { key: 'professional', label: 'Accountants, solicitors & estate agents' },
+  { key: 'services', label: 'Mechanics, repair, laundry & services' },
+]
+
+function info(group: string, marker: string, label: string, icon: string, aliases: string): CategoryInfo {
+  return { group, marker, label, icon, aliases }
+}
+
 function pointFeature(item: ParkingPoint, properties: Record<string, unknown>) {
   return { type: 'Feature' as const, properties, geometry: { type: 'Point' as const, coordinates: [item.lng, item.lat] } }
 }
@@ -84,45 +99,47 @@ function getBusinessPostKinds(posts: Post[]): BusinessPostKinds {
 function categoryInfo(category?: string, name?: string): CategoryInfo {
   const text = `${category || ''} ${name || ''}`.toLowerCase()
 
-  if (/takeaway|fast_food|chicken|pizza|kebab|fish.?and.?chips|burger|fried/.test(text)) return { group: 'food', marker: 'takeaway', label: 'Takeaway', icon: '🥡' }
-  if (/restaurant|food|bar|pub|diner|grill|bistro/.test(text)) return { group: 'food', marker: 'restaurant', label: 'Restaurant', icon: '🍽' }
-  if (/cafe|coffee|tea|espresso/.test(text)) return { group: 'food', marker: 'cafe', label: 'Cafe', icon: '☕' }
-  if (/bakery|cake|dessert|sweet|patisserie/.test(text)) return { group: 'food', marker: 'bakery', label: 'Bakery', icon: '🥐' }
+  if (/mcdonald|kfc|burger king|subway|domino|pizza hut|nando|popeyes|chicken cottage|dixy|takeaway|fast.?food|chicken|pizza|kebab|fish.?and.?chips|burger|fried/.test(text)) return info('food', 'takeaway', 'Takeaway / fast food', '🥡', 'takeaway fast food chicken pizza kebab burger halal food restaurant eat')
+  if (/costa|starbucks|nero|pret|cafe|coffee|tea|espresso/.test(text)) return info('food', 'cafe', 'Cafe', '☕', 'cafe coffee tea breakfast')
+  if (/greggs|bakery|cake|dessert|sweet|patisserie/.test(text)) return info('food', 'bakery', 'Bakery', '🥐', 'bakery cake dessert pastry sweet')
+  if (/restaurant|food|bar|pub|diner|grill|bistro/.test(text)) return info('food', 'restaurant', 'Restaurant', '🍽', 'restaurant food dinner lunch halal eat')
 
-  if (/butcher|meat|halal meat/.test(text)) return { group: 'grocery', marker: 'butcher', label: 'Butcher', icon: '🥩' }
-  if (/greengrocer|fruit|vegetable/.test(text)) return { group: 'grocery', marker: 'grocery', label: 'Greengrocer', icon: '🥬' }
-  if (/supermarket|grocery|convenience|off.?licen[cs]e|mini.?market|market|food store/.test(text)) return { group: 'grocery', marker: 'grocery', label: 'Grocery', icon: '🛒' }
+  if (/butcher|meat|halal meat/.test(text)) return info('grocery', 'butcher', 'Butcher', '🥩', 'butcher meat halal meat')
+  if (/greengrocer|fruit|vegetable/.test(text)) return info('grocery', 'grocery', 'Greengrocer', '🥬', 'fruit vegetable grocery')
+  if (/tesco|sainsbury|asda|lidl|aldi|iceland|coop|co-op|morrisons|supermarket|grocery|convenience|off.?licen[cs]e|mini.?market|market|food store/.test(text)) return info('grocery', 'grocery', 'Grocery', '🛒', 'grocery supermarket convenience off licence mini market food store')
 
-  if (/tailor|tailoring|alteration|sewing|dressmaker/.test(text)) return { group: 'shop', marker: 'tailor', label: 'Tailoring', icon: '🧵' }
-  if (/clothes|fashion|boutique|wear|apparel|shoe/.test(text)) return { group: 'shop', marker: 'fashion', label: 'Fashion', icon: '👕' }
-  if (/mobile|phone|electronics|computer|laptop|gadget/.test(text)) return { group: 'shop', marker: 'electronics', label: 'Electronics', icon: '📱' }
-  if (/furniture|sofa|bed|home|carpet|curtain/.test(text)) return { group: 'shop', marker: 'furniture', label: 'Home & furniture', icon: '🛋' }
-  if (/jeweller|jewelry|jewellery|gold|watch/.test(text)) return { group: 'shop', marker: 'jewellery', label: 'Jewellery', icon: '💎' }
-  if (/florist|flower/.test(text)) return { group: 'shop', marker: 'florist', label: 'Florist', icon: '🌸' }
-  if (/hardware|diy|tool|paint/.test(text)) return { group: 'shop', marker: 'hardware', label: 'Hardware', icon: '🔩' }
-  if (/shop|retail|store/.test(text)) return { group: 'shop', marker: 'retail', label: 'Retail', icon: '🛍' }
+  if (/tailor|tailoring|alteration|sewing|dressmaker/.test(text)) return info('shop', 'tailor', 'Tailoring', '🧵', 'tailor tailoring alteration sewing dressmaker clothes repair')
+  if (/clothes|fashion|boutique|wear|apparel|shoe/.test(text)) return info('shop', 'fashion', 'Fashion', '👕', 'clothes fashion shoes boutique retail')
+  if (/mobile|phone|electronics|computer|laptop|gadget/.test(text)) return info('shop', 'electronics', 'Mobile & electronics', '📱', 'mobile phone electronics computer laptop repair')
+  if (/furniture|sofa|bed|home|carpet|curtain/.test(text)) return info('shop', 'furniture', 'Home & furniture', '🛋', 'furniture home sofa bed carpet curtain')
+  if (/jeweller|jewelry|jewellery|gold|watch/.test(text)) return info('shop', 'jewellery', 'Jewellery', '💎', 'jewellery gold watch')
+  if (/florist|flower/.test(text)) return info('shop', 'florist', 'Florist', '🌸', 'florist flower')
+  if (/hardware|diy|tool|paint/.test(text)) return info('shop', 'hardware', 'Hardware', '🔩', 'hardware diy tools paint')
+  if (/shop|retail|store/.test(text)) return info('shop', 'retail', 'Retail', '🛍', 'shop retail store')
 
-  if (/hairdresser|barber|beauty|nail|salon|spa|cosmetic|massage|laser|brow|lash/.test(text)) return { group: 'beauty', marker: 'beauty', label: 'Beauty / barber', icon: '✂' }
+  if (/hairdresser|barber|beauty|nail|salon|spa|cosmetic|massage|laser|brow|lash/.test(text)) return info('beauty', 'beauty', 'Beauty / barber', '✂', 'beauty barber hair nail salon spa massage')
 
-  if (/dentist|dental/.test(text)) return { group: 'health', marker: 'dentist', label: 'Dentist', icon: '🦷' }
-  if (/optician|optical|glasses|vision/.test(text)) return { group: 'health', marker: 'optician', label: 'Optician', icon: '👓' }
-  if (/pharmacy|chemist/.test(text)) return { group: 'health', marker: 'pharmacy', label: 'Pharmacy', icon: '⚕' }
-  if (/clinic|doctors|doctor|gp|hospital|health|medical|care|therapy|physio/.test(text)) return { group: 'health', marker: 'health', label: 'Health', icon: '✚' }
+  if (/dentist|dental/.test(text)) return info('health', 'dentist', 'Dentist', '🦷', 'dentist dental health')
+  if (/optician|optical|glasses|vision/.test(text)) return info('health', 'optician', 'Optician', '👓', 'optician glasses optical vision')
+  if (/boots|pharmacy|chemist/.test(text)) return info('health', 'pharmacy', 'Pharmacy', '⚕', 'pharmacy chemist medicine health')
+  if (/clinic|doctors|doctor|gp|hospital|health|medical|care|therapy|physio/.test(text)) return info('health', 'health', 'Health', '✚', 'health clinic doctor gp medical care')
 
-  if (/solicitor|lawyer|legal|law firm|immigration|notary/.test(text)) return { group: 'professional', marker: 'solicitor', label: 'Solicitor / legal', icon: '⚖' }
-  if (/accountant|accounting|tax|book.?keeping|payroll/.test(text)) return { group: 'professional', marker: 'accountant', label: 'Accountant', icon: '£' }
-  if (/estate agent|real estate|letting|property/.test(text)) return { group: 'professional', marker: 'estate', label: 'Estate agent', icon: '⌂' }
-  if (/bank|finance|financial|mortgage|insurance|money transfer|exchange/.test(text)) return { group: 'professional', marker: 'finance', label: 'Finance', icon: '£' }
+  if (/solicitor|lawyer|legal|law firm|immigration|notary/.test(text)) return info('professional', 'solicitor', 'Solicitor / legal', '⚖', 'solicitor lawyer legal immigration notary')
+  if (/accountant|accounting|tax|book.?keeping|payroll/.test(text)) return info('professional', 'accountant', 'Accountant', '£', 'accountant accounting tax bookkeeping payroll')
+  if (/estate agent|real estate|letting|property/.test(text)) return info('professional', 'estate', 'Estate agent', '⌂', 'estate agent letting property rent house')
+  if (/bank|finance|financial|mortgage|insurance|money transfer|exchange/.test(text)) return info('professional', 'finance', 'Finance', '£', 'bank finance financial mortgage insurance money transfer exchange')
 
-  if (/mechanic|garage|mot|car repair|vehicle|tyre|tire|auto|motorcycle|bike|car wash/.test(text)) return { group: 'service', marker: 'mechanic', label: 'Mechanic / vehicle', icon: '🔧' }
-  if (/laundry|launderette|dry.?clean|cleaner/.test(text)) return { group: 'service', marker: 'laundry', label: 'Laundry / cleaning', icon: '🧺' }
-  if (/repair|fix|maintenance|plumber|electrician/.test(text)) return { group: 'service', marker: 'repair', label: 'Repair service', icon: '🛠' }
-  if (/printing|print|copy|photocopy|sign/.test(text)) return { group: 'service', marker: 'printing', label: 'Printing', icon: '🖨' }
-  if (/post office|post|courier|parcel|delivery/.test(text)) return { group: 'service', marker: 'post', label: 'Post / parcel', icon: '📮' }
-  if (/school|college|education|tuition|training|academy|nursery/.test(text)) return { group: 'service', marker: 'education', label: 'Education', icon: '🎓' }
-  if (/charity|community|mosque|church|temple|support/.test(text)) return { group: 'service', marker: 'community-service', label: 'Community', icon: '🤝' }
-  if (/travel|agency|ticket|tour/.test(text)) return { group: 'service', marker: 'travel', label: 'Travel', icon: '✈' }
-  return { group: 'service', marker: 'service', label: 'Service', icon: '•' }
+  if (/mechanic|garage|mot|car repair|vehicle|tyre|tire|auto|motorcycle|bike|car wash/.test(text)) return info('service', 'mechanic', 'Mechanic / vehicle', '🔧', 'mechanic garage mot car repair vehicle tyre motorcycle bike car wash')
+  if (/laundry|launderette|dry.?clean|cleaner/.test(text)) return info('service', 'laundry', 'Laundry / cleaning', '🧺', 'laundry dry cleaning launderette cleaner')
+  if (/repair|fix|maintenance|plumber|electrician/.test(text)) return info('service', 'repair', 'Repair service', '🛠', 'repair fix maintenance plumber electrician')
+  if (/printing|print|copy|photocopy|sign/.test(text)) return info('service', 'printing', 'Printing', '🖨', 'printing photocopy sign copy')
+  if (/post office|post|courier|parcel|delivery/.test(text)) return info('service', 'post', 'Post / parcel', '📮', 'post office parcel courier delivery')
+  if (/travel|agency|ticket|tour/.test(text)) return info('service', 'travel', 'Travel', '✈', 'travel agency ticket tour')
+
+  if (/school|college|education|tuition|training|academy|nursery/.test(text)) return info('community_place', 'education', 'Education', '🎓', 'school college tuition education training academy nursery')
+  if (/church|mosque|temple|place.?of.?worship|charity|community|support/.test(text)) return info('community_place', 'community-service', 'Community place', '🤝', 'church mosque temple charity community support')
+
+  return info('other', 'default', 'Other', '•', 'local place')
 }
 
 function groupMatchesFilter(group: string, filter: LayerFilter) {
@@ -189,8 +206,10 @@ function enrichBusinessGeoJson(data: FeatureCollection, postKinds: BusinessPostK
     features: (data.features || []).filter(feature => feature?.geometry).map(feature => {
       const props = feature.properties || {}
       const id = String(props.id || feature.id || '')
+      const category = String(props.category || '')
+      const name = String(props.name || '')
       const kinds = postKinds[id] || { offer: false, job: false, community: false }
-      const info = categoryInfo(props.category, props.name)
+      const info = categoryInfo(category, name)
       const hasOffer = Boolean(props.has_offer) || kinds.offer
       const hasJob = Boolean(props.has_job) || kinds.job
       const hasCommunity = Boolean(props.has_community) || kinds.community
@@ -207,7 +226,7 @@ function enrichBusinessGeoJson(data: FeatureCollection, postKinds: BusinessPostK
           has_job: hasJob,
           has_community: hasCommunity,
           primary_kind: primaryKind,
-          searchable: `${props.name || ''} ${props.category || ''} ${info.group} ${info.label} ${info.marker} accountant solicitor takeaway restaurant grocery retail beauty health service mechanic tailoring laundry dentist optician estate agent bank school charity travel`.toLowerCase(),
+          searchable: `${name} ${category} ${info.group} ${info.label} ${info.marker} ${info.aliases}`.toLowerCase(),
         },
       }
     }),
@@ -225,8 +244,6 @@ function filteredBusinessGeoJson(data: FeatureCollection, filter: LayerFilter, q
       const matchesQuery = !q || String(props.searchable || '').includes(q)
       if (!matchesQuery) return false
       if (filter === 'all') return true
-      if (filter === 'offers') return Boolean(props.has_offer)
-      if (filter === 'jobs') return Boolean(props.has_job)
       if (filter === 'community') return Boolean(props.has_community)
       return groupMatchesFilter(group, filter)
     }),
@@ -281,6 +298,7 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
   const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
   const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter, searchTerm), [enrichedBusinesses, filter, searchTerm])
   const visibleParking = filter === 'parking' || filter === 'all' ? parking : []
+  const categorySelectValue = filter === 'parking' || filter === 'community' ? 'all' : filter
   const nearbyBusinesses = useMemo(() => {
     const copy = [...visibleBusinesses.features]
     copy.sort((a, b) => distanceScore(a, userPoint) - distanceScore(b, userPoint))
@@ -459,33 +477,24 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
     applyMapData(visibleBusinesses, visibleParking, userPoint)
   }, [mapReady, visibleBusinesses, visibleParking, userPoint])
 
-  const chips: Array<{ key: LayerFilter; label: string }> = [
-    { key: 'all', label: 'All' },
-    { key: 'food', label: 'Restaurants & takeaway' },
-    { key: 'grocery', label: 'Grocery' },
-    { key: 'shops', label: 'Retail' },
-    { key: 'beauty', label: 'Beauty' },
-    { key: 'health', label: 'Health' },
-    { key: 'professional', label: 'Accountants & Solicitors' },
-    { key: 'services', label: 'Services' },
-    { key: 'offers', label: 'Offers 🔥' },
-    { key: 'jobs', label: 'Jobs' },
-    { key: 'community', label: 'Free meals' },
-    { key: 'parking', label: 'Blue Badge' },
-  ]
-
   return (
     <section className="map-screen">
       <label className="map-search" aria-label="Search HiStreets">
         <Search size={18} />
-        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search mechanic, tailoring, solicitor, takeaway…" />
+        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search restaurant, mechanic, solicitor, tailoring…" />
       </label>
-      <div className="chip-row map-chips">{chips.map(c => <button key={c.key} className={filter === c.key ? 'active' : ''} onClick={() => setFilter(c.key)}>{c.label}</button>)}</div>
+      <div className="map-filterbar">
+        <select className="category-select" value={categorySelectValue} onChange={e => setFilter(e.target.value as LayerFilter)} aria-label="Filter by category">
+          {categoryOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+        </select>
+        <button className={filter === 'community' ? 'quick-filter active' : 'quick-filter'} onClick={() => setFilter(filter === 'community' ? 'all' : 'community')}>Free meals</button>
+        <button className={filter === 'parking' ? 'quick-filter active' : 'quick-filter'} onClick={() => setFilter(filter === 'parking' ? 'all' : 'parking')}>Blue Badge</button>
+      </div>
       <div className="map-debug-pill">{mapStatus}</div>
       <button className="locate-button" onClick={requestUserLocation} aria-label="Use my location"><LocateFixed size={17} /> Near me</button>
       {locationStatus && <div className="location-status">{locationStatus}</div>}
       <div ref={nodeRef} className="map-canvas" />
-      {!selected && nearbyBusinesses.length > 0 && <div className="nearby-results" aria-label="Nearby businesses">
+      {!selected && filter !== 'parking' && nearbyBusinesses.length > 0 && <div className="nearby-results" aria-label="Nearby businesses">
         <div className="nearby-title"><strong>{userPoint ? 'Nearby businesses' : 'Businesses in this view'}</strong><span>{nearbyBusinesses.length} shown</span></div>
         <div className="nearby-scroll">
           {nearbyBusinesses.map(feature => {

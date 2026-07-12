@@ -1,5 +1,6 @@
 -- Sprint 3 helper: rich OSM upsert RPC.
 -- Run after supabase/sprint3_claims_rich_business.sql.
+-- Imported OSM listings are data records only. They are NOT owner-verified until a claim is approved.
 
 create or replace function public.upsert_osm_business_rich(
   p_osm_id bigint,
@@ -54,7 +55,7 @@ begin
     nullif(trim(coalesce(p_wheelchair,'')),''),
     nullif(trim(coalesce(p_brand,'')),''),
     nullif(trim(coalesce(p_operator,'')),''),
-    'verified',
+    'unclaimed',
     'osm'
   )
   on conflict(osm_id) do update set
@@ -70,6 +71,11 @@ begin
     wheelchair = case when 'wheelchair' = any(coalesce(public.businesses.owner_edited_fields,'{}'::text[])) then public.businesses.wheelchair else coalesce(excluded.wheelchair, public.businesses.wheelchair) end,
     brand = case when 'brand' = any(coalesce(public.businesses.owner_edited_fields,'{}'::text[])) then public.businesses.brand else coalesce(excluded.brand, public.businesses.brand) end,
     operator = case when 'operator' = any(coalesce(public.businesses.owner_edited_fields,'{}'::text[])) then public.businesses.operator else coalesce(excluded.operator, public.businesses.operator) end,
+    verification_status = case
+      when public.businesses.claimed_by is not null and public.businesses.verification_status = 'verified' then 'verified'
+      when public.businesses.verification_status in ('pending','contested','revoked','rejected') then public.businesses.verification_status
+      else 'unclaimed'
+    end,
     source = case when public.businesses.source = 'owner' then public.businesses.source else 'osm' end,
     updated_at = now()
   returning id into v_id;

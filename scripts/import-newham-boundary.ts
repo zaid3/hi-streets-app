@@ -60,10 +60,11 @@ if (!boundary) {
 const feature = boundary.geojson.features[0]
 const geom = normaliseToMultiPolygon(feature.geometry)
 
-const { error: upsertError } = await supabase
-  .from('boundaries')
-  .upsert({ name: 'Newham', geom: geom as any, source: `ONS Open Geography ArcGIS: ${boundary.source}` }, { onConflict: 'name' })
-
+const { error: upsertError } = await supabase.rpc('upsert_boundary', {
+  p_name: 'Newham',
+  p_geojson: geom,
+  p_source: `ONS Open Geography ArcGIS: ${boundary.source}`,
+})
 if (upsertError) throw upsertError
 
 const { data: deleted, error: filterError } = await supabase.rpc('filter_businesses_to_newham')

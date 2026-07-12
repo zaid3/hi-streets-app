@@ -122,7 +122,7 @@ function isInsidePaddedNewham(point: { lat: number; lng: number }) {
   return point.lat >= b.south && point.lat <= b.north && point.lng >= b.west && point.lng <= b.east
 }
 
-export default function MapView({ posts }: { posts: Post[] }) {
+export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOpenPostForm: () => void }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
   const businessesGeoJsonRef = useRef<FeatureCollection>(EMPTY_FC)
@@ -319,7 +319,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
       <button className="locate-button" onClick={requestUserLocation} aria-label="Use my location"><LocateFixed size={17} /> Near me</button>
       {locationStatus && <div className="location-status">{locationStatus}</div>}
       <div ref={nodeRef} className="map-canvas" />
-      <button className="fab" aria-label="Post"><Layers size={20} />＋ Post</button>
+      <button className="fab" aria-label="Post" onClick={onOpenPostForm}><Layers size={20} />＋ Post</button>
       {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button>{'kind' in selected ? <ParkingDetail item={selected} /> : <BusinessDetail business={selected} posts={posts.filter(p => p.business_id === selected.id)} />}</div>}
       {pendingBay && <BayForm point={pendingBay} onClose={() => setPendingBay(null)} onSaved={() => { setPendingBay(null); setRefreshFlag(v => v + 1) }} />}
     </section>

@@ -1,0 +1,35 @@
+HiStreets health-business enrichment rule
+
+For HiStreets, do not prioritise or enrich large NHS hospitals, A&E departments, emergency departments, NHS Trust hospital sites or hospital departments.
+
+Include local/private/NHS-contracted health businesses because they operate like local services and may be claimed/updated by owners or managers:
+- pharmacy
+- chemist
+- dentist / dental practice
+- optician / optical shop
+- GP practice
+- medical centre / medical center
+- private clinic
+- NHS-contracted clinic
+- physiotherapy
+- therapy clinic
+- hearing clinic
+- aesthetic clinic
+- care/service clinic
+
+Do not use Google Maps data. Use only legal public sources:
+- official business website
+- NHS service page
+- CQC page where relevant
+- official public social page
+- owner confirmation
+- shop-window evidence
+- phone-call confirmation
+
+For every enriched row, keep the original business_id. Return only rows where at least one of these fields was found from a legal source:
+phone, website, whatsapp, email, opening_hours.
+
+Every enriched row must include:
+business_id,business_name,phone,website,whatsapp,email,opening_hours,source_type,evidence_note,source_url,confidence
+
+Leave unknown fields blank. Do not guess.

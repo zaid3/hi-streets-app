@@ -6,12 +6,20 @@ import type { Business, PostType } from '../types'
 type Props = {
   onClose: () => void
   onSubmitted: () => void
+  initialType?: PostType
 }
 
-function defaultExpiry() {
+function defaultExpiry(type: PostType = 'offer') {
   const d = new Date()
-  d.setDate(d.getDate() + 7)
+  d.setDate(d.getDate() + (type === 'job' ? 30 : 7))
   return d.toISOString().slice(0, 10)
+}
+
+function defaultCategory(type: PostType) {
+  if (type === 'job') return 'Local job'
+  if (type === 'free_meal') return 'Free meal'
+  if (type === 'community') return 'Community support'
+  return 'Local offer'
 }
 
 function titlePlaceholder(type: PostType) {
@@ -22,20 +30,20 @@ function titlePlaceholder(type: PostType) {
 }
 
 function bodyPlaceholder(type: PostType) {
-  if (type === 'job') return 'Write the role, hours, pay if available, and how local people can apply…'
+  if (type === 'job') return 'Write the role, hours, pay if available, location, and who should apply…'
   if (type === 'free_meal') return 'Write who it is for, when it is available, and any simple conditions…'
   if (type === 'community') return 'Write the support clearly so residents can understand quickly…'
   return 'Write the offer clearly, e.g. what is discounted, when it ends, and how to claim…'
 }
 
-export default function PostComposer({ onClose, onSubmitted }: Props) {
+export default function PostComposer({ onClose, onSubmitted, initialType = 'offer' }: Props) {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [businessId, setBusinessId] = useState('')
-  const [type, setType] = useState<PostType>('offer')
+  const [type, setType] = useState<PostType>(initialType)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [category, setCategory] = useState('')
-  const [expiresAt, setExpiresAt] = useState(defaultExpiry())
+  const [category, setCategory] = useState(defaultCategory(initialType))
+  const [expiresAt, setExpiresAt] = useState(defaultExpiry(initialType))
   const [applyUrl, setApplyUrl] = useState('')
   const [applyPhone, setApplyPhone] = useState('')
   const [recurrence, setRecurrence] = useState('')
@@ -53,7 +61,7 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
   async function submit() {
     try {
       setSubmitting(true)
-      setStatus('Submitting for review…')
+      setStatus(type === 'job' ? 'Submitting job for review…' : 'Submitting for review…')
       await createPost({
         business_id: businessId,
         type,
@@ -65,7 +73,7 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
         apply_phone: applyPhone.trim(),
         recurrence: recurrence.trim(),
       })
-      setStatus('Submitted. First posts are held for review before going live on the map.')
+      setStatus(type === 'job' ? 'Job submitted. Admin review is required before it goes live.' : 'Submitted. First posts are held for review before going live on the map.')
       onSubmitted()
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not submit post')
@@ -82,7 +90,7 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
     <div className="bottom-sheet post-composer">
       <button className="sheet-close" onClick={onClose}>×</button>
       <div className="sheet-handle" />
-      <h2>Post locally</h2>
+      <h2>{type === 'job' ? 'Post a local job' : 'Post locally'}</h2>
       <p className="muted">Fast local posting for verified businesses: offers, nearby jobs, free meals and community support. Posts are attached to your map listing.</p>
 
       <label>Verified business
@@ -95,12 +103,8 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
         <select value={type} onChange={e => {
           const next = e.target.value as PostType
           setType(next)
-          if (!category.trim()) {
-            if (next === 'job') setCategory('Local job')
-            if (next === 'free_meal') setCategory('Free meal')
-            if (next === 'community') setCategory('Community support')
-            if (next === 'offer') setCategory('Local offer')
-          }
+          setCategory(defaultCategory(next))
+          setExpiresAt(defaultExpiry(next))
         }}>
           <option value="offer">Offer / discount</option>
           <option value="job">Local job</option>
@@ -138,7 +142,7 @@ export default function PostComposer({ onClose, onSubmitted }: Props) {
         <input value={recurrence} onChange={e => setRecurrence(e.target.value)} placeholder="e.g. Every Saturday 12–2pm" />
       </label>}
 
-      <button onClick={submit} disabled={disabled}><Send size={17} /> Submit local post</button>
+      <button onClick={submit} disabled={disabled}><Send size={17} /> {type === 'job' ? 'Submit job for review' : 'Submit local post'}</button>
       {status && <p className="form-status">{status}</p>}
     </div>
   )

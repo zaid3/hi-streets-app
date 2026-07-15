@@ -35,20 +35,7 @@ export interface Business {
   companies_house_number?: string | null
   incorporation_date?: string | null
   company_status?: string | null
-}
-
-export interface BusinessProfileInput {
-  business_id: string
-  name?: string
-  category?: string
-  description?: string
-  address?: string
-  phone?: string
-  website?: string
-  whatsapp?: string
-  email?: string
-  opening_hours?: string
-  photo_url?: string
+  registration_note?: string | null
 }
 
 export interface BusinessRegistrationInput {
@@ -64,6 +51,20 @@ export interface BusinessRegistrationInput {
   lat: number
   lng: number
   evidence_note: string
+}
+
+export interface BusinessProfileInput {
+  business_id: string
+  name?: string
+  category?: string
+  description?: string
+  address?: string
+  phone?: string
+  website?: string
+  whatsapp?: string
+  email?: string
+  opening_hours?: string
+  photo_url?: string
 }
 
 export interface BusinessClaimOption {
@@ -95,6 +96,20 @@ export interface Post {
   lat?: number | null
   lng?: number | null
   business?: Business | null
+}
+
+export interface JobApplication {
+  id: string
+  post_id: string
+  business_id: string
+  job_title: string
+  business_name: string
+  applicant_name: string
+  applicant_email: string
+  applicant_phone: string
+  cover_note?: string | null
+  cv_url: string
+  created_at: string
 }
 
 export interface ParkingPoint {

@@ -39,6 +39,10 @@ export async function loadMyBusinesses(): Promise<Business[]> {
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
 }
 
+function canPostFromBusiness(business: Business) {
+  return business.verification_status === 'verified' && business.source !== 'osm' && inNewham(business.lat, business.lng)
+}
+
 export async function loadMyVerifiedBusinesses(): Promise<Business[]> {
   if (!supabaseConfigured || !supabase) return []
   const { data: userData } = await supabase.auth.getUser()
@@ -54,7 +58,7 @@ export async function loadMyVerifiedBusinesses(): Promise<Business[]> {
   if (role !== 'admin') query = query.eq('claimed_by', user.id)
   const { data, error } = await query
   if (error || !data) return []
-  return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
+  return (data as Business[]).filter(canPostFromBusiness)
 }
 
 export async function registerBusiness(input: BusinessRegistrationInput): Promise<string> {

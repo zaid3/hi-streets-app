@@ -1,17 +1,17 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
-import type { Business, BusinessClaimOption, BusinessProfileInput, BusinessRegistrationInput, ClaimMethod, ParkingPoint, Post, Role } from '../types'
+import type { Business, BusinessClaimOption, BusinessProfileInput, BusinessRegistrationInput, ClaimMethod, JobApplication, ParkingPoint, Post, Role } from '../types'
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 
-const businessSelect = 'id,osm_id,name,category,description,address,phone,website,whatsapp,email,opening_hours,opening_hours_json,cuisine,wheelchair,brand,operator,verification_status,verified_at,verified_via,is_claimed,photo_url,source,lat,lng,fsa_fhrsid,fsa_rating,fsa_rating_date,fsa_match_confidence,companies_house_number,incorporation_date,company_status'
-const ownBusinessSelect = 'id,osm_id,name,category,description,address,phone,website,whatsapp,email,opening_hours,opening_hours_json,cuisine,wheelchair,brand,operator,verification_status,verified_at,verified_via,photo_url,source,lat,lng,fsa_fhrsid,fsa_rating,fsa_rating_date,fsa_match_confidence,companies_house_number,incorporation_date,company_status'
+const businessSelect = 'id,osm_id,name,category,description,address,phone,website,whatsapp,email,opening_hours,opening_hours_json,cuisine,wheelchair,brand,operator,verification_status,verified_at,verified_via,is_claimed,photo_url,source,lat,lng,fsa_fhrsid,fsa_rating,fsa_rating_date,fsa_match_confidence,companies_house_number,incorporation_date,company_status,registration_note'
+const ownBusinessSelect = 'id,osm_id,name,category,description,address,phone,website,whatsapp,email,opening_hours,opening_hours_json,cuisine,wheelchair,brand,operator,verification_status,verified_at,verified_via,photo_url,source,lat,lng,fsa_fhrsid,fsa_rating,fsa_rating_date,fsa_match_confidence,companies_house_number,incorporation_date,company_status,registration_note'
 
 export const emptyStateText = {
   offers: 'No live offers yet. Ask a local business to register and post an offer.',
   jobs: 'No Newham jobs posted yet. Local businesses can register and post simple jobs.',
   community: 'No free meals or community support posts this week.',
-  parking: 'No verified Blue Badge bays here yet. Admin can add bays only with real photo evidence.',
+  parking: 'Parking is not active in this version.',
 }
 
 export async function loadBusinesses(): Promise<Business[]> {
@@ -194,46 +194,46 @@ export async function loadPosts(type?: Post['type']): Promise<Post[]> {
   }))
 }
 
+export async function submitJobApplication(input: { post_id: string; applicant_name: string; applicant_email: string; applicant_phone: string; cover_note?: string; cv_file: File }) {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  if (!input.cv_file) throw new Error('CV is required')
+  if (input.cv_file.size > 10 * 1024 * 1024) throw new Error('CV must be under 10MB')
+  const ext = input.cv_file.name.split('.').pop()?.toLowerCase() || 'pdf'
+  const safeExt = ['pdf', 'doc', 'docx'].includes(ext) ? ext : 'pdf'
+  const path = `applications/${input.post_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${safeExt}`
+  const upload = await supabase.storage.from('job-cvs').upload(path, input.cv_file, { upsert: false, contentType: input.cv_file.type || 'application/octet-stream' })
+  if (upload.error) throw upload.error
+  const { data: publicUrl } = supabase.storage.from('job-cvs').getPublicUrl(path)
+  const { error } = await supabase.rpc('submit_job_application', {
+    p_post_id: input.post_id,
+    p_applicant_name: input.applicant_name.trim(),
+    p_applicant_email: input.applicant_email.trim(),
+    p_applicant_phone: input.applicant_phone.trim(),
+    p_cover_note: input.cover_note?.trim() || '',
+    p_cv_url: publicUrl.publicUrl,
+  })
+  if (error) throw error
+}
+
+export async function loadMyJobApplications(): Promise<JobApplication[]> {
+  if (!supabaseConfigured || !supabase) return []
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) return []
+  const { data, error } = await supabase.rpc('my_job_applications')
+  if (error || !data) return []
+  return data as JobApplication[]
+}
+
 export async function loadCpzGeoJson(): Promise<FeatureCollection> {
   return { type: 'FeatureCollection', features: [] }
 }
 
-export async function loadParkingPoints(kind: 'blue_badge' | 'all' = 'all'): Promise<ParkingPoint[]> {
-  if (!supabaseConfigured || !supabase) return []
-  const items: ParkingPoint[] = []
-  if (kind === 'blue_badge' || kind === 'all') {
-    const { data } = await supabase.from('blue_badge_bays_public').select('*').limit(1000)
-    ;(data || []).forEach((row: any) => {
-      if (inNewham(row.lat, row.lng)) items.push({ id: row.id, kind: 'blue_badge', name: `${row.road_name} Blue Badge bay`, lat: row.lat, lng: row.lng, source: row.source, last_verified_at: row.last_verified_at, photo_url: row.photo_url || row.evidence_photo_url, notes: row.notes, road_name: row.road_name })
-    })
-  }
-  return items
+export async function loadParkingPoints(_kind: 'blue_badge' | 'all' = 'all'): Promise<ParkingPoint[]> {
+  return []
 }
 
-export async function createBlueBadgeBay(input: { lat: number; lng: number; road_name: string; notes?: string; file: File }) {
-  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
-  const { data: userData } = await supabase.auth.getUser()
-  const user = userData.user
-  if (!user) throw new Error('Sign in first')
-  const role = await getCurrentRole()
-  if (role !== 'admin') throw new Error('Admin only')
-  if (!input.file) throw new Error('Photo is required')
-
-  const ext = input.file.name.split('.').pop()?.toLowerCase() || 'jpg'
-  const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const upload = await supabase.storage.from('bay-photos').upload(path, input.file, { upsert: false, contentType: input.file.type || 'image/jpeg' })
-  if (upload.error) throw upload.error
-  const { data: publicUrl } = supabase.storage.from('bay-photos').getPublicUrl(path)
-  const photo_url = publicUrl.publicUrl
-
-  const { error } = await supabase.rpc('add_blue_badge_bay', {
-    p_lat: input.lat,
-    p_lng: input.lng,
-    p_road_name: input.road_name.trim(),
-    p_notes: input.notes?.trim() || '',
-    p_photo_url: photo_url,
-  })
-  if (error) throw error
+export async function createBlueBadgeBay() {
+  throw new Error('Parking is not active in this version')
 }
 
 export async function createPost(input: Pick<Post, 'type' | 'title' | 'body' | 'category' | 'expires_at' | 'apply_url' | 'apply_phone' | 'recurrence'> & { business_id: string }) {

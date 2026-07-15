@@ -51,6 +51,21 @@ export interface BusinessProfileInput {
   photo_url?: string
 }
 
+export interface BusinessRegistrationInput {
+  name: string
+  category: string
+  description?: string
+  address: string
+  phone?: string
+  website?: string
+  whatsapp?: string
+  email?: string
+  opening_hours?: string
+  lat: number
+  lng: number
+  evidence_note: string
+}
+
 export interface BusinessClaimOption {
   id: string
   name: string

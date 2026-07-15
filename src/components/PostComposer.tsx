@@ -47,15 +47,15 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   const [applyUrl, setApplyUrl] = useState('')
   const [applyPhone, setApplyPhone] = useState('')
   const [recurrence, setRecurrence] = useState('')
-  const [status, setStatus] = useState('Loading your verified businesses…')
+  const [status, setStatus] = useState('Loading your approved businesses…')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadMyVerifiedBusinesses().then(rows => {
       setBusinesses(rows)
       setBusinessId(rows[0]?.id || '')
-      setStatus(rows.length ? '' : 'No verified business found. Claim and verify a business before posting offers, jobs, free meals or community help.')
-    }).catch(() => setStatus('Could not load your verified businesses.'))
+      setStatus(rows.length ? '' : 'No approved business found. Go to Profile, register your business, then admin approval is required before posting.')
+    }).catch(() => setStatus('Could not load your approved businesses.'))
   }, [])
 
   async function submit() {
@@ -73,7 +73,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         apply_phone: applyPhone.trim(),
         recurrence: recurrence.trim(),
       })
-      setStatus(type === 'job' ? 'Job submitted. Admin review is required before it goes live.' : 'Submitted. First posts are held for review before going live on the map.')
+      setStatus(type === 'job' ? 'Job submitted. Admin review is required before it goes live.' : 'Submitted. Admin review is required before it goes live.')
       onSubmitted()
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not submit post')
@@ -90,10 +90,10 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
     <div className="bottom-sheet post-composer">
       <button className="sheet-close" onClick={onClose}>×</button>
       <div className="sheet-handle" />
-      <h2>{type === 'job' ? 'Post a local job' : 'Post locally'}</h2>
-      <p className="muted">Fast local posting for verified businesses: offers, nearby jobs, free meals and community support. Posts are attached to your map listing.</p>
+      <h2>{type === 'job' ? 'Post a local job' : type === 'offer' ? 'Post an offer' : 'Post locally'}</h2>
+      <p className="muted">Approved Newham businesses can post offers, simple local jobs, free meals and community support. Posts are attached to the business map listing.</p>
 
-      <label>Verified business
+      <label>Approved business
         <select value={businessId} onChange={e => setBusinessId(e.target.value)}>
           {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>

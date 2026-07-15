@@ -73,7 +73,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         apply_phone: applyPhone.trim(),
         recurrence: recurrence.trim(),
       })
-      setStatus(type === 'job' ? 'Job submitted. Admin review is required before it goes live.' : 'Submitted. Admin review is required before it goes live.')
+      setStatus(type === 'job' ? 'Job submitted. Applicants will apply inside HiStreets with details and mandatory CV.' : 'Submitted. Admin review is required before it goes live.')
       onSubmitted()
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not submit post')
@@ -82,16 +82,15 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
     }
   }
 
-  const needsApply = type === 'job'
   const needsRecurrence = type === 'free_meal' || type === 'community'
-  const disabled = submitting || !businessId || !title.trim() || !body.trim() || !expiresAt || (needsApply && !applyUrl.trim() && !applyPhone.trim())
+  const disabled = submitting || !businessId || !title.trim() || !body.trim() || !expiresAt
 
   return (
     <div className="bottom-sheet post-composer">
       <button className="sheet-close" onClick={onClose}>×</button>
       <div className="sheet-handle" />
       <h2>{type === 'job' ? 'Post a local job' : type === 'offer' ? 'Post an offer' : 'Post locally'}</h2>
-      <p className="muted">Approved Newham businesses can post offers, simple local jobs, free meals and community support. Posts are attached to the business map listing.</p>
+      <p className="muted">Approved Newham businesses can post offers, simple local jobs, free meals and community support. Jobs use in-app applications with mandatory CV.</p>
 
       <label>Approved business
         <select value={businessId} onChange={e => setBusinessId(e.target.value)}>
@@ -129,12 +128,14 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
       </label>
 
-      {needsApply && <>
-        <label>Apply link
-          <input value={applyUrl} onChange={e => setApplyUrl(e.target.value)} placeholder="https://…" />
+      {type === 'job' && <div className="missing-note">Applicants will apply inside HiStreets without sign-up. They must provide name, email, phone/WhatsApp and CV.</div>}
+
+      {type === 'job' && <>
+        <label>Optional external apply link
+          <input value={applyUrl} onChange={e => setApplyUrl(e.target.value)} placeholder="Optional: https://…" />
         </label>
-        <label>Apply phone or WhatsApp
-          <input value={applyPhone} onChange={e => setApplyPhone(e.target.value)} placeholder="Phone or WhatsApp number for applications" />
+        <label>Optional business contact for questions
+          <input value={applyPhone} onChange={e => setApplyPhone(e.target.value)} placeholder="Optional phone or WhatsApp" />
         </label>
       </>}
 

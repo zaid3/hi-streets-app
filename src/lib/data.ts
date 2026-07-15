@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
-import type { Business, BusinessClaimOption, BusinessProfileInput, ClaimMethod, ParkingPoint, Post, Role } from '../types'
+import type { Business, BusinessClaimOption, BusinessProfileInput, BusinessRegistrationInput, ClaimMethod, ParkingPoint, Post, Role } from '../types'
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 
@@ -8,10 +8,10 @@ const businessSelect = 'id,osm_id,name,category,description,address,phone,websit
 const ownBusinessSelect = 'id,osm_id,name,category,description,address,phone,website,whatsapp,email,opening_hours,opening_hours_json,cuisine,wheelchair,brand,operator,verification_status,verified_at,verified_via,photo_url,source,lat,lng,fsa_fhrsid,fsa_rating,fsa_rating_date,fsa_match_confidence,companies_house_number,incorporation_date,company_status'
 
 export const emptyStateText = {
-  offers: 'No live offers yet — know of one? Tell us.',
-  jobs: 'No Newham jobs posted yet — know a local employer? Ask them to post here.',
-  community: 'No free meals or community support posts this week — tell us about one.',
-  parking: 'No verified Blue Badge bays here yet — know of one? Help us verify it with a photo.',
+  offers: 'No live offers yet. Ask a local business to register and post an offer.',
+  jobs: 'No Newham jobs posted yet. Local businesses can register and post simple jobs.',
+  community: 'No free meals or community support posts this week.',
+  parking: 'No verified Blue Badge bays here yet. Admin can add bays only with real photo evidence.',
 }
 
 export async function loadBusinesses(): Promise<Business[]> {
@@ -20,6 +20,21 @@ export async function loadBusinesses(): Promise<Business[]> {
     .from('businesses_public')
     .select(businessSelect)
     .limit(500)
+  if (error || !data) return []
+  return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
+}
+
+export async function loadMyBusinesses(): Promise<Business[]> {
+  if (!supabaseConfigured || !supabase) return []
+  const { data: userData } = await supabase.auth.getUser()
+  const user = userData.user
+  if (!user) return []
+  const { data, error } = await supabase
+    .from('businesses')
+    .select(ownBusinessSelect)
+    .eq('claimed_by', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
   if (error || !data) return []
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
 }
@@ -35,11 +50,34 @@ export async function loadMyVerifiedBusinesses(): Promise<Business[]> {
     .select(ownBusinessSelect)
     .eq('verification_status', 'verified')
     .order('name', { ascending: true })
-    .limit(100)
+    .limit(200)
   if (role !== 'admin') query = query.eq('claimed_by', user.id)
   const { data, error } = await query
   if (error || !data) return []
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
+}
+
+export async function registerBusiness(input: BusinessRegistrationInput): Promise<string> {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) throw new Error('Sign in first')
+  if (!inNewham(input.lat, input.lng)) throw new Error('Business location must be inside Newham')
+  const { data, error } = await supabase.rpc('register_my_business', {
+    p_name: input.name.trim(),
+    p_category: input.category.trim(),
+    p_description: input.description?.trim() || '',
+    p_address: input.address.trim(),
+    p_phone: input.phone?.trim() || '',
+    p_website: input.website?.trim() || '',
+    p_whatsapp: input.whatsapp?.trim() || '',
+    p_email: input.email?.trim() || '',
+    p_opening_hours: input.opening_hours?.trim() || '',
+    p_lat: input.lat,
+    p_lng: input.lng,
+    p_evidence_note: input.evidence_note.trim(),
+  })
+  if (error) throw error
+  return String(data)
 }
 
 export async function loadBusinessesGeoJson(): Promise<FeatureCollection> {
@@ -58,13 +96,8 @@ export async function loadNewhamBoundaryGeoJson(): Promise<FeatureCollection> {
 
 export async function fetchBusinessById(id: string): Promise<Business | null> {
   if (!supabaseConfigured || !supabase) return null
-
-  // Use the RPC as the source of truth for map clicks. It returns any real Newham business
-  // that is unclaimed/pending/verified/contested, while posting remains verified-only.
   const rpc = await supabase.rpc('business_detail', { p_business_id: id })
   if (!rpc.error && rpc.data) return rpc.data as Business
-
-  // Fallback for deployments where the RPC has not been run yet.
   const { data, error } = await supabase
     .from('businesses_public')
     .select(businessSelect)
@@ -118,24 +151,6 @@ export async function saveMyBusinessProfile(input: BusinessProfileInput): Promis
   return data as Business
 }
 
-export async function exportBusinessResearchCsv(): Promise<string> {
-  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) throw new Error('Sign in first')
-
-  const csv = await supabase.rpc('business_research_export_csv')
-  if (!csv.error && typeof csv.data === 'string') return csv.data
-
-  // Fallback for older database state. This may be capped by Supabase API settings,
-  // so run supabase/sprint8_business_research_export.sql if only 100 rows download.
-  const { data, error } = await supabase.rpc('business_research_export')
-  if (error) throw csv.error || error
-  const headers = ['business_id','business_name','address','postcode','category','source','lat','lng','has_phone','has_website','has_opening_hours','has_email','data_score']
-  const escapeCsv = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
-  const rows = (data || []).map((row: any) => headers.map(key => escapeCsv(row[key])).join(','))
-  return [headers.join(','), ...rows].join('\n')
-}
-
 export async function getCurrentRole(): Promise<Role | null> {
   if (!supabaseConfigured || !supabase) return null
   const { data: userData } = await supabase.auth.getUser()
@@ -171,7 +186,7 @@ export async function loadPosts(type?: Post['type']): Promise<Post[]> {
     source: row.source,
     lat: row.lat ?? row.business_lat,
     lng: row.lng ?? row.business_lng,
-    business: row.business_id ? { id: row.business_id, name: row.business_name, category: row.business_category, address: row.business_address, lat: row.business_lat, lng: row.business_lng, verification_status: 'verified', source: 'osm' } : null,
+    business: row.business_id ? { id: row.business_id, name: row.business_name, category: row.business_category, address: row.business_address, lat: row.business_lat, lng: row.business_lng, verification_status: 'verified', source: row.business_source || 'owner_registration' } : null,
   }))
 }
 
@@ -185,7 +200,7 @@ export async function loadParkingPoints(kind: 'blue_badge' | 'all' = 'all'): Pro
   if (kind === 'blue_badge' || kind === 'all') {
     const { data } = await supabase.from('blue_badge_bays_public').select('*').limit(1000)
     ;(data || []).forEach((row: any) => {
-      if (inNewham(row.lat, row.lng)) items.push({ id: row.id, kind: 'blue_badge', name: `${row.road_name} Blue Badge bay`, lat: row.lat, lng: row.lng, source: row.source, last_verified_at: row.last_verified_at, photo_url: row.photo_url, notes: row.notes, road_name: row.road_name })
+      if (inNewham(row.lat, row.lng)) items.push({ id: row.id, kind: 'blue_badge', name: `${row.road_name} Blue Badge bay`, lat: row.lat, lng: row.lng, source: row.source, last_verified_at: row.last_verified_at, photo_url: row.photo_url || row.evidence_photo_url, notes: row.notes, road_name: row.road_name })
     })
   }
   return items
@@ -222,7 +237,7 @@ export async function createPost(input: Pick<Post, 'type' | 'title' | 'body' | '
   const { data: userData } = await supabase.auth.getUser()
   const user = userData.user
   if (!user) throw new Error('Sign in first')
-  if (!input.business_id) throw new Error('Verified business required')
+  if (!input.business_id) throw new Error('Approved business required')
   const { error } = await supabase.rpc('create_verified_business_post', {
     p_business_id: input.business_id,
     p_type: input.type,

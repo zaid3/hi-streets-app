@@ -8,10 +8,10 @@ const businessSelect = 'id,osm_id,name,category,description,address,phone,websit
 const ownBusinessSelect = 'id,osm_id,name,category,description,address,phone,website,whatsapp,email,opening_hours,opening_hours_json,cuisine,wheelchair,brand,operator,verification_status,verified_at,verified_via,photo_url,source,lat,lng,fsa_fhrsid,fsa_rating,fsa_rating_date,fsa_match_confidence,companies_house_number,incorporation_date,company_status,registration_note'
 
 export const emptyStateText = {
-  offers: 'No live offers yet. Ask a local business to register and post an offer.',
-  jobs: 'No Newham jobs posted yet. Local businesses can register and post simple jobs.',
-  community: 'No free meals or community support posts this week.',
-  parking: 'Parking is not active in this version.',
+  offers: 'No offers nearby right now.',
+  jobs: 'No local jobs nearby right now.',
+  community: 'No free meals or community support nearby right now.',
+  parking: 'Parking is coming soon.',
 }
 
 export async function loadBusinesses(): Promise<Business[]> {

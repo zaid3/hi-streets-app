@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import BottomTabs from './components/BottomTabs'
-import Discover from './components/Discover'
+import MapView from './components/MapView'
 import { Feed } from './components/Feeds'
 import LocalParkingComingSoon from './components/LocalParkingComingSoon'
 import Profile from './components/Profile'
@@ -30,12 +30,12 @@ export default function App() {
   return (
     <main className="app-shell">
       {loading && <div className="boot-loader">Loading HiStreets…</div>}
-      {tab === 'map' && <Discover posts={livePosts} onOpenTab={setTab} />}
-      {tab === 'offers' && <Feed type="offer" posts={livePosts} onPost={openComposer} />}
-      {tab === 'jobs' && <Feed type="job" posts={livePosts} onPost={openComposer} />}
-      {tab === 'community' && <Feed type="community-group" posts={livePosts} onPost={openComposer} />}
+      {tab === 'map' && <MapView posts={livePosts} />}
+      {tab === 'offers' && <Feed type="offer" posts={livePosts} />}
+      {tab === 'jobs' && <Feed type="job" posts={livePosts} />}
+      {tab === 'community' && <Feed type="community-group" posts={livePosts} />}
       {tab === 'parking' && <LocalParkingComingSoon />}
-      {tab === 'profile' && <Profile />}
+      {tab === 'profile' && <Profile onPost={openComposer} />}
       {composerOpen && <PostComposer initialType={composerType} onClose={() => setComposerOpen(false)} onSubmitted={() => { setComposerOpen(false); setRefreshFlag(v => v + 1) }} />}
       <BottomTabs active={tab} onChange={setTab} />
     </main>

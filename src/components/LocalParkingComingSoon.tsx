@@ -5,22 +5,23 @@ export default function LocalParkingComingSoon() {
     <section className="feed-screen">
       <header className="screen-header">
         <h1>Local parking</h1>
-        <p>Coming soon for Newham. We will only show parking information after it is properly checked.</p>
+        <p>Coming soon for Newham: local free parking, paid parking and Blue Badge parking.</p>
       </header>
 
-      <div className="privacy-card">
+      <div className="privacy-card parking-soon-card">
         <h2><Car size={20} /> Parking coming soon</h2>
-        <p className="muted">HiStreets will add local parking later, but it will not show unverified or risky parking data.</p>
-        <div className="listing-chip-row">
-          <span className="listing-chip"><MapPin size={12} /> Newham only</span>
-          <span className="listing-chip"><ShieldCheck size={12} /> Verified data only</span>
-          <span className="listing-chip"><Clock size={12} /> Future release</span>
+        <p className="muted">Parking will be added only when the data is properly checked. We will not show unsafe or guessed parking information.</p>
+        <div className="parking-soon-list">
+          <span><MapPin size={16} /> Free local parking</span>
+          <span><Car size={16} /> Paid parking</span>
+          <span><ShieldCheck size={16} /> Blue Badge parking</span>
+          <span><Clock size={16} /> Time rules and restrictions</span>
         </div>
       </div>
 
       <div className="empty">
         <strong>No parking data is live yet.</strong>
-        <span>For now, HiStreets focuses on approved businesses, offers, jobs, free meals and community support. Parking will be added when the data can be checked safely.</span>
+        <span>For now, HiStreets focuses on nearby offers, jobs, free meals and community support. Parking will be released later as a checked local feature.</span>
       </div>
     </section>
   )

@@ -1,6 +1,29 @@
 -- HiStreets Super Admin dashboard setup
 -- Run this after the marketplace setup and safe auto approval SQL.
 
+-- Allow the new super_admin role even if an old role check constraint exists.
+do $$
+declare
+  c record;
+begin
+  for c in
+    select conname
+    from pg_constraint
+    where conrelid = 'public.profiles'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%role%'
+  loop
+    execute format('alter table public.profiles drop constraint if exists %I', c.conname);
+  end loop;
+end $$;
+
+alter table public.profiles
+  add constraint profiles_role_check
+  check (role in ('user','business','charity','admin','super_admin'))
+  not valid;
+
+alter table public.profiles validate constraint profiles_role_check;
+
 create or replace function public.current_user_is_admin() returns boolean
 language sql
 stable

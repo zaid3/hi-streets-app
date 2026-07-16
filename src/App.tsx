@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import BottomTabs from './components/BottomTabs'
 import MapView from './components/MapView'
 import { Feed } from './components/Feeds'
+import LocalParkingComingSoon from './components/LocalParkingComingSoon'
 import Profile from './components/Profile'
 import PostComposer from './components/PostComposer'
 import { loadPosts } from './lib/data'
@@ -33,6 +34,7 @@ export default function App() {
       {tab === 'offers' && <Feed type="offer" posts={livePosts} onPost={openComposer} />}
       {tab === 'jobs' && <Feed type="job" posts={livePosts} onPost={openComposer} />}
       {tab === 'community' && <Feed type="community-group" posts={livePosts} onPost={openComposer} />}
+      {tab === 'parking' && <LocalParkingComingSoon />}
       {tab === 'profile' && <Profile />}
       {composerOpen && <PostComposer initialType={composerType} onClose={() => setComposerOpen(false)} onSubmitted={() => { setComposerOpen(false); setRefreshFlag(v => v + 1) }} />}
       <BottomTabs active={tab} onChange={setTab} />

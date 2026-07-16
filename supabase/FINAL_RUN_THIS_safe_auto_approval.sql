@@ -119,16 +119,16 @@ begin
   for update;
 
   if not found then raise exception 'approved registered business required'; end if;
-  if v_role <> 'admin' and v_business.claimed_by is distinct from v_uid then raise exception 'you can only post from your own approved business'; end if;
-  if v_role not in ('business','charity','admin') then raise exception 'approved business account required'; end if;
+  if v_role not in ('admin','super_admin') and v_business.claimed_by is distinct from v_uid then raise exception 'you can only post from your own approved business'; end if;
+  if v_role not in ('business','charity','admin','super_admin') then raise exception 'approved business account required'; end if;
 
   v_reason := public.histreets_post_auto_approval_reason(p_type, p_title, p_body, p_category, p_expires_at, p_apply_url, p_apply_phone, p_recurrence);
 
   if v_reason = 'approved' then
     v_status := 'live';
   else
-    -- Only admins can bypass into live; normal businesses stay pending if rules fail.
-    if v_role = 'admin' then
+    -- Admin and Super Admin can bypass into live; normal businesses stay pending if rules fail.
+    if v_role in ('admin','super_admin') then
       v_status := 'live';
     else
       v_status := 'pending';
@@ -149,7 +149,7 @@ begin
     nullif(trim(coalesce(p_apply_phone,'')),''),
     nullif(trim(coalesce(p_recurrence,'')),''),
     v_status,
-    case when v_role = 'admin' then 'admin' else 'web_auto_checked' end
+    case when v_role in ('admin','super_admin') then 'admin' else 'web_auto_checked' end
   ) returning id into v_id;
 
   insert into public.admin_audit_log(admin_id, action, target_type, target_id, metadata)
@@ -158,7 +158,7 @@ begin
     case when v_status = 'live' then 'auto_approved_business_post' else 'post_needs_review' end,
     'post',
     v_id,
-    jsonb_build_object('status', v_status, 'reason', v_reason, 'type', p_type, 'business_id', p_business_id)
+    jsonb_build_object('status', v_status, 'reason', v_reason, 'type', p_type, 'business_id', p_business_id, 'role', v_role)
   );
 
   return v_id;

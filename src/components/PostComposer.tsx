@@ -54,14 +54,14 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
     loadMyVerifiedBusinesses().then(rows => {
       setBusinesses(rows)
       setBusinessId(rows[0]?.id || '')
-      setStatus(rows.length ? '' : 'No approved business found. Go to Profile, register your business, then admin approval is required before posting.')
+      setStatus(rows.length ? '' : 'No approved business found. Register your business first. Once approved, you can post.')
     }).catch(() => setStatus('Could not load your approved businesses.'))
   }, [])
 
   async function submit() {
     try {
       setSubmitting(true)
-      setStatus(type === 'job' ? 'Submitting job for review…' : 'Submitting for review…')
+      setStatus('Checking post details…')
       await createPost({
         business_id: businessId,
         type,
@@ -73,7 +73,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         apply_phone: applyPhone.trim(),
         recurrence: recurrence.trim(),
       })
-      setStatus(type === 'job' ? 'Job submitted. Applicants will apply inside HiStreets with details and mandatory CV.' : 'Submitted. Admin review is required before it goes live.')
+      setStatus('Submitted. If the post follows HiStreets rules, it goes live automatically. If not, it waits for review.')
       onSubmitted()
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not submit post')
@@ -83,14 +83,14 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   }
 
   const needsRecurrence = type === 'free_meal' || type === 'community'
-  const disabled = submitting || !businessId || !title.trim() || !body.trim() || !expiresAt
+  const disabled = submitting || !businessId || !title.trim() || !body.trim() || !expiresAt || (needsRecurrence && !recurrence.trim())
 
   return (
     <div className="bottom-sheet post-composer">
       <button className="sheet-close" onClick={onClose}>×</button>
       <div className="sheet-handle" />
       <h2>{type === 'job' ? 'Post a local job' : type === 'offer' ? 'Post an offer' : 'Post locally'}</h2>
-      <p className="muted">Approved Newham businesses can post offers, simple local jobs, free meals and community support. Jobs use in-app applications with mandatory CV.</p>
+      <p className="muted">Approved businesses can post quickly. Clean posts go live automatically. Risky or incomplete posts wait for review.</p>
 
       <label>Approved business
         <select value={businessId} onChange={e => setBusinessId(e.target.value)}>
@@ -128,7 +128,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
       </label>
 
-      {type === 'job' && <div className="missing-note">Applicants will apply inside HiStreets without sign-up. They must provide name, email, phone/WhatsApp and CV.</div>}
+      {type === 'job' && <div className="missing-note">Applicants apply inside HiStreets without sign-up. They must provide name, email, phone/WhatsApp and CV. Your business contacts them directly if shortlisted.</div>}
 
       {type === 'job' && <>
         <label>Optional external apply link
@@ -143,7 +143,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         <input value={recurrence} onChange={e => setRecurrence(e.target.value)} placeholder="e.g. Every Saturday 12–2pm" />
       </label>}
 
-      <button onClick={submit} disabled={disabled}><Send size={17} /> {type === 'job' ? 'Submit job for review' : 'Submit local post'}</button>
+      <button onClick={submit} disabled={disabled}><Send size={17} /> Submit post</button>
       {status && <p className="form-status">{status}</p>}
     </div>
   )

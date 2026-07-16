@@ -1,4 +1,4 @@
-export type TabKey = 'map' | 'offers' | 'jobs' | 'community' | 'profile'
+export type TabKey = 'map' | 'offers' | 'jobs' | 'community' | 'parking' | 'profile'
 export type PostType = 'offer' | 'job' | 'free_meal' | 'community'
 export type Role = 'user' | 'business' | 'charity' | 'admin'
 export type ClaimMethod = 'phone_otp' | 'domain_email' | 'website_code' | 'document'

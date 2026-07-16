@@ -1,6 +1,6 @@
 export type TabKey = 'map' | 'offers' | 'jobs' | 'community' | 'parking' | 'profile'
 export type PostType = 'offer' | 'job' | 'free_meal' | 'community'
-export type Role = 'user' | 'business' | 'charity' | 'admin'
+export type Role = 'user' | 'business' | 'charity' | 'admin' | 'super_admin'
 export type ClaimMethod = 'phone_otp' | 'domain_email' | 'website_code' | 'document'
 
 export interface Business {
@@ -123,4 +123,36 @@ export interface ParkingPoint {
   photo_url?: string | null
   source: string
   last_verified_at?: string | null
+}
+
+export interface SuperAdminOverview {
+  total_businesses: number
+  pending_businesses: number
+  verified_businesses: number
+  live_posts: number
+  pending_posts: number
+  job_applications: number
+}
+
+export interface SuperAdminBusinessRow {
+  id: string
+  name: string
+  category: string
+  address?: string | null
+  phone?: string | null
+  website?: string | null
+  email?: string | null
+  verification_status?: Business['verification_status']
+  source?: string | null
+  created_at?: string | null
+}
+
+export interface SuperAdminPostRow {
+  id: string
+  type: PostType
+  title: string
+  body: string
+  status: Post['status']
+  business_name?: string | null
+  created_at?: string | null
 }

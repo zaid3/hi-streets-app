@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
-import { Layers, LocateFixed, Search } from 'lucide-react'
+import { LocateFixed, Search } from 'lucide-react'
 import { MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER, paddedBounds } from '../lib/newham'
 import { fetchBusinessById, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson } from '../lib/data'
 import type { Business, Post } from '../types'
@@ -16,8 +16,6 @@ const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
 const markerDefinitions: Array<{ id: string; label: string; color: string }> = [
   { id: 'restaurant', label: '🍽', color: '#F2762E' },
   { id: 'takeaway', label: '🥡', color: '#F2762E' },
-  { id: 'cafe', label: '☕', color: '#C97826' },
-  { id: 'bakery', label: '🥐', color: '#C97826' },
   { id: 'grocery', label: '🛒', color: '#3C8D2F' },
   { id: 'retail', label: '🛍', color: '#2D6CDF' },
   { id: 'beauty', label: '✂', color: '#B03A8B' },
@@ -59,8 +57,7 @@ function getBusinessPostKinds(posts: Post[]): BusinessPostKinds {
 
 function categoryInfo(category?: string, name?: string): CategoryInfo {
   const text = `${category || ''} ${name || ''}`.toLowerCase()
-  if (/takeaway|fast.?food|chicken|pizza|kebab|burger|mcdonald|kfc|subway|domino/.test(text)) return info('food', 'takeaway', 'Takeaway / fast food', '🥡', 'takeaway food halal restaurant')
-  if (/cafe|coffee|tea|bakery|cake|dessert|restaurant|grill|food|pub|bar/.test(text)) return info('food', 'restaurant', 'Restaurant / cafe', '🍽', 'restaurant cafe food bakery')
+  if (/takeaway|fast.?food|chicken|pizza|kebab|burger|mcdonald|kfc|subway|domino|restaurant|grill|cafe|coffee|bakery|food/.test(text)) return info('food', 'restaurant', 'Food & drink', '🍽', 'restaurant cafe food halal takeaway')
   if (/supermarket|grocery|convenience|off.?licen[cs]e|butcher|market|food store/.test(text)) return info('grocery', 'grocery', 'Grocery', '🛒', 'grocery supermarket convenience')
   if (/hair|barber|beauty|nail|salon|spa|cosmetic|massage/.test(text)) return info('beauty', 'beauty', 'Beauty / barber', '✂', 'beauty barber hair nail salon')
   if (/pharmacy|chemist|dentist|dental|optician|clinic|doctor|gp|health|medical|therapy|physio/.test(text)) return info('health', 'health', 'Health', '✚', 'health pharmacy dental clinic')
@@ -139,12 +136,12 @@ function enrichBusinessGeoJson(data: FeatureCollection, postKinds: BusinessPostK
       const category = String(props.category || '')
       const name = String(props.name || '')
       const kinds = postKinds[id] || { offer: false, job: false, community: false }
-      const info = categoryInfo(category, name)
+      const details = categoryInfo(category, name)
       const hasOffer = Boolean(props.has_offer) || kinds.offer
       const hasJob = Boolean(props.has_job) || kinds.job
       const hasCommunity = Boolean(props.has_community) || kinds.community
       const primaryKind = hasOffer ? 'offer' : hasJob ? 'job' : hasCommunity ? 'community' : ''
-      return { ...feature, properties: { ...props, category_group: info.group, marker_icon: info.marker, category_label: info.label, category_icon: info.icon, has_offer: hasOffer, has_job: hasJob, has_community: hasCommunity, primary_kind: primaryKind, searchable: `${name} ${category} ${info.group} ${info.label} ${info.aliases}`.toLowerCase() } }
+      return { ...feature, properties: { ...props, category_group: details.group, marker_icon: details.marker, category_label: details.label, category_icon: details.icon, has_offer: hasOffer, has_job: hasJob, has_community: hasCommunity, primary_kind: primaryKind, searchable: `${name} ${category} ${details.group} ${details.label} ${details.aliases}`.toLowerCase() } }
     }),
   }
 }
@@ -178,13 +175,6 @@ function featureCoords(feature: any): [number, number] | null {
   return [Number(coords[0]), Number(coords[1])]
 }
 
-function distanceScore(feature: any, point: { lat: number; lng: number } | null) {
-  const coords = featureCoords(feature)
-  if (!coords || !point) return 0
-  const [lng, lat] = coords
-  return Math.hypot((lat - point.lat) * 111, (lng - point.lng) * 70)
-}
-
 function isInsidePaddedNewham(point: { lat: number; lng: number }) {
   const b = paddedBounds(0.1)
   return point.lat >= b.south && point.lat <= b.north && point.lng >= b.west && point.lng <= b.east
@@ -195,7 +185,7 @@ function userLocationData(point: { lat: number; lng: number } | null): FeatureCo
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 'user-location' }, geometry: { type: 'Point', coordinates: [point.lng, point.lat] } }] }
 }
 
-export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOpenPostForm: () => void }) {
+export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
   const businessesGeoJsonRef = useRef<FeatureCollection>(EMPTY_FC)
@@ -204,38 +194,29 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
   const [filter, setFilter] = useState<LayerFilter>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [mapReady, setMapReady] = useState(false)
-  const [mapStatus, setMapStatus] = useState('Loading approved businesses…')
   const [userPoint, setUserPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState('')
 
   const businessPostKinds = useMemo(() => getBusinessPostKinds(posts), [posts])
   const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
   const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter, searchTerm), [enrichedBusinesses, filter, searchTerm])
-  const nearbyBusinesses = useMemo(() => {
-    const copy = [...visibleBusinesses.features]
-    copy.sort((a, b) => distanceScore(a, userPoint) - distanceScore(b, userPoint))
-    return copy.slice(0, 8)
-  }, [visibleBusinesses, userPoint])
 
   function applyMapData(nextBusinesses = visibleBusinesses, nextUserPoint = userPoint) {
     const map = mapRef.current
     if (!map) return
-    const pushedBusinesses = setGeoJson(map, 'businesses', nextBusinesses)
-    const pushedDots = setGeoJson(map, 'business-dots', nextBusinesses)
+    setGeoJson(map, 'businesses', nextBusinesses)
+    setGeoJson(map, 'business-dots', nextBusinesses)
     setGeoJson(map, 'user-location', userLocationData(nextUserPoint))
-    if (pushedBusinesses || pushedDots) setMapStatus(`${nextBusinesses.features.length.toLocaleString()} approved businesses loaded`)
-    if (!pushedBusinesses && !pushedDots && mapReady) setMapStatus('Map source not ready yet')
   }
 
   async function openBusinessById(id: string, coords?: [number, number] | null) {
     if (!id) return
     const business = await fetchBusinessById(id)
-    if (business) {
-      setSelected(business)
-      const map = mapRef.current
-      const point = coords || [business.lng, business.lat]
-      if (map && point) map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 16) })
-    }
+    if (!business) return
+    setSelected(business)
+    const map = mapRef.current
+    const point = coords || [business.lng, business.lat]
+    if (map && point) map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 16) })
   }
 
   function requestUserLocation() {
@@ -245,7 +226,7 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
       position => {
         const point = { lat: position.coords.latitude, lng: position.coords.longitude }
         setUserPoint(point)
-        setLocationStatus('Showing nearest first.')
+        setLocationStatus('Showing places near your location.')
         requestAnimationFrame(() => {
           applyMapData(visibleBusinesses, point)
           const map = mapRef.current
@@ -263,9 +244,8 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
       const enriched = enrichBusinessGeoJson(data, businessPostKinds)
       businessesGeoJsonRef.current = enriched
       setBusinessesGeoJson(data)
-      setMapStatus(`${enriched.features.length.toLocaleString()} approved businesses loaded`)
       requestAnimationFrame(() => applyMapData(enriched, userPoint))
-    }).catch(() => setMapStatus('Could not load approved businesses'))
+    }).catch(() => setLocationStatus('Could not load the map data.'))
   }, [businessPostKinds])
 
   useEffect(() => {
@@ -351,25 +331,9 @@ export default function MapView({ posts, onOpenPostForm }: { posts: Post[]; onOp
         </select>
         <button className={filter === 'community' ? 'quick-filter active' : 'quick-filter'} onClick={() => setFilter(filter === 'community' ? 'all' : 'community')}>Free meals</button>
       </div>
-      <div className="map-debug-pill">{mapStatus}</div>
       <button className="locate-button" onClick={requestUserLocation} aria-label="Use my location"><LocateFixed size={17} /> Near me</button>
       {locationStatus && <div className="location-status">{locationStatus}</div>}
       <div ref={nodeRef} className="map-canvas" />
-      {!selected && nearbyBusinesses.length > 0 && <div className="nearby-results" aria-label="Nearby businesses">
-        <div className="nearby-title"><strong>{userPoint ? 'Nearby businesses' : 'Approved businesses'}</strong><span>{nearbyBusinesses.length} shown</span></div>
-        <div className="nearby-scroll">
-          {nearbyBusinesses.map(feature => {
-            const props = feature.properties || {}
-            const coords = featureCoords(feature)
-            const info = categoryInfo(String(props.category || ''), String(props.name || ''))
-            return <button key={String(props.id)} className="nearby-card" onClick={() => openBusinessById(String(props.id), coords)}>
-              <span className={`nearby-icon ${info.group}`}>{String(props.category_icon || info.icon)}</span>
-              <span className="nearby-card-text"><strong>{String(props.name || 'Local business')}</strong><small>{String(props.category_label || info.label)}{props.has_offer ? ' · Offer' : props.has_job ? ' · Hiring' : props.has_community ? ' · Community help' : ''}</small></span>
-            </button>
-          })}
-        </div>
-      </div>}
-      <button className="fab" aria-label="Post" onClick={onOpenPostForm}><Layers size={20} />＋ Post</button>
       {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button><BusinessDetailSheet business={selected} posts={posts.filter(p => p.business_id === selected.id)} /></div>}
     </section>
   )

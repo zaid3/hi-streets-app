@@ -196,6 +196,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   const [mapReady, setMapReady] = useState(false)
   const [userPoint, setUserPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState('')
+  const [locationPromptOpen, setLocationPromptOpen] = useState(true)
 
   const businessPostKinds = useMemo(() => getBusinessPostKinds(posts), [posts])
   const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
@@ -220,6 +221,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   }
 
   function requestUserLocation() {
+    setLocationPromptOpen(false)
     if (!navigator.geolocation) return setLocationStatus('Location not supported on this browser')
     setLocationStatus('Finding your location…')
     navigator.geolocation.getCurrentPosition(
@@ -234,7 +236,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
           if (map && !isInsidePaddedNewham(point)) map.easeTo({ center: [NEWHAM_CENTER.lng, NEWHAM_CENTER.lat], zoom: 12.5 })
         })
       },
-      error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied' : 'Could not get location'),
+      error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Showing Newham map.' : 'Could not get location. Showing Newham map.'),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     )
   }
@@ -334,6 +336,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
       <button className="locate-button" onClick={requestUserLocation} aria-label="Use my location"><LocateFixed size={17} /> Near me</button>
       {locationStatus && <div className="location-status">{locationStatus}</div>}
       <div ref={nodeRef} className="map-canvas" />
+      {locationPromptOpen && !userPoint && <div className="location-gate"><div><h2>Use your location?</h2><p>HiStreets works best when you share location, so we can show nearby offers, jobs, free meals and local businesses in Newham.</p><button onClick={requestUserLocation}><LocateFixed size={17} /> Show what is near me</button><button className="secondary" onClick={() => setLocationPromptOpen(false)}>Use Newham map for now</button></div></div>}
       {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button><BusinessDetailSheet business={selected} posts={posts.filter(p => p.business_id === selected.id)} /></div>}
     </section>
   )

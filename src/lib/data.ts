@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
-import type { Business, BusinessClaimOption, BusinessProfileInput, BusinessRegistrationInput, ClaimMethod, JobApplication, ParkingPoint, Post, Role } from '../types'
+import type { Business, BusinessClaimOption, BusinessProfileInput, BusinessRegistrationInput, ClaimMethod, JobApplication, ParkingPoint, Post, Role, SuperAdminBusinessRow, SuperAdminOverview, SuperAdminPostRow } from '../types'
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 
@@ -55,7 +55,7 @@ export async function loadMyVerifiedBusinesses(): Promise<Business[]> {
     .eq('verification_status', 'verified')
     .order('name', { ascending: true })
     .limit(200)
-  if (role !== 'admin') query = query.eq('claimed_by', user.id)
+  if (role !== 'admin' && role !== 'super_admin') query = query.eq('claimed_by', user.id)
   const { data, error } = await query
   if (error || !data) return []
   return (data as Business[]).filter(canPostFromBusiness)
@@ -222,6 +222,27 @@ export async function loadMyJobApplications(): Promise<JobApplication[]> {
   const { data, error } = await supabase.rpc('my_job_applications')
   if (error || !data) return []
   return data as JobApplication[]
+}
+
+export async function loadSuperAdminOverview(): Promise<SuperAdminOverview | null> {
+  if (!supabaseConfigured || !supabase) return null
+  const { data, error } = await supabase.rpc('admin_dashboard_overview')
+  if (error || !data?.[0]) return null
+  return data[0] as SuperAdminOverview
+}
+
+export async function loadSuperAdminBusinesses(status?: string): Promise<SuperAdminBusinessRow[]> {
+  if (!supabaseConfigured || !supabase) return []
+  const { data, error } = await supabase.rpc('admin_dashboard_businesses', { p_status: status || null })
+  if (error || !data) return []
+  return data as SuperAdminBusinessRow[]
+}
+
+export async function loadSuperAdminPosts(status?: string): Promise<SuperAdminPostRow[]> {
+  if (!supabaseConfigured || !supabase) return []
+  const { data, error } = await supabase.rpc('admin_dashboard_posts', { p_status: status || null })
+  if (error || !data) return []
+  return data as SuperAdminPostRow[]
 }
 
 export async function loadCpzGeoJson(): Promise<FeatureCollection> {

@@ -1,25 +1,59 @@
-# HiStreets — Newham Community Map
+# HiStreets
 
-HiStreets is a free, mobile-first community map for the London Borough of Newham only.
+HiStreets is a mobile-first local discovery platform for the London Borough of Newham.
 
-It shows:
+The app helps residents find nearby offers, local jobs, free meals and community support from approved local businesses and community organisations. It is designed for simple public use, low-friction business participation and privacy-conscious local operation.
 
-- local businesses and services seeded from OpenStreetMap
-- verified local offers
-- Newham jobs, especially entry-level and youth-friendly opportunities
-- free meals and community support
-- official CPZ polygons and manually entered paid bays
+## Core product
 
-The app follows the uploaded Phase 1 specification: MapLibre, no Google Maps, no ads, no paid APIs, no invented parking data, and no expansion beyond Newham.
+- Map-first local discovery for Newham
+- Nearby offers, jobs, free meals and community support
+- Public browsing without account creation
+- Job applications without sign-up, with mandatory CV upload
+- Business sign-up and profile management
+- Simple posting for approved businesses
+- Safe auto-approval for posts that pass clear rules
+- Super Admin dashboard for approvals, content review and platform oversight
+- Parking section kept as a coming-soon feature until reliable local data is available
 
-## Stack
+## User roles
 
-- React + Vite + TypeScript
+| Role | Purpose |
+| --- | --- |
+| User | Browse the map, find posts and apply for jobs without logging in |
+| Business | Manage an approved business, publish posts and view job applications |
+| Admin | Help review businesses and posts |
+| Super Admin | Full platform owner view with overview metrics and approval controls |
+
+## Trust and safety model
+
+HiStreets keeps the public app simple while protecting trust in local content.
+
+- New business registrations require approval before appearing publicly.
+- Approved businesses can publish posts automatically if required fields and safety rules pass.
+- Risky or incomplete posts stay in review.
+- Job applicants are contacted directly by the business using the contact details they provide.
+- Reviews are not active in the current version to avoid unnecessary moderation and privacy risk.
+
+## Privacy approach
+
+- No advertising trackers
+- No sale of user data
+- No live location tracking
+- Location permission is used only to show nearby results on the device
+- CVs are used only for job applications and are visible to the relevant business/admin flow
+- No Google Places data is used for business content
+
+## Technology stack
+
+- React
+- Vite
+- TypeScript
 - MapLibre GL JS
-- OpenFreeMap vector tiles
-- Supabase Postgres/PostGIS/Auth/Storage
-- PWA manifest + service worker
-- Docker/nginx for Coolify or any static host
+- Supabase Auth
+- Supabase Postgres/PostGIS
+- Supabase Storage
+- Progressive Web App shell
 
 ## Environment variables
 
@@ -30,93 +64,67 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
-Seed scripts:
-
-```bash
-SUPABASE_SERVICE_ROLE_KEY=
-# plus either VITE_SUPABASE_URL or SUPABASE_URL
-```
-
-Never commit service keys or tokens.
+Server-side import or maintenance scripts must use secrets only in the local terminal or deployment environment. Do not commit service-role keys, tokens or private credentials.
 
 ## Database setup
 
-Run this in Supabase SQL editor:
+Run the SQL files in this order from the Supabase SQL Editor:
 
-```bash
-supabase/schema_v1.sql
+```text
+supabase/FINAL_RUN_THIS_marketplace_setup.sql
+supabase/FINAL_RUN_THIS_jobs_offers_applications_no_parking.sql
+supabase/FINAL_RUN_THIS_safe_auto_approval.sql
+supabase/FINAL_RUN_THIS_super_admin_dashboard.sql
 ```
 
-It creates:
+After the Super Admin SQL is installed, set the platform owner account:
 
-- profiles
-- businesses
-- posts
-- cpz_zones
-- paid_bays
-- blue_badge_bays
-- saved_places
-- reports
-- verification_events
-- admin_audit_log
-- RLS policies
-- frontend public views
-- data import RPCs
-- GDPR export/delete RPCs
-
-## Seed official/free data
-
-Install locally:
-
-```bash
-npm install
+```sql
+update public.profiles
+set role = 'super_admin'
+where id = (
+  select id
+  from auth.users
+  where email = 'YOUR_EMAIL_HERE'
+);
 ```
-
-Import Newham CPZ polygons from Newham ArcGIS and reproject EPSG:27700 to WGS84:
-
-```bash
-VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run seed:cpz
-```
-
-Seed businesses/services from OpenStreetMap Overpass inside the Newham bounding box:
-
-```bash
-VITE_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npm run seed:osm-businesses
-```
-
-Paid bays are entered manually from the PayByPhone public map. Blue badge bays must only be added from official EIR/FOI data or photo-verified survey data.
 
 ## Development
 
+Install dependencies:
+
 ```bash
 npm install
+```
+
+Start the development server:
+
+```bash
 npm run dev
 ```
 
-## Production build
+Create a production build:
 
 ```bash
 npm run build
 ```
 
-Docker exposes port 3000 through nginx.
+## Deployment checklist
 
-## Operator checklist
+- Configure `VITE_SUPABASE_URL`
+- Configure `VITE_SUPABASE_ANON_KEY`
+- Run the required Supabase SQL files
+- Set the platform owner as `super_admin`
+- Deploy the latest main branch
+- Test the map, location prompt, public tabs, business login, business registration, post creation and job application flow
 
-- [ ] Create Supabase project in UK/EU region
-- [ ] Run `supabase/schema_v1.sql`
-- [ ] Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Coolify
-- [ ] Run CPZ seed script
-- [ ] Run OSM business seed script
-- [ ] Manually enter PayByPhone paid bays
-- [ ] File EIR request to Newham for disabled bay locations and TMO schedule plans
-- [ ] Email AppyWay asking about a donated community licence
-- [ ] Complete ICO data protection fee self-assessment
+## Product rules
 
-## Hard rules
-
-- No Google Maps or Google Places data
-- No fake businesses, offers, jobs, meals or parking
-- No estimated blue badge bays
-- No trackers, ads or monetisation
-- No map expansion beyond Newham
+- Newham only
+- MapLibre only
+- No Google Places data
+- No fake businesses, jobs, offers, meals or parking
+- No public display of unapproved businesses
+- No monetisation in the current version
+- No reviews in the current version
+- Parking data remains disabled until reliable local data is available

@@ -92,7 +92,7 @@ export interface Post {
   apply_url?: string | null
   apply_phone?: string | null
   status: 'pending' | 'live' | 'expired' | 'rejected' | 'removed'
-  source: 'web' | 'whatsapp' | 'admin'
+  source: 'web' | 'web_auto_checked' | 'whatsapp' | 'admin'
   lat?: number | null
   lng?: number | null
   business?: Business | null

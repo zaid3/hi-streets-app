@@ -1,6 +1,6 @@
 {
   "name": "hi-streets-app",
-  "version": "1.0.0-phase1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,11 +8,7 @@
     "build": "tsc && vite build",
     "start": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
-    "seed:boundary": "tsx scripts/import-newham-boundary.ts",
-    "seed:osm-businesses": "tsx scripts/seed-osm-businesses.ts",
-    "seed:overture-places": "tsx scripts/import-overture-places.ts",
-    "seed:one-go": "bash scripts/histreets-one-go.sh",
-    "seed:phase0": "npm run seed:boundary && npm run seed:osm-businesses"
+    "seed:boundary": "tsx scripts/import-newham-boundary.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.43.0",

@@ -180,6 +180,18 @@ function isInsidePaddedNewham(point: { lat: number; lng: number }) {
   return point.lat >= b.south && point.lat <= b.north && point.lng >= b.west && point.lng <= b.east
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function closestNewhamFocus(point: { lat: number; lng: number }) {
+  const b = paddedBounds(0.02)
+  return {
+    lat: clamp(point.lat, b.south, b.north),
+    lng: clamp(point.lng, b.west, b.east),
+  }
+}
+
 function userLocationData(point: { lat: number; lng: number } | null): FeatureCollection {
   if (!point) return EMPTY_FC
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 'user-location' }, geometry: { type: 'Point', coordinates: [point.lng, point.lat] } }] }
@@ -227,13 +239,14 @@ export default function MapView({ posts }: { posts: Post[] }) {
     navigator.geolocation.getCurrentPosition(
       position => {
         const point = { lat: position.coords.latitude, lng: position.coords.longitude }
+        const insideArea = isInsidePaddedNewham(point)
+        const focusPoint = insideArea ? point : closestNewhamFocus(point)
         setUserPoint(point)
-        setLocationStatus('Showing places near your location.')
+        setLocationStatus(insideArea ? 'Showing places near your location.' : 'Showing the closest Newham area to your location.')
         requestAnimationFrame(() => {
           applyMapData(visibleBusinesses, point)
           const map = mapRef.current
-          if (map && isInsidePaddedNewham(point)) map.easeTo({ center: [point.lng, point.lat], zoom: 15 })
-          if (map && !isInsidePaddedNewham(point)) map.easeTo({ center: [NEWHAM_CENTER.lng, NEWHAM_CENTER.lat], zoom: 12.5 })
+          if (map) map.easeTo({ center: [focusPoint.lng, focusPoint.lat], zoom: 15.8, duration: 850 })
         })
       },
       error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Showing Newham map.' : 'Could not get location. Showing Newham map.'),

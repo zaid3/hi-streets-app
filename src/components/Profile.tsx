@@ -27,7 +27,7 @@ export default function Profile({ onPost }: Props) {
   async function sendMagicLink(mode: 'signup' | 'login') {
     if (!supabaseConfigured || !supabase) return setMessage('Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in environment variables first.')
     if (!email.trim()) return setMessage('Enter your business email first.')
-    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: window.location.origin } })
+    const { error } = await supabase.auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: `${window.location.origin}/map` } })
     setMessage(error ? error.message : mode === 'signup' ? 'Sign-up link sent. Check your email, then register your business.' : 'Login link sent. Check your email.')
   }
 

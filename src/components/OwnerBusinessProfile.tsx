@@ -51,7 +51,7 @@ export default function OwnerBusinessProfile() {
         fillForm(selected)
         setStatus('')
       } else {
-        setStatus('No verified business yet. Register your business first. After approval, complete the public profile here.')
+        setStatus('No verified business yet. Register or claim your business first. After approval, complete the public profile here.')
       }
     } catch {
       setStatus('Could not load verified businesses.')

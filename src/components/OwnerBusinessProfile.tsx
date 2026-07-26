@@ -51,7 +51,7 @@ export default function OwnerBusinessProfile() {
         fillForm(selected)
         setStatus('')
       } else {
-        setStatus('No verified business yet. Claim and verify a listing first, then complete the profile here.')
+        setStatus('No verified business yet. Register your business first. After approval, complete the public profile here.')
       }
     } catch {
       setStatus('Could not load verified businesses.')
@@ -88,7 +88,7 @@ export default function OwnerBusinessProfile() {
       const updated = await saveMyBusinessProfile({ business_id: businessId, ...form })
       setBusinesses(prev => prev.map(b => b.id === updated.id ? { ...b, ...updated } : b))
       fillForm(updated)
-      setStatus('Business profile saved. Owner-updated fields are now protected from future imports.')
+      setStatus('Business profile saved.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not save business profile')
     } finally {
@@ -97,9 +97,9 @@ export default function OwnerBusinessProfile() {
   }
 
   return (
-    <div className="privacy-card business-owner-card">
+    <div className="privacy-card business-owner-card business-profile-card">
       <h2><Store size={20} /> Verified business profile</h2>
-      <p className="muted">Complete missing phone, website, WhatsApp, opening hours, description and photo after verification. These details will appear on the map listing.</p>
+      <p className="muted">After approval, complete phone, website, WhatsApp, opening hours, description and photo/logo. These details appear on the map listing.</p>
 
       {businesses.length > 0 && <>
         <label>Business

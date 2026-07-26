@@ -95,8 +95,8 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         <div className="empty-action-card">
           <Store size={24} />
           <strong>No approved business yet</strong>
-          <p>Register your business first. After approval, you can post offers, jobs, free meals and community support from here.</p>
-          <button onClick={onClose}>Register business on this page</button>
+          <p>Register or claim your business first. After Super Admin approval, you can post offers, jobs, free meals and community support from here.</p>
+          <button onClick={onClose}>Register or claim on this page</button>
         </div>
         {status && <p className="form-status">{status}</p>}
       </div>

@@ -20,8 +20,8 @@ const initialForm = {
 
 function statusText(status?: string | null) {
   if (status === 'verified') return 'Approved and visible publicly'
-  if (status === 'pending') return 'Waiting for admin approval'
-  if (status === 'rejected') return 'Rejected — check details and contact admin'
+  if (status === 'pending') return 'Waiting for Super Admin approval'
+  if (status === 'rejected') return 'Rejected — check details and contact HiStreets'
   return status || 'Draft'
 }
 
@@ -75,7 +75,7 @@ export default function BusinessRegistration() {
       })
       setForm(initialForm)
       await refresh()
-      setStatus('Business submitted. It will appear publicly after admin approval.')
+      setStatus('Business submitted. It will appear publicly after Super Admin approval.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not submit business.')
     } finally {
@@ -87,8 +87,8 @@ export default function BusinessRegistration() {
 
   return (
     <div className="privacy-card business-owner-card">
-      <h2><Store size={20} /> Register your business</h2>
-      <p className="muted">Only approved businesses appear publicly. Owners register their own details, then post offers, jobs, free meals or community support.</p>
+      <h2><Store size={20} /> Register or claim your business</h2>
+      <p className="muted">If your business is already on the map, submit the same name and address so HiStreets can connect it to your account. If it is not on the map, register it as a new business.</p>
 
       {businesses.length > 0 && <div className="business-facts">
         <h3>Your businesses</h3>
@@ -108,7 +108,7 @@ export default function BusinessRegistration() {
         <input value={form.address} onChange={e => update('address', e.target.value)} placeholder="Street address and postcode" maxLength={240} />
       </label>
       <div className="sheet-actions">
-        <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use current location</button>
+        <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use business location</button>
       </div>
       <label>Latitude
         <input value={form.lat} onChange={e => update('lat', e.target.value)} placeholder="51.5…" inputMode="decimal" />
@@ -132,10 +132,10 @@ export default function BusinessRegistration() {
         <input value={form.opening_hours} onChange={e => update('opening_hours', e.target.value)} placeholder="Mon–Sat 9am–6pm" maxLength={160} />
       </label>
       <label>Evidence note
-        <textarea value={form.evidence_note} onChange={e => update('evidence_note', e.target.value)} placeholder="Example: I am the owner / staff member. Shop sign checked. Website confirms details." maxLength={500} />
+        <textarea value={form.evidence_note} onChange={e => update('evidence_note', e.target.value)} placeholder="Example: I am the owner or staff member. Website, shop sign or business phone confirms these details." maxLength={500} />
       </label>
 
-      <button onClick={submit} disabled={disabled}><Send size={17} /> {saving ? 'Submitting…' : 'Submit business for approval'}</button>
+      <button onClick={submit} disabled={disabled}><Send size={17} /> {saving ? 'Submitting…' : 'Submit for approval'}</button>
       {status && <p className="form-status">{status}</p>}
     </div>
   )

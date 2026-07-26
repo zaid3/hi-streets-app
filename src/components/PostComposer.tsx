@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Send } from 'lucide-react'
+import { Send, Store } from 'lucide-react'
 import { createPost, loadMyVerifiedBusinesses } from '../lib/data'
 import type { Business, PostType } from '../types'
 
@@ -39,6 +39,7 @@ function bodyPlaceholder(type: PostType) {
 export default function PostComposer({ onClose, onSubmitted, initialType = 'offer' }: Props) {
   const [businesses, setBusinesses] = useState<Business[]>([])
   const [businessId, setBusinessId] = useState('')
+  const [loadingBusinesses, setLoadingBusinesses] = useState(true)
   const [type, setType] = useState<PostType>(initialType)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -54,8 +55,8 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
     loadMyVerifiedBusinesses().then(rows => {
       setBusinesses(rows)
       setBusinessId(rows[0]?.id || '')
-      setStatus(rows.length ? '' : 'No approved business found. Register your business first. Once approved, you can post.')
-    }).catch(() => setStatus('Could not load your approved businesses.'))
+      setStatus(rows.length ? '' : 'No approved business found yet.')
+    }).catch(() => setStatus('Could not load your approved businesses.')).finally(() => setLoadingBusinesses(false))
   }, [])
 
   async function submit() {
@@ -85,6 +86,23 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   const needsRecurrence = type === 'free_meal' || type === 'community'
   const disabled = submitting || !businessId || !title.trim() || !body.trim() || !expiresAt || (needsRecurrence && !recurrence.trim())
 
+  if (!loadingBusinesses && businesses.length === 0) {
+    return (
+      <div className="bottom-sheet post-composer">
+        <button className="sheet-close" onClick={onClose}>×</button>
+        <div className="sheet-handle" />
+        <h2>Post from your business</h2>
+        <div className="empty-action-card">
+          <Store size={24} />
+          <strong>No approved business yet</strong>
+          <p>Register your business first. After approval, you can post offers, jobs, free meals and community support from here.</p>
+          <button onClick={onClose}>Register business on this page</button>
+        </div>
+        {status && <p className="form-status">{status}</p>}
+      </div>
+    )
+  }
+
   return (
     <div className="bottom-sheet post-composer">
       <button className="sheet-close" onClick={onClose}>×</button>
@@ -93,7 +111,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
       <p className="muted">Approved businesses can post quickly. Clean posts go live automatically. Risky or incomplete posts wait for review.</p>
 
       <label>Approved business
-        <select value={businessId} onChange={e => setBusinessId(e.target.value)}>
+        <select value={businessId} onChange={e => setBusinessId(e.target.value)} disabled={loadingBusinesses}>
           {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </label>

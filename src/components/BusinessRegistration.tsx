@@ -44,13 +44,13 @@ export default function BusinessRegistration() {
 
   function useCurrentLocation() {
     if (!navigator.geolocation) return setStatus('Location is not supported on this browser.')
-    setStatus('Getting your business location…')
+    setStatus('Getting the business map point…')
     navigator.geolocation.getCurrentPosition(
       position => {
         setForm(prev => ({ ...prev, lat: position.coords.latitude.toFixed(7), lng: position.coords.longitude.toFixed(7) }))
-        setStatus('Location added. Check it is the business location before submitting.')
+        setStatus('Business map point added. Submit when the address/details are correct.')
       },
-      error => setStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied.' : 'Could not get location.'),
+      error => setStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Add the address and ask HiStreets to help with the map point.' : 'Could not get location.'),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     )
   }
@@ -83,10 +83,11 @@ export default function BusinessRegistration() {
     }
   }
 
-  const disabled = saving || !form.name.trim() || !form.category.trim() || !form.address.trim() || !form.evidence_note.trim() || !Number(form.lat) || !Number(form.lng)
+  const hasMapPoint = Boolean(Number(form.lat) && Number(form.lng))
+  const disabled = saving || !form.name.trim() || !form.category.trim() || !form.address.trim() || !form.evidence_note.trim() || !hasMapPoint
 
   return (
-    <div className="privacy-card business-owner-card">
+    <div id="business-register-card" className="privacy-card business-owner-card">
       <h2><Store size={20} /> Register or claim your business</h2>
       <p className="muted">If your business is already on the map, submit the same name and address so HiStreets can connect it to your account. If it is not on the map, register it as a new business.</p>
 
@@ -107,15 +108,24 @@ export default function BusinessRegistration() {
       <label>Address
         <input value={form.address} onChange={e => update('address', e.target.value)} placeholder="Street address and postcode" maxLength={240} />
       </label>
-      <div className="sheet-actions">
+
+      <div className={hasMapPoint ? 'location-confirmed-card' : 'location-help-card'}>
+        <strong>{hasMapPoint ? 'Map point added' : 'Add business map point'}</strong>
+        <p>{hasMapPoint ? 'HiStreets has a map point for this business. You do not need to edit latitude/longitude.' : 'For an accurate map listing, stand at the business location and tap the button below. The exact numbers are hidden from normal users.'}</p>
         <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use business location</button>
       </div>
-      <label>Latitude
-        <input value={form.lat} onChange={e => update('lat', e.target.value)} placeholder="51.5…" inputMode="decimal" />
-      </label>
-      <label>Longitude
-        <input value={form.lng} onChange={e => update('lng', e.target.value)} placeholder="0.0…" inputMode="decimal" />
-      </label>
+
+      <details className="advanced-location">
+        <summary>Advanced location</summary>
+        <p>Only use this if HiStreets asks for it. Most business owners can leave this closed.</p>
+        <label>Latitude
+          <input value={form.lat} onChange={e => update('lat', e.target.value)} placeholder="51.5…" inputMode="decimal" />
+        </label>
+        <label>Longitude
+          <input value={form.lng} onChange={e => update('lng', e.target.value)} placeholder="0.0…" inputMode="decimal" />
+        </label>
+      </details>
+
       <label>Phone
         <input value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="Business phone" maxLength={50} />
       </label>
@@ -136,6 +146,7 @@ export default function BusinessRegistration() {
       </label>
 
       <button onClick={submit} disabled={disabled}><Send size={17} /> {saving ? 'Submitting…' : 'Submit for approval'}</button>
+      {!hasMapPoint && <p className="form-status">Add the business map point before submitting. Later we can add postcode lookup or map pin selection.</p>}
       {status && <p className="form-status">{status}</p>}
     </div>
   )

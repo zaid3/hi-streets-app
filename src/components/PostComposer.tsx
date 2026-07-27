@@ -59,6 +59,13 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
     }).catch(() => setStatus('Could not load your approved businesses.')).finally(() => setLoadingBusinesses(false))
   }, [])
 
+  function goToRegisterForm() {
+    onClose()
+    window.setTimeout(() => {
+      document.getElementById('business-register-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 120)
+  }
+
   async function submit() {
     try {
       setSubmitting(true)
@@ -96,7 +103,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
           <Store size={24} />
           <strong>No approved business yet</strong>
           <p>Register or claim your business first. After Super Admin approval, you can post offers, jobs, free meals and community support from here.</p>
-          <button onClick={onClose}>Register or claim on this page</button>
+          <button onClick={goToRegisterForm}>Go to register / claim form</button>
         </div>
         {status && <p className="form-status">{status}</p>}
       </div>

@@ -48,9 +48,9 @@ export default function BusinessRegistration() {
     navigator.geolocation.getCurrentPosition(
       position => {
         setForm(prev => ({ ...prev, lat: position.coords.latitude.toFixed(7), lng: position.coords.longitude.toFixed(7) }))
-        setStatus('Business map point added. Submit when the address/details are correct.')
+        setStatus('Business map point added.')
       },
-      error => setStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Add the address and ask HiStreets to help with the map point.' : 'Could not get location.'),
+      error => setStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Add the full address and HiStreets can help with the map point.' : 'Could not get location.'),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     )
   }
@@ -111,7 +111,7 @@ export default function BusinessRegistration() {
 
       <div className={hasMapPoint ? 'location-confirmed-card' : 'location-help-card'}>
         <strong>{hasMapPoint ? 'Map point added' : 'Add business map point'}</strong>
-        <p>{hasMapPoint ? 'HiStreets has a map point for this business. You do not need to edit latitude/longitude.' : 'For an accurate map listing, stand at the business location and tap the button below. The exact numbers are hidden from normal users.'}</p>
+        <p>{hasMapPoint ? 'HiStreets has a map point for this business.' : 'Stand at the business location and tap the button below. If this is difficult, add the full address and HiStreets can help.'}</p>
         <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use business location</button>
       </div>
 
@@ -146,7 +146,6 @@ export default function BusinessRegistration() {
       </label>
 
       <button onClick={submit} disabled={disabled}><Send size={17} /> {saving ? 'Submitting…' : 'Submit for approval'}</button>
-      {!hasMapPoint && <p className="form-status">Add the business map point before submitting. Later we can add postcode lookup or map pin selection.</p>}
       {status && <p className="form-status">{status}</p>}
     </div>
   )

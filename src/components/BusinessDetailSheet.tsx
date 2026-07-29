@@ -60,6 +60,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
   const activePosts = posts.filter(p => ['offer', 'job', 'free_meal', 'community'].includes(p.type))
   const missing = missingFields(business)
   const missingCriticalContact = !business.phone || !business.opening_hours
+  const destinationLabel = [business.name, business.address || 'Newham London'].filter(Boolean).join(', ')
 
   return (
     <>
@@ -109,7 +110,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
       </section>
 
       <div className="sheet-actions primary-actions">
-        <a href={directionsUrl(business.lat, business.lng)} target="_blank" rel="noreferrer">Directions</a>
+        <a href={directionsUrl(business.lat, business.lng, destinationLabel)} target="_blank" rel="noreferrer">Directions</a>
         {business.phone && <a href={`tel:${business.phone}`}>Call</a>}
         {website && <a href={website} target="_blank" rel="noreferrer">Website</a>}
       </div>

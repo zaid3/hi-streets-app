@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
 import { LocateFixed, Search } from 'lucide-react'
 import { MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER, paddedBounds } from '../lib/newham'
@@ -135,13 +135,14 @@ function enrichBusinessGeoJson(data: FeatureCollection, postKinds: BusinessPostK
       const id = String(props.id || feature.id || '')
       const category = String(props.category || '')
       const name = String(props.name || '')
+      const address = String(props.address || '')
       const kinds = postKinds[id] || { offer: false, job: false, community: false }
       const details = categoryInfo(category, name)
       const hasOffer = Boolean(props.has_offer) || kinds.offer
       const hasJob = Boolean(props.has_job) || kinds.job
       const hasCommunity = Boolean(props.has_community) || kinds.community
       const primaryKind = hasOffer ? 'offer' : hasJob ? 'job' : hasCommunity ? 'community' : ''
-      return { ...feature, properties: { ...props, category_group: details.group, marker_icon: details.marker, category_label: details.label, category_icon: details.icon, has_offer: hasOffer, has_job: hasJob, has_community: hasCommunity, primary_kind: primaryKind, searchable: `${name} ${category} ${details.group} ${details.label} ${details.aliases}`.toLowerCase() } }
+      return { ...feature, properties: { ...props, category_group: details.group, marker_icon: details.marker, category_label: details.label, category_icon: details.icon, has_offer: hasOffer, has_job: hasJob, has_community: hasCommunity, primary_kind: primaryKind, searchable: `${name} ${category} ${address} ${details.group} ${details.label} ${details.aliases}`.toLowerCase() } }
     }),
   }
 }
@@ -180,6 +181,10 @@ function isInsidePaddedNewham(point: { lat: number; lng: number }) {
   return point.lat >= b.south && point.lat <= b.north && point.lng >= b.west && point.lng <= b.east
 }
 
+function isInsideNewham(point: { lat: number; lng: number }) {
+  return point.lat >= NEWHAM_BOUNDS.south && point.lat <= NEWHAM_BOUNDS.north && point.lng >= NEWHAM_BOUNDS.west && point.lng <= NEWHAM_BOUNDS.east
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
@@ -195,6 +200,22 @@ function closestNewhamFocus(point: { lat: number; lng: number }) {
 function userLocationData(point: { lat: number; lng: number } | null): FeatureCollection {
   if (!point) return EMPTY_FC
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 'user-location' }, geometry: { type: 'Point', coordinates: [point.lng, point.lat] } }] }
+}
+
+function looksLikeFullPostcode(query: string) {
+  return /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(query.trim())
+}
+
+function focusFeatures(map: MapLibre, features: Array<any>) {
+  const coords = features.map(featureCoords).filter(Boolean) as [number, number][]
+  if (!coords.length) return false
+  if (coords.length === 1) {
+    map.easeTo({ center: coords[0], zoom: 16.2, duration: 650 })
+    return true
+  }
+  const bounds = coords.reduce((b, coord) => b.extend(coord), new maplibregl.LngLatBounds(coords[0], coords[0]))
+  map.fitBounds(bounds, { padding: 60, maxZoom: 15.8, duration: 650 })
+  return true
 }
 
 export default function MapView({ posts }: { posts: Post[] }) {
@@ -232,6 +253,48 @@ export default function MapView({ posts }: { posts: Post[] }) {
     if (map && point) map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 16) })
   }
 
+  async function submitSearch(event: FormEvent) {
+    event.preventDefault()
+    const map = mapRef.current
+    const query = searchTerm.trim()
+    if (!map) return
+
+    if (!query) {
+      setLocationStatus('Showing Newham map.')
+      map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 12, duration: 500 })
+      return
+    }
+
+    if (looksLikeFullPostcode(query)) {
+      try {
+        setLocationStatus('Searching postcode…')
+        const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(query)}`)
+        const data = await response.json()
+        const lat = Number(data?.result?.latitude)
+        const lng = Number(data?.result?.longitude)
+        if (response.ok && Number.isFinite(lat) && Number.isFinite(lng)) {
+          if (!isInsideNewham({ lat, lng })) {
+            setLocationStatus('That postcode is outside Newham.')
+            return
+          }
+          map.easeTo({ center: [lng, lat], zoom: 16.3, duration: 650 })
+          setLocationStatus(`Showing ${query.toUpperCase()}.`)
+          return
+        }
+      } catch {}
+      setLocationStatus('Postcode not found. Try a Newham postcode or business name.')
+      return
+    }
+
+    const matches = filteredBusinessGeoJson(enrichedBusinesses, filter, query)
+    applyMapData(matches, userPoint)
+    if (focusFeatures(map, matches.features)) {
+      setLocationStatus(`${matches.features.length} result${matches.features.length === 1 ? '' : 's'} found.`)
+    } else {
+      setLocationStatus('No matching business found yet. Try business name, street or postcode.')
+    }
+  }
+
   function requestUserLocation() {
     setLocationPromptOpen(false)
     if (!navigator.geolocation) return setLocationStatus('Location not supported on this browser')
@@ -249,7 +312,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
           if (map) map.easeTo({ center: [focusPoint.lng, focusPoint.lat], zoom: 16, duration: 850 })
         })
       },
-      error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Showing Newham map.' : 'Could not get location. Showing Newham map.'),
+      error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Check Safari/location permission, or use Newham map for now.' : 'Could not get location. Showing Newham map.'),
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     )
   }
@@ -335,10 +398,10 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
   return (
     <section className="map-screen">
-      <label className="map-search" aria-label="Search HiStreets">
-        <Search size={18} />
-        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search offers, jobs, restaurants, salons…" />
-      </label>
+      <form className="map-search" aria-label="Search HiStreets" onSubmit={submitSearch}>
+        <button className="map-search-button" type="submit" aria-label="Search"><Search size={18} /></button>
+        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search business, street or postcode…" />
+      </form>
       <div className="map-filterbar">
         <select className="category-select" value={filter === 'community' ? 'all' : filter} onChange={e => setFilter(e.target.value as LayerFilter)} aria-label="Filter by category">
           {categoryOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}

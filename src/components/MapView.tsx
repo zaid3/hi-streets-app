@@ -176,7 +176,7 @@ function featureCoords(feature: any): [number, number] | null {
 }
 
 function isInsidePaddedNewham(point: { lat: number; lng: number }) {
-  const b = paddedBounds(0.1)
+  const b = paddedBounds(0.03)
   return point.lat >= b.south && point.lat <= b.north && point.lng >= b.west && point.lng <= b.east
 }
 
@@ -185,7 +185,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function closestNewhamFocus(point: { lat: number; lng: number }) {
-  const b = paddedBounds(0.02)
+  const b = paddedBounds(0.01)
   return {
     lat: clamp(point.lat, b.south, b.north),
     lng: clamp(point.lng, b.west, b.east),
@@ -246,7 +246,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
         requestAnimationFrame(() => {
           applyMapData(visibleBusinesses, point)
           const map = mapRef.current
-          if (map) map.easeTo({ center: [focusPoint.lng, focusPoint.lat], zoom: 15.8, duration: 850 })
+          if (map) map.easeTo({ center: [focusPoint.lng, focusPoint.lat], zoom: 16, duration: 850 })
         })
       },
       error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Showing Newham map.' : 'Could not get location. Showing Newham map.'),
@@ -269,21 +269,20 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
   useEffect(() => {
     if (!nodeRef.current || mapRef.current) return
-    const b = paddedBounds(0.1)
     const map = new maplibregl.Map({
       container: nodeRef.current,
       style: MAP_STYLE_URL,
       center: [NEWHAM_CENTER.lng, NEWHAM_CENTER.lat],
-      zoom: 12.3,
-      minZoom: 11.5,
+      zoom: 12.7,
+      minZoom: 12.1,
       maxZoom: 19,
-      maxBounds: [[b.west, b.south], [b.east, b.north]],
+      maxBounds: [[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]],
       attributionControl: { compact: true },
     })
     mapRef.current = map
 
     map.on('load', async () => {
-      map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 26, duration: 0 })
+      map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 12, duration: 0 })
       await addCategoryImages(map)
       const boundary = await loadNewhamBoundaryGeoJson()
       map.addSource('newham-mask', { type: 'geojson', data: maskFromBoundary(boundary) as any })

@@ -29,8 +29,11 @@ export default function Profile({ onPost }: Props) {
       return
     }
     setAuthLoading(true)
-    setRole(await getCurrentRole())
-    setAuthLoading(false)
+    try {
+      setRole(await getCurrentRole())
+    } finally {
+      setAuthLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -39,9 +42,9 @@ export default function Profile({ onPost }: Props) {
       return
     }
 
-    supabase.auth.getUser().then(({ data }) => resolveSession(Boolean(data.user)))
+    supabase.auth.getUser().then(({ data }) => void resolveSession(Boolean(data.user)))
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      void resolveSession(Boolean(session?.user))
+      window.setTimeout(() => { void resolveSession(Boolean(session?.user)) }, 0)
     })
     return () => listener.subscription.unsubscribe()
   }, [])
@@ -129,7 +132,7 @@ export default function Profile({ onPost }: Props) {
     <section className="profile-screen">
       <header className="screen-header">
         <h1>Business portal</h1>
-        <p>Register or claim your business first. After approval, complete your profile, post offers/jobs/free meals and review applications.</p>
+        <p>Register or request ownership of your business first. After approval, complete your profile, post offers/jobs/free meals and review applications.</p>
       </header>
       <BusinessRegistration />
       <OwnerBusinessProfile />

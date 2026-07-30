@@ -1,8 +1,8 @@
 {
   "name": "HiStreets",
   "short_name": "HiStreets",
-  "description": "Free Newham community map for local businesses, offers, jobs, community support and official parking layers.",
-  "start_url": "/",
+  "description": "Newham community map for approved local businesses, offers, jobs, free meals and community support.",
+  "start_url": "/map",
   "scope": "/",
   "display": "standalone",
   "background_color": "#FAFAF7",

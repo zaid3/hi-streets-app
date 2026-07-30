@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Camera, MapPin, Send, Store } from 'lucide-react'
 import { loadMyBusinesses, registerBusiness, uploadBusinessVerificationEvidence } from '../lib/data'
-import { inNewham } from '../lib/newham'
+import { inNewham, NEWHAM_CENTER } from '../lib/newham'
 import type { Business } from '../types'
 
 const initialForm = {
@@ -55,7 +55,7 @@ export default function BusinessRegistration() {
   }
 
   function useCurrentLocation() {
-    if (serviceAreaOnly) return setStatus('Service-area businesses use the postcode area instead of an exact home or operating location.')
+    if (serviceAreaOnly) return setStatus('Service-area businesses use a borough-level service pin instead of an exact home or operating location.')
     if (!navigator.geolocation) return setStatus('Location is not supported on this browser. Add a full Newham postcode instead.')
     setStatus('Getting the business location…')
     navigator.geolocation.getCurrentPosition(
@@ -63,7 +63,7 @@ export default function BusinessRegistration() {
         const lat = position.coords.latitude
         const lng = position.coords.longitude
         if (!inNewham(lat, lng)) {
-          setStatus('This location is outside Newham. Add the business address and Newham postcode instead.')
+          setStatus('This location is outside the Newham map area. Add the business address and Newham postcode instead.')
           return
         }
         setForm(prev => ({ ...prev, lat: lat.toFixed(7), lng: lng.toFixed(7) }))
@@ -90,22 +90,20 @@ export default function BusinessRegistration() {
     const data = await response.json()
     const lat = Number(data?.result?.latitude)
     const lng = Number(data?.result?.longitude)
+    const adminDistrict = String(data?.result?.admin_district || '').trim().toLowerCase()
     if (!response.ok || !Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Postcode could not be found. Check the postcode and try again.')
-    if (!inNewham(lat, lng)) throw new Error('The postcode must be inside Newham.')
+    if (adminDistrict !== 'newham') throw new Error('The postcode must be in the London Borough of Newham.')
+    if (!inNewham(lat, lng)) throw new Error('The postcode is outside the HiStreets Newham map area.')
     return { lat, lng, postcode }
   }
 
   async function serviceAreaMapPoint() {
     const exact = await postcodeMapPoint()
-    const outcode = exact.postcode.split(' ')[0]
-    setStatus(`Setting service area ${outcode}…`)
-    const response = await fetch(`https://api.postcodes.io/outcodes/${encodeURIComponent(outcode)}`)
-    const data = await response.json()
-    const lat = Number(data?.result?.latitude)
-    const lng = Number(data?.result?.longitude)
-    if (!response.ok || !Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Could not set the service-area map point.')
-    if (!inNewham(lat, lng)) throw new Error('The service postcode area must be inside Newham.')
-    return { lat, lng, outcode }
+    return {
+      lat: NEWHAM_CENTER.lat,
+      lng: NEWHAM_CENTER.lng,
+      outcode: exact.postcode.split(' ')[0],
+    }
   }
 
   async function submit() {
@@ -196,8 +194,8 @@ export default function BusinessRegistration() {
       </label>
 
       <div className={!serviceAreaOnly && mapPoint ? 'location-confirmed-card' : 'location-help-card'}>
-        <strong>{serviceAreaOnly ? 'Service-area map point' : mapPoint ? 'Precise map point added' : 'Map location'}</strong>
-        <p>{serviceAreaOnly ? 'HiStreets verifies the full postcode is in Newham, but stores only the outward postcode area as the public map point. Your home or private operating address is not stored by this form.' : mapPoint ? 'HiStreets will use the location you provided.' : 'A full postcode is enough for quick signup. For a more precise shop pin, stand at the business and use your current location.'}</p>
+        <strong>{serviceAreaOnly ? 'Private service-area location' : mapPoint ? 'Precise map point added' : 'Map location'}</strong>
+        <p>{serviceAreaOnly ? 'HiStreets verifies that the postcode belongs to Newham, publishes only the outward postcode label and uses a borough-level service pin. Your full postcode and home or private operating address are not stored by this form.' : mapPoint ? 'HiStreets will use the location you provided.' : 'A full postcode is enough for quick signup. For a more precise shop pin, stand at the business and use your current location.'}</p>
         {!serviceAreaOnly && <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use business location</button>}
       </div>
 

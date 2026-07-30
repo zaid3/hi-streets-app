@@ -1,23 +1,13 @@
 import { supabase, supabaseConfigured } from './supabase'
 import type { AdminBusinessOwnershipRequest, Business, BusinessOwnershipRequest } from '../types'
 
-const claimableSelect = 'id,name,category,address,is_claimed,verification_status,source,lat,lng'
-
 export async function searchClaimableBusinesses(query: string): Promise<Business[]> {
   if (!supabaseConfigured || !supabase) return []
-  const q = query.trim().toLowerCase()
+  const q = query.trim()
   if (q.length < 2) return []
-
-  const { data, error } = await supabase
-    .from('businesses_public')
-    .select(claimableSelect)
-    .eq('is_claimed', false)
-    .limit(100)
-
+  const { data, error } = await supabase.rpc('search_claimable_businesses', { p_query: q })
   if (error || !data) return []
-  return (data as Business[])
-    .filter(row => `${row.name} ${row.category || ''} ${row.address || ''}`.toLowerCase().includes(q))
-    .slice(0, 10)
+  return data as Business[]
 }
 
 export async function requestBusinessOwnership(businessId: string, note: string) {

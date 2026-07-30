@@ -6,15 +6,18 @@ The app helps residents find nearby offers, local jobs, free meals and community
 
 ## Core product
 
-- Map-first local discovery for Newham
+- Map-first local discovery bounded to Newham
+- Search by local business, street, full postcode or outward postcode
 - Nearby offers, jobs, free meals and community support
 - Public browsing without account creation
-- Job applications without sign-up, with mandatory CV upload
-- Business sign-up and profile management
-- Simple posting for approved businesses
-- Safe auto-approval for posts that pass clear rules
-- Super Admin dashboard for approvals, content review and platform oversight
-- Parking section kept as a coming-soon feature until reliable local data is available
+- Job applications without sign-up, with mandatory private CV upload
+- One secure access page for business owners and admins
+- Business registration / ownership-request workflow with admin approval
+- Optional private shop-front and inside verification photos
+- Business profile management and simple posting for approved businesses
+- Safe auto-approval for posts that pass clear platform rules
+- Super Admin dashboard for registrations, evidence review, post moderation, job applications and platform oversight
+- Parking section kept as coming soon until reliable local parking data is available
 
 ## User roles
 
@@ -22,27 +25,23 @@ The app helps residents find nearby offers, local jobs, free meals and community
 | --- | --- |
 | User | Browse the map, find posts and apply for jobs without logging in |
 | Business | Manage an approved business, publish posts and view job applications |
-| Admin | Help review businesses and posts |
-| Super Admin | Full platform owner view with overview metrics and approval controls |
+| Admin | Review businesses, evidence and posts |
+| Super Admin | Full platform owner view with overview metrics, approvals and application oversight |
 
-## Trust and safety model
+The Business tab uses one authentication screen. Business owners can use a secure email link. Password-enabled accounts use the same form. The stored profile role determines which dashboard appears after authentication.
 
-HiStreets keeps the public app simple while protecting trust in local content.
+## Trust and privacy model
 
 - New business registrations require approval before appearing publicly.
-- Approved businesses can publish posts automatically if required fields and safety rules pass.
-- Risky or incomplete posts stay in review.
-- Job applicants are contacted directly by the business using the contact details they provide.
-- Reviews are not active in the current version to avoid unnecessary moderation and privacy risk.
-
-## Privacy approach
-
-- No advertising trackers
-- No sale of user data
-- No live location tracking
-- Location permission is used only to show nearby results on the device
-- CVs are used only for job applications and are visible to the relevant business/admin flow
-- No Google Places data is used for business content
+- Public map businesses must pass the approved-business database rule and Newham boundary check.
+- Approved businesses can publish posts automatically when required fields and platform checks pass.
+- Posts that need review remain pending for admin action.
+- Business verification photos are private and removed through the admin decision workflow.
+- Written verification notes are cleared after approval or rejection while the basic verification result/audit trail is retained.
+- Job CVs are stored in a private bucket and opened through short-lived signed links by the relevant business or authorised admin.
+- Reviews are not active in the current release.
+- No advertising trackers and no sale of user data.
+- No Google Places data is used for business content.
 
 ## Technology stack
 
@@ -64,7 +63,7 @@ VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
 ```
 
-Server-side import or maintenance scripts must use secrets only in the local terminal or deployment environment. Do not commit service-role keys, tokens or private credentials.
+Server-side maintenance secrets belong only in the local terminal or deployment environment. Do not commit service-role keys, tokens or private credentials.
 
 ## Database setup
 
@@ -75,9 +74,12 @@ supabase/FINAL_RUN_THIS_marketplace_setup.sql
 supabase/FINAL_RUN_THIS_jobs_offers_applications_no_parking.sql
 supabase/FINAL_RUN_THIS_safe_auto_approval.sql
 supabase/FINAL_RUN_THIS_super_admin_dashboard.sql
+supabase/FINAL_RUN_THIS_release_hardening.sql
 ```
 
-After the Super Admin SQL is installed, set the platform owner account:
+The final hardening file keeps CVs and business verification evidence private, applies final admin permissions and installs the release versions of the application functions.
+
+After the SQL is installed, set the platform owner account:
 
 ```sql
 update public.profiles
@@ -88,6 +90,8 @@ where id = (
   where email = 'YOUR_EMAIL_HERE'
 );
 ```
+
+The Auth user must exist first. Log in once or create the user in Supabase Authentication before assigning the role.
 
 ## Development
 
@@ -109,22 +113,32 @@ Create a production build:
 npm run build
 ```
 
-## Deployment checklist
+A GitHub Actions build workflow is included under `.github/workflows/build.yml`.
 
-- Configure `VITE_SUPABASE_URL`
-- Configure `VITE_SUPABASE_ANON_KEY`
-- Run the required Supabase SQL files
-- Set the platform owner as `super_admin`
-- Deploy the latest main branch
-- Test the map, location prompt, public tabs, business login, business registration, post creation and job application flow
+## Release verification
+
+Before public release verify the deployed build end to end:
+
+1. Map loads inside Newham bounds and the outside-boundary mask is visible.
+2. Business/street/full-postcode/outward-postcode search moves to the expected Newham area.
+3. Location permission works when allowed and fails gracefully when Safari/browser permission is blocked.
+4. Business owner receives a secure email login link and reaches the Business portal.
+5. Password-enabled admin account uses the same access page and reaches the Admin/Super Admin workspace.
+6. Business registration submits using either precise browser location or full Newham postcode.
+7. Optional verification photos are private and visible only in the admin review workflow.
+8. Approval makes the business publicly visible and removes verification evidence through the admin workflow.
+9. Approved business creates offer, job, free-meal and community posts.
+10. Public user can view live posts and apply to a job without creating an account.
+11. CV is mandatory, remains private and opens for the relevant business/admin through a temporary link.
+12. Business directions open an external Google Maps directions URL with a readable destination.
 
 ## Product rules
 
 - Newham only
-- MapLibre only
+- MapLibre only inside the product
+- Google Maps is used only as an external directions link
 - No Google Places data
 - No fake businesses, jobs, offers, meals or parking
 - No public display of unapproved businesses
-- No monetisation in the current version
-- No reviews in the current version
+- No reviews in the current release
 - Parking data remains disabled until reliable local data is available

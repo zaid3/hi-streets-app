@@ -13,9 +13,9 @@ function fsaBadge(business: Business) {
   return <span className="listing-chip hygiene">Hygiene {business.fsa_rating}/5</span>
 }
 
-function missingFields(business: Business) {
+function missingFields(business: Business, isServiceArea: boolean) {
   const missing: string[] = []
-  if (!business.address) missing.push('address')
+  if (!isServiceArea && !business.address) missing.push('address')
   if (!business.phone) missing.push('phone')
   if (!business.website) missing.push('website')
   if (!business.opening_hours) missing.push('opening hours')
@@ -58,7 +58,8 @@ function smartCategoryLabel(business: Business) {
 export default function BusinessDetailSheet({ business, posts }: { business: Business; posts: Post[] }) {
   const website = cleanWebsite(business.website)
   const activePosts = posts.filter(p => ['offer', 'job', 'free_meal', 'community'].includes(p.type))
-  const missing = missingFields(business)
+  const isServiceArea = /^Serves Newham\b/i.test(business.address || '')
+  const missing = missingFields(business, isServiceArea)
   const missingCriticalContact = !business.phone || !business.opening_hours
   const destinationLabel = [business.name, business.address || 'Newham London'].filter(Boolean).join(', ')
 
@@ -100,9 +101,9 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
       )}
 
       <section className="business-facts" aria-label="Business information">
-        <h3>Contact & visit</h3>
+        <h3>{isServiceArea ? 'Contact & service area' : 'Contact & visit'}</h3>
         {missingCriticalContact && <div className="critical-missing"><strong>Important details missing</strong><span>The approved owner or admin can complete phone number and opening hours from Profile.</span></div>}
-        {business.address ? <p><MapPin size={16} /> <span>{business.address}</span></p> : <p><MapPin size={16} /> <span>Address not available yet</span></p>}
+        {business.address ? <p><MapPin size={16} /> <span>{business.address}</span></p> : <p><MapPin size={16} /> <span>{isServiceArea ? 'Serves Newham' : 'Address not available yet'}</span></p>}
         {business.opening_hours ? <p><ShieldCheck size={16} /> <span>Opening hours: {business.opening_hours}</span></p> : <p><ShieldCheck size={16} /> <span>Opening hours not available yet</span></p>}
         {business.phone ? <p><Phone size={16} /> <a href={`tel:${business.phone}`}>{business.phone}</a></p> : <p><Phone size={16} /> <span>Phone not available yet</span></p>}
         {business.email && <p><Mail size={16} /> <a href={`mailto:${business.email}`}>{business.email}</a></p>}
@@ -110,7 +111,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
       </section>
 
       <div className="sheet-actions primary-actions">
-        <a href={directionsUrl(business.lat, business.lng, destinationLabel)} target="_blank" rel="noreferrer">Directions</a>
+        {!isServiceArea && <a href={directionsUrl(business.lat, business.lng, destinationLabel)} target="_blank" rel="noreferrer">Directions</a>}
         {business.phone && <a href={`tel:${business.phone}`}>Call</a>}
         {website && <a href={website} target="_blank" rel="noreferrer">Website</a>}
       </div>

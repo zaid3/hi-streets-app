@@ -200,21 +200,28 @@ function normaliseCvPath(value: string) {
   return index >= 0 ? decodeURIComponent(value.slice(index + marker.length)) : value
 }
 
-async function createCvSignedUrl(pathOrLegacyUrl: string) {
+export async function getJobCvSignedUrl(pathOrLegacyUrl: string) {
   if (!supabase || !pathOrLegacyUrl) return ''
   const path = normaliseCvPath(pathOrLegacyUrl)
   const { data, error } = await supabase.storage.from('job-cvs').createSignedUrl(path, 10 * 60)
-  return error ? '' : data.signedUrl
+  if (error || !data?.signedUrl) throw new Error('Could not open this CV securely.')
+  return data.signedUrl
 }
 
 export async function submitJobApplication(input: { post_id: string; applicant_name: string; applicant_email: string; applicant_phone: string; cover_note?: string; cv_file: File }) {
   if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
   if (!input.cv_file) throw new Error('CV is required')
   if (input.cv_file.size > 10 * 1024 * 1024) throw new Error('CV must be under 10MB')
-  const ext = input.cv_file.name.split('.').pop()?.toLowerCase() || 'pdf'
-  if (!['pdf', 'doc', 'docx'].includes(ext)) throw new Error('CV must be PDF, DOC or DOCX')
+  const ext = input.cv_file.name.split('.').pop()?.toLowerCase() || ''
+  const mimeByExt: Record<string, string> = {
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  }
+  const contentType = mimeByExt[ext]
+  if (!contentType) throw new Error('CV must be PDF, DOC or DOCX')
   const path = `applications/${input.post_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const upload = await supabase.storage.from('job-cvs').upload(path, input.cv_file, { upsert: false, contentType: input.cv_file.type || 'application/octet-stream' })
+  const upload = await supabase.storage.from('job-cvs').upload(path, input.cv_file, { upsert: false, contentType })
   if (upload.error) throw upload.error
   const { error } = await supabase.rpc('submit_job_application', {
     p_post_id: input.post_id,
@@ -233,8 +240,7 @@ export async function loadMyJobApplications(): Promise<JobApplication[]> {
   if (!userData.user) return []
   const { data, error } = await supabase.rpc('my_job_applications')
   if (error || !data) return []
-  const rows = data as JobApplication[]
-  return Promise.all(rows.map(async row => ({ ...row, cv_url: await createCvSignedUrl(row.cv_url) })))
+  return data as JobApplication[]
 }
 
 export async function loadSuperAdminOverview(): Promise<SuperAdminOverview | null> {

@@ -62,6 +62,22 @@ export interface BusinessVerificationEvidence {
   created_at?: string | null
 }
 
+export interface BusinessOwnershipRequest {
+  id: string
+  business_id: string
+  business_name: string
+  business_address?: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  created_at: string
+}
+
+export interface AdminBusinessOwnershipRequest extends BusinessOwnershipRequest {
+  business_category: string
+  requester_id: string
+  requester_email?: string | null
+  note: string
+}
+
 export interface BusinessProfileInput {
   business_id: string
   name?: string

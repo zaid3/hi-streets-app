@@ -13,6 +13,7 @@ The app helps residents find nearby offers, local jobs, free meals and community
 - Job applications without sign-up, with mandatory private CV upload
 - One secure access page for business owners and admins
 - New-business registration plus ownership requests for existing approved, unclaimed listings
+- Backend duplicate protection for existing and already-pending business registrations
 - Optional private shop-front and inside verification photos for physical shops
 - Service-area / online business registration without publishing a home street address or precise home location
 - Business profile management and simple posting for approved businesses
@@ -35,6 +36,7 @@ The Business tab uses one authentication screen. Business owners can use a secur
 
 - New business registrations require approval before appearing publicly.
 - Existing approved, unclaimed businesses can be linked through an admin-reviewed ownership request rather than creating a duplicate listing.
+- Exact existing or pending business registrations are also blocked at the database layer.
 - Public map businesses must pass the approved-business database rule and Newham boundary check.
 - Service-area businesses verify a full Newham postcode but store only the outward postcode area as the public map point and do not show a Directions action.
 - Approved businesses can publish posts automatically when required fields and platform checks pass.
@@ -79,10 +81,11 @@ supabase/FINAL_RUN_THIS_safe_auto_approval.sql
 supabase/FINAL_RUN_THIS_super_admin_dashboard.sql
 supabase/FINAL_RUN_THIS_release_hardening.sql
 supabase/FINAL_RUN_THIS_ownership_requests.sql
+supabase/FINAL_RUN_THIS_duplicate_guard.sql
 supabase/FINAL_RUN_THIS_disable_parking.sql
 ```
 
-The hardening file keeps CVs and business verification evidence private and installs final admin permissions. The ownership file adds the non-duplicate existing-business ownership workflow. The last file disables legacy parking rows, views, storage access and write RPC access for this release.
+The hardening file keeps CVs and business verification evidence private and installs final admin permissions. The ownership file adds the existing-business ownership workflow. The duplicate guard prevents users from bypassing that flow by registering an exact duplicate. The last file disables legacy parking rows, views, storage access and write RPC access for this release.
 
 After the SQL is installed, set the platform owner account:
 
@@ -130,15 +133,16 @@ Before public release verify the deployed build end to end:
 4. Business owner receives a secure email login link and reaches the Business portal.
 5. Password-enabled admin account uses the same access page and reaches the Admin/Super Admin workspace.
 6. Existing unclaimed approved business can be found, ownership requested and linked by Super Admin without creating a duplicate.
-7. Physical new-business registration submits using either precise browser location or full Newham postcode.
-8. Service-area business registration verifies a Newham postcode but stores only an outward-postcode map point and no Directions action.
-9. Optional verification photos are private and visible only in the admin review workflow.
-10. Approval makes the new business publicly visible and removes verification evidence through the admin workflow.
-11. Approved business creates offer, job, free-meal and community posts.
-12. Public user can view live posts and apply to a job without creating an account.
-13. CV is mandatory, remains private and opens for the relevant business/admin through a temporary link.
-14. Physical-business directions open an external Google Maps directions URL with a readable destination.
-15. Parking remains coming soon and no legacy parking data is publicly exposed.
+7. Attempting to register the same existing/pending business is rejected by the database guard.
+8. Physical new-business registration submits using either precise browser location or full Newham postcode.
+9. Service-area business registration verifies a Newham postcode but stores only an outward-postcode map point and no Directions action.
+10. Optional verification photos are private and visible only in the admin review workflow.
+11. Approval makes the new business publicly visible and removes verification evidence through the admin workflow.
+12. Approved business creates offer, job, free-meal and community posts.
+13. Public user can view live posts and apply to a job without creating an account.
+14. CV is mandatory, remains private and opens for the relevant business/admin through a temporary link.
+15. Physical-business directions open an external Google Maps directions URL with a readable destination.
+16. Parking remains coming soon and no legacy parking data is publicly exposed.
 
 ## Product rules
 

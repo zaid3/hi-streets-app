@@ -56,9 +56,9 @@ export default function Profile({ onPost }: Props) {
     if (!email.trim()) return setMessage('Enter your email first.')
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/map` },
+      options: { emailRedirectTo: `${window.location.origin}/business` },
     })
-    setMessage(error ? error.message : 'Secure login link sent. Check your email, then return to HiStreets.')
+    setMessage(error ? error.message : 'Secure login link sent. Check your email, then return to the HiStreets Business portal.')
   }
 
   async function passwordLogin() {

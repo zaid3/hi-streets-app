@@ -112,9 +112,10 @@ export default function Profile({ onPost }: Props) {
     <section className="profile-screen">
       <header className="screen-header">
         <h1>{role === 'super_admin' ? 'Super Admin' : 'Admin'}</h1>
-        <p>Review business registrations, moderate posts and monitor HiStreets activity.</p>
+        <p>Review business registrations, moderate posts, inspect job applications and monitor HiStreets activity.</p>
       </header>
       <AdminPanel />
+      <JobApplicationsPanel />
       <div className="privacy-card">
         <h2>Account</h2>
         <button onClick={signOut}><LogOut size={18} /> Sign out</button>

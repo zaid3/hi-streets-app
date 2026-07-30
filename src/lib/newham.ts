@@ -28,11 +28,11 @@ export function clampToNewham(point: { lat: number; lng: number }) {
   return inNewham(point.lat, point.lng) ? point : NEWHAM_CENTER
 }
 
-export function directionsUrl(lat?: number | null, lng?: number | null, label?: string | null) {
-  const hasCoords = typeof lat === 'number' && Number.isFinite(lat) && typeof lng === 'number' && Number.isFinite(lng)
-  const destination = label?.trim() || (hasCoords ? `${lat},${lng}` : 'Newham London')
-  const query = new URLSearchParams({ api: '1', destination, travelmode: 'walking' })
-  return `https://www.google.com/maps/dir/?${query.toString()}`
+export function directionsUrl(lat: number, lng: number, label?: string | null) {
+  const validCoords = Number.isFinite(lat) && Number.isFinite(lng)
+  const destination = label?.trim() || (validCoords ? `${lat},${lng}` : 'Newham, London')
+  const params = new URLSearchParams({ api: '1', destination })
+  return `https://www.google.com/maps/dir/?${params.toString()}`
 }
 
 export function distanceLabel(lat?: number | null, lng?: number | null) {

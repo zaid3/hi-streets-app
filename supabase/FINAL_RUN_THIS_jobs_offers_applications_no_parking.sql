@@ -1,6 +1,6 @@
 -- FINAL: Jobs, offers, community posts + no-sign-in job applications with mandatory CV
--- Parking/Blue Badge is intentionally not part of this live version.
--- Run after the previous marketplace setup. Safe to run more than once.
+-- Parking is intentionally not part of this live version.
+-- Run after the marketplace setup. Safe to run more than once.
 
 create extension if not exists pgcrypto;
 create extension if not exists postgis;
@@ -47,8 +47,9 @@ drop policy if exists job_applications_owner_read on public.job_applications;
 create policy job_applications_owner_read
 on public.job_applications
 for select
+to authenticated
 using (
-  public.current_user_role() = 'admin'
+  public.current_user_role() in ('admin','super_admin')
   or exists (
     select 1
     from public.businesses b
@@ -61,8 +62,9 @@ drop policy if exists job_applications_owner_update on public.job_applications;
 create policy job_applications_owner_update
 on public.job_applications
 for update
+to authenticated
 using (
-  public.current_user_role() = 'admin'
+  public.current_user_role() in ('admin','super_admin')
   or exists (
     select 1
     from public.businesses b
@@ -71,7 +73,7 @@ using (
   )
 )
 with check (
-  public.current_user_role() = 'admin'
+  public.current_user_role() in ('admin','super_admin')
   or exists (
     select 1
     from public.businesses b
@@ -80,36 +82,70 @@ with check (
   )
 );
 
--- CV storage bucket. Public read is used for a simple working MVP with randomised file paths.
+-- CV files are private. Applicants can upload only against a currently live
+-- job from an approved business. Owners/admins get temporary signed links.
 insert into storage.buckets(id, name, public, file_size_limit, allowed_mime_types)
 values (
   'job-cvs',
   'job-cvs',
-  true,
+  false,
   10485760,
   array[
     'application/pdf',
     'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/octet-stream'
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ]
 )
 on conflict (id) do update
-set public = true,
+set public = false,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
-drop policy if exists public_read_job_cvs on storage.objects;
-create policy public_read_job_cvs
-on storage.objects
-for select
-using (bucket_id = 'job-cvs');
+create or replace function public.can_upload_job_cv(p_name text) returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_post_id uuid;
+begin
+  if coalesce(p_name,'') !~ '^applications/[0-9a-fA-F-]{36}/[A-Za-z0-9._-]+\.(pdf|doc|docx)$' then
+    return false;
+  end if;
 
+  begin
+    v_post_id := split_part(p_name, '/', 2)::uuid;
+  exception when others then
+    return false;
+  end;
+
+  return exists (
+    select 1
+    from public.posts p
+    join public.businesses b on b.id = p.business_id
+    where p.id = v_post_id
+      and p.type = 'job'
+      and p.status = 'live'
+      and p.expires_at > now()
+      and public.is_public_histreets_business(b.verification_status, b.source, b.claimed_by)
+  );
+end;
+$$;
+
+grant execute on function public.can_upload_job_cv(text) to anon, authenticated;
+
+drop policy if exists public_read_job_cvs on storage.objects;
 drop policy if exists anon_upload_job_cvs on storage.objects;
-create policy anon_upload_job_cvs
+drop policy if exists job_cv_applicant_upload on storage.objects;
+create policy job_cv_applicant_upload
 on storage.objects
 for insert
-with check (bucket_id = 'job-cvs');
+to anon, authenticated
+with check (
+  bucket_id = 'job-cvs'
+  and public.can_upload_job_cv(name)
+);
 
 -- Public/anonymous applicant flow. No user account required.
 create or replace function public.submit_job_application(
@@ -209,9 +245,10 @@ as $$
   from public.job_applications ja
   join public.posts p on p.id = ja.post_id
   join public.businesses b on b.id = ja.business_id
-  where public.current_user_role() = 'admin'
+  where public.current_user_role() in ('admin','super_admin')
      or b.claimed_by = auth.uid()
-  order by ja.created_at desc;
+  order by ja.created_at desc
+  limit 100;
 $$;
 
 grant execute on function public.my_job_applications() to authenticated;
@@ -251,8 +288,8 @@ begin
     and public.is_public_histreets_business(verification_status, source, claimed_by);
 
   if not found then raise exception 'approved registered business required'; end if;
-  if v_role <> 'admin' and v_business.claimed_by is distinct from v_uid then raise exception 'you can only post from your own approved business'; end if;
-  if v_role not in ('business','charity','admin') then raise exception 'approved business account required'; end if;
+  if v_role not in ('admin','super_admin') and v_business.claimed_by is distinct from v_uid then raise exception 'you can only post from your own approved business'; end if;
+  if v_role not in ('business','charity','admin','super_admin') then raise exception 'approved business account required'; end if;
 
   insert into public.posts(
     business_id, author_id, type, title, body, category, geom, expires_at,
@@ -270,7 +307,7 @@ begin
     nullif(trim(coalesce(p_apply_phone,'')),''),
     nullif(trim(coalesce(p_recurrence,'')),''),
     'pending',
-    case when v_role = 'admin' then 'admin' else 'web' end
+    case when v_role in ('admin','super_admin') then 'admin' else 'web' end
   ) returning id into v_id;
 
   return v_id;

@@ -25,6 +25,50 @@ for select
 to authenticated
 using (requester_id = auth.uid() or public.current_user_is_admin());
 
+create or replace function public.search_claimable_businesses(p_query text)
+returns table (
+  id uuid,
+  name text,
+  category text,
+  address text,
+  is_claimed boolean,
+  verification_status text,
+  source text,
+  lat double precision,
+  lng double precision
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    b.id,
+    b.name,
+    b.category,
+    b.address,
+    false as is_claimed,
+    b.verification_status,
+    b.source,
+    b.lat,
+    b.lng
+  from public.businesses b
+  where auth.uid() is not null
+    and length(trim(coalesce(p_query,''))) >= 2
+    and b.verification_status = 'verified'
+    and b.claimed_by is null
+    and public.is_public_histreets_business(b.verification_status, b.source, b.claimed_by)
+    and (
+      b.name ilike '%' || trim(p_query) || '%'
+      or coalesce(b.address,'') ilike '%' || trim(p_query) || '%'
+      or coalesce(b.category,'') ilike '%' || trim(p_query) || '%'
+    )
+  order by b.name asc
+  limit 10;
+$$;
+
+grant execute on function public.search_claimable_businesses(text) to authenticated;
+
 create or replace function public.request_business_ownership(
   p_business_id uuid,
   p_note text

@@ -144,6 +144,7 @@ export interface SuperAdminBusinessRow {
   email?: string | null
   verification_status?: Business['verification_status']
   source?: string | null
+  registration_note?: string | null
   created_at?: string | null
 }
 

@@ -167,8 +167,8 @@ export default function BusinessRegistration() {
 
   return (
     <div id="business-register-card" className="privacy-card business-owner-card">
-      <h2><Store size={20} /> Register or request ownership</h2>
-      <p className="muted">Already listed? Use the same business name and public location details. New to HiStreets? Use this same quick form to register.</p>
+      <h2><Store size={20} /> Register a new business</h2>
+      <p className="muted">Use this form only when the business is not already listed on HiStreets. Existing businesses should use the ownership request above.</p>
 
       {businesses.length > 0 && <div className="business-facts">
         <h3>Your businesses</h3>

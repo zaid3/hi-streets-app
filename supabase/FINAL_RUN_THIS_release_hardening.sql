@@ -50,8 +50,7 @@ values (
   array[
     'application/pdf',
     'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/octet-stream'
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
   ]
 )
 on conflict (id) do update
@@ -220,7 +219,7 @@ declare
 begin
   if length(trim(coalesce(p_applicant_name,''))) < 2 then raise exception 'name required'; end if;
   if length(trim(coalesce(p_applicant_name,''))) > 120 then raise exception 'name too long'; end if;
-  if v_email !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'valid email required'; end if;
+  if v_email !~ '^[^@[:space:]]+@[^@[:space:]]+[.][^@[:space:]]+$' then raise exception 'valid email required'; end if;
   if length(trim(coalesce(p_applicant_phone,''))) < 6 then raise exception 'valid phone required'; end if;
   if length(trim(coalesce(p_applicant_phone,''))) > 50 then raise exception 'phone too long'; end if;
   if length(coalesce(p_cover_note,'')) > 1500 then raise exception 'note too long'; end if;
@@ -321,7 +320,8 @@ as $$
   join public.businesses b on b.id = ja.business_id
   where public.current_user_is_admin()
      or b.claimed_by = auth.uid()
-  order by ja.created_at desc;
+  order by ja.created_at desc
+  limit 100;
 $$;
 
 grant execute on function public.my_job_applications() to authenticated;

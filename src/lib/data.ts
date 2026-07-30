@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
-import type { Business, BusinessClaimOption, BusinessProfileInput, BusinessRegistrationInput, ClaimMethod, JobApplication, ParkingPoint, Post, Role, SuperAdminBusinessRow, SuperAdminOverview, SuperAdminPostRow } from '../types'
+import type { Business, BusinessClaimOption, BusinessEvidenceKind, BusinessProfileInput, BusinessRegistrationInput, BusinessVerificationEvidence, ClaimMethod, JobApplication, ParkingPoint, Post, Role, SuperAdminBusinessRow, SuperAdminOverview, SuperAdminPostRow } from '../types'
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 
@@ -16,10 +16,7 @@ export const emptyStateText = {
 
 export async function loadBusinesses(): Promise<Business[]> {
   if (!supabaseConfigured || !supabase) return []
-  const { data, error } = await supabase
-    .from('businesses_public')
-    .select(businessSelect)
-    .limit(500)
+  const { data, error } = await supabase.from('businesses_public').select(businessSelect).limit(500)
   if (error || !data) return []
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
 }
@@ -29,12 +26,7 @@ export async function loadMyBusinesses(): Promise<Business[]> {
   const { data: userData } = await supabase.auth.getUser()
   const user = userData.user
   if (!user) return []
-  const { data, error } = await supabase
-    .from('businesses')
-    .select(ownBusinessSelect)
-    .eq('claimed_by', user.id)
-    .order('created_at', { ascending: false })
-    .limit(50)
+  const { data, error } = await supabase.from('businesses').select(ownBusinessSelect).eq('claimed_by', user.id).order('created_at', { ascending: false }).limit(50)
   if (error || !data) return []
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
 }
@@ -49,12 +41,7 @@ export async function loadMyVerifiedBusinesses(): Promise<Business[]> {
   const user = userData.user
   if (!user) return []
   const role = await getCurrentRole()
-  let query = supabase
-    .from('businesses')
-    .select(ownBusinessSelect)
-    .eq('verification_status', 'verified')
-    .order('name', { ascending: true })
-    .limit(200)
+  let query = supabase.from('businesses').select(ownBusinessSelect).eq('verification_status', 'verified').order('name', { ascending: true }).limit(200)
   if (role !== 'admin' && role !== 'super_admin') query = query.eq('claimed_by', user.id)
   const { data, error } = await query
   if (error || !data) return []
@@ -84,6 +71,64 @@ export async function registerBusiness(input: BusinessRegistrationInput): Promis
   return String(data)
 }
 
+function businessEvidenceFile(file: File) {
+  if (file.size > 8 * 1024 * 1024) throw new Error('Verification photo must be under 8MB')
+  const ext = file.name.split('.').pop()?.toLowerCase() || ''
+  const contentTypes: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    heic: 'image/heic',
+  }
+  const contentType = contentTypes[ext]
+  if (!contentType) throw new Error('Verification photo must be JPG, PNG, WEBP or HEIC')
+  return { ext, contentType }
+}
+
+export async function uploadBusinessVerificationEvidence(businessId: string, kind: BusinessEvidenceKind, file: File) {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  const { ext, contentType } = businessEvidenceFile(file)
+  const path = `business/${businessId}/${kind}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const upload = await supabase.storage.from('business-verification').upload(path, file, { upsert: false, contentType })
+  if (upload.error) throw upload.error
+  const { error } = await supabase.rpc('record_business_verification_evidence', {
+    p_business_id: businessId,
+    p_kind: kind,
+    p_storage_path: path,
+  })
+  if (error) {
+    await supabase.storage.from('business-verification').remove([path]).catch(() => {})
+    throw error
+  }
+}
+
+export async function loadBusinessVerificationEvidence(businessId: string): Promise<BusinessVerificationEvidence[]> {
+  if (!supabaseConfigured || !supabase) return []
+  const { data, error } = await supabase.rpc('admin_business_verification_evidence', { p_business_id: businessId })
+  if (error || !data) return []
+  return data as BusinessVerificationEvidence[]
+}
+
+export async function getBusinessEvidenceSignedUrl(path: string) {
+  if (!supabaseConfigured || !supabase || !path) throw new Error('Verification evidence is unavailable.')
+  const { data, error } = await supabase.storage.from('business-verification').createSignedUrl(path, 10 * 60)
+  if (error || !data?.signedUrl) throw new Error('Could not open verification evidence securely.')
+  return data.signedUrl
+}
+
+export async function deleteBusinessVerificationEvidence(businessId: string) {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  const evidence = await loadBusinessVerificationEvidence(businessId)
+  const paths = evidence.map(item => item.storage_path).filter(Boolean)
+  if (paths.length) {
+    const removed = await supabase.storage.from('business-verification').remove(paths)
+    if (removed.error) throw removed.error
+  }
+  const { error } = await supabase.rpc('delete_business_verification_evidence', { p_business_id: businessId })
+  if (error) throw error
+}
+
 export async function loadBusinessesGeoJson(): Promise<FeatureCollection> {
   if (!supabaseConfigured || !supabase) return { type: 'FeatureCollection', features: [] }
   const { data, error } = await supabase.rpc('businesses_geojson')
@@ -102,22 +147,14 @@ export async function fetchBusinessById(id: string): Promise<Business | null> {
   if (!supabaseConfigured || !supabase) return null
   const rpc = await supabase.rpc('business_detail', { p_business_id: id })
   if (!rpc.error && rpc.data) return rpc.data as Business
-  const { data, error } = await supabase
-    .from('businesses_public')
-    .select(businessSelect)
-    .eq('id', id)
-    .maybeSingle()
+  const { data, error } = await supabase.from('businesses_public').select(businessSelect).eq('id', id).maybeSingle()
   if (error || !data) return null
   return data as Business
 }
 
 export async function fetchBusinessClaimOption(id: string): Promise<BusinessClaimOption | null> {
   if (!supabaseConfigured || !supabase) return null
-  const { data, error } = await supabase
-    .from('business_claim_options_public')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle()
+  const { data, error } = await supabase.from('business_claim_options_public').select('*').eq('id', id).maybeSingle()
   if (error || !data) return null
   return data as BusinessClaimOption
 }
@@ -126,10 +163,7 @@ export async function startBusinessClaim(businessId: string, method: ClaimMethod
   if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
   const { data: userData } = await supabase.auth.getUser()
   if (!userData.user) throw new Error('Sign in first')
-  const { data, error } = await supabase.rpc('start_business_claim', {
-    p_business_id: businessId,
-    p_method: method,
-  })
+  const { data, error } = await supabase.rpc('start_business_claim', { p_business_id: businessId, p_method: method })
   if (error) throw error
   return String(data)
 }
@@ -166,11 +200,7 @@ export async function getCurrentRole(): Promise<Role | null> {
 
 export async function loadPosts(type?: Post['type']): Promise<Post[]> {
   if (!supabaseConfigured || !supabase) return []
-  let query = supabase
-    .from('posts_public')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(100)
+  let query = supabase.from('posts_public').select('*').order('created_at', { ascending: false }).limit(100)
   if (type) query = query.eq('type', type)
   const { data, error } = await query
   if (error || !data) return []

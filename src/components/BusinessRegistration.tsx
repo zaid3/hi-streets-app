@@ -36,6 +36,7 @@ function extractPostcode(value: string) {
 export default function BusinessRegistration() {
   const [form, setForm] = useState(initialForm)
   const [businesses, setBusinesses] = useState<Business[]>([])
+  const [serviceAreaOnly, setServiceAreaOnly] = useState(false)
   const [shopfrontPhoto, setShopfrontPhoto] = useState<File | null>(null)
   const [insidePhoto, setInsidePhoto] = useState<File | null>(null)
   const [fileInputVersion, setFileInputVersion] = useState(0)
@@ -54,6 +55,7 @@ export default function BusinessRegistration() {
   }
 
   function useCurrentLocation() {
+    if (serviceAreaOnly) return setStatus('Service-area businesses use the postcode area instead of an exact home or operating location.')
     if (!navigator.geolocation) return setStatus('Location is not supported on this browser. Add a full Newham postcode instead.')
     setStatus('Getting the business location…')
     navigator.geolocation.getCurrentPosition(
@@ -82,27 +84,29 @@ export default function BusinessRegistration() {
 
   async function postcodeMapPoint() {
     const postcode = extractPostcode(form.address)
-    if (!postcode) throw new Error('Add the full postcode in the business address, or use “Use business location”.')
+    if (!postcode) throw new Error(serviceAreaOnly ? 'Add a full Newham postcode for the service area.' : 'Add the full postcode in the business address, or use “Use business location”.')
     setStatus(`Finding ${postcode}…`)
     const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(postcode)}`)
     const data = await response.json()
     const lat = Number(data?.result?.latitude)
     const lng = Number(data?.result?.longitude)
-    if (!response.ok || !Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Postcode could not be found. Check the address or use the business location button.')
+    if (!response.ok || !Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Postcode could not be found. Check the postcode and try again.')
     if (!inNewham(lat, lng)) throw new Error('The postcode must be inside Newham.')
-    return { lat, lng }
+    return { lat, lng, postcode }
   }
 
   async function submit() {
     try {
       setSaving(true)
       setStatus('Checking business details…')
-      const mapPoint = currentMapPoint() || await postcodeMapPoint()
+      const postcodePoint = serviceAreaOnly ? await postcodeMapPoint() : null
+      const mapPoint = postcodePoint || currentMapPoint() || await postcodeMapPoint()
+      const publicAddress = serviceAreaOnly ? `Serves Newham (${mapPoint.postcode.split(' ')[0]})` : form.address
       const businessId = await registerBusiness({
         name: form.name,
         category: form.category,
         description: form.description,
-        address: form.address,
+        address: publicAddress,
         phone: form.phone,
         website: form.website,
         whatsapp: form.whatsapp,
@@ -124,6 +128,7 @@ export default function BusinessRegistration() {
       }
 
       setForm(initialForm)
+      setServiceAreaOnly(false)
       setShopfrontPhoto(null)
       setInsidePhoto(null)
       setFileInputVersion(v => v + 1)
@@ -141,8 +146,8 @@ export default function BusinessRegistration() {
 
   return (
     <div id="business-register-card" className="privacy-card business-owner-card">
-      <h2><Store size={20} /> Register or claim your business</h2>
-      <p className="muted">Already on the map? Use the same business name and address. New to HiStreets? Use this same quick form to register.</p>
+      <h2><Store size={20} /> Register or request ownership</h2>
+      <p className="muted">Already listed? Use the same business name and public location details. New to HiStreets? Use this same quick form to register.</p>
 
       {businesses.length > 0 && <div className="business-facts">
         <h3>Your businesses</h3>
@@ -155,21 +160,25 @@ export default function BusinessRegistration() {
       <label>Category
         <input value={form.category} onChange={e => update('category', e.target.value)} placeholder="Restaurant, barber, pharmacy, solicitor…" maxLength={80} />
       </label>
-      <label>Full address and postcode
-        <input value={form.address} onChange={e => update('address', e.target.value)} placeholder="123 Green Street, London E7 8LE" maxLength={240} autoComplete="street-address" />
+      <label className="service-area-toggle"><span><input type="checkbox" checked={serviceAreaOnly} onChange={e => {
+        setServiceAreaOnly(e.target.checked)
+        if (e.target.checked) setForm(prev => ({ ...prev, lat: '', lng: '' }))
+      }} /> Service-area / online business</span><small>Use this for home-based, mobile or virtual services. Your home street address will not be requested or published.</small></label>
+      <label>{serviceAreaOnly ? 'Newham service postcode' : 'Full business address and postcode'}
+        <input value={form.address} onChange={e => update('address', e.target.value)} placeholder={serviceAreaOnly ? 'e.g. E6 2AA' : '123 Green Street, London E7 8LE'} maxLength={240} autoComplete={serviceAreaOnly ? 'postal-code' : 'street-address'} />
       </label>
 
-      <div className={mapPoint ? 'location-confirmed-card' : 'location-help-card'}>
-        <strong>{mapPoint ? 'Precise map point added' : 'Map location'}</strong>
-        <p>{mapPoint ? 'HiStreets will use the location you provided.' : 'A full postcode is enough for quick signup. For a more precise shop pin, stand at the business and use your current location.'}</p>
-        <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use business location</button>
+      <div className={!serviceAreaOnly && mapPoint ? 'location-confirmed-card' : 'location-help-card'}>
+        <strong>{serviceAreaOnly ? 'Service-area map point' : mapPoint ? 'Precise map point added' : 'Map location'}</strong>
+        <p>{serviceAreaOnly ? 'HiStreets will use the postcode area as an approximate service pin. Your home or private operating address is not stored by this form.' : mapPoint ? 'HiStreets will use the location you provided.' : 'A full postcode is enough for quick signup. For a more precise shop pin, stand at the business and use your current location.'}</p>
+        {!serviceAreaOnly && <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use business location</button>}
       </div>
 
       <label>How can we verify this business?
         <textarea value={form.evidence_note} onChange={e => update('evidence_note', e.target.value)} placeholder="Example: I am the owner. The shop sign, business phone and website confirm these details." maxLength={500} />
       </label>
 
-      <details className="advanced-location verification-upload">
+      {!serviceAreaOnly && <details className="advanced-location verification-upload">
         <summary><Camera size={16} /> Add verification photos</summary>
         <p>For a physical shop, a clear shop-front photo is recommended. An inside photo is optional. These files are private, used only for verification and removed after the admin decision.</p>
         <label>Shop-front / outside photo
@@ -178,8 +187,8 @@ export default function BusinessRegistration() {
         <label>Inside photo (optional)
           <input key={`inside-${fileInputVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic" onChange={e => setInsidePhoto(e.target.files?.[0] || null)} />
         </label>
-        <p className="muted">Virtual or home-based services do not need shop photos. Do not upload identity documents, bank statements or other sensitive personal documents.</p>
-      </details>
+        <p className="muted">Do not upload identity documents, bank statements or other sensitive personal documents.</p>
+      </details>}
 
       <details className="advanced-location">
         <summary>Add more business details</summary>
@@ -204,7 +213,7 @@ export default function BusinessRegistration() {
         </label>
       </details>
 
-      <details className="advanced-location">
+      {!serviceAreaOnly && <details className="advanced-location">
         <summary>Advanced map location</summary>
         <p>Only use this if HiStreets asks for it.</p>
         <label>Latitude
@@ -213,7 +222,7 @@ export default function BusinessRegistration() {
         <label>Longitude
           <input value={form.lng} onChange={e => update('lng', e.target.value)} placeholder="0.0…" inputMode="decimal" />
         </label>
-      </details>
+      </details>}
 
       <button onClick={submit} disabled={disabled}><Send size={17} /> {saving ? 'Submitting…' : 'Submit for approval'}</button>
       {status && <p className="form-status">{status}</p>}

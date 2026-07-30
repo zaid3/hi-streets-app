@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { MapPin, Send, Store } from 'lucide-react'
-import { loadMyBusinesses, registerBusiness } from '../lib/data'
+import { Camera, MapPin, Send, Store } from 'lucide-react'
+import { loadMyBusinesses, registerBusiness, uploadBusinessVerificationEvidence } from '../lib/data'
 import { inNewham } from '../lib/newham'
 import type { Business } from '../types'
 
@@ -36,6 +36,9 @@ function extractPostcode(value: string) {
 export default function BusinessRegistration() {
   const [form, setForm] = useState(initialForm)
   const [businesses, setBusinesses] = useState<Business[]>([])
+  const [shopfrontPhoto, setShopfrontPhoto] = useState<File | null>(null)
+  const [insidePhoto, setInsidePhoto] = useState<File | null>(null)
+  const [fileInputVersion, setFileInputVersion] = useState(0)
   const [status, setStatus] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -95,7 +98,7 @@ export default function BusinessRegistration() {
       setSaving(true)
       setStatus('Checking business details…')
       const mapPoint = currentMapPoint() || await postcodeMapPoint()
-      await registerBusiness({
+      const businessId = await registerBusiness({
         name: form.name,
         category: form.category,
         description: form.description,
@@ -109,9 +112,23 @@ export default function BusinessRegistration() {
         lng: mapPoint.lng,
         evidence_note: form.evidence_note,
       })
+
+      const photoErrors: string[] = []
+      if (shopfrontPhoto) {
+        try { await uploadBusinessVerificationEvidence(businessId, 'shopfront', shopfrontPhoto) }
+        catch { photoErrors.push('shop-front photo') }
+      }
+      if (insidePhoto) {
+        try { await uploadBusinessVerificationEvidence(businessId, 'inside', insidePhoto) }
+        catch { photoErrors.push('inside photo') }
+      }
+
       setForm(initialForm)
+      setShopfrontPhoto(null)
+      setInsidePhoto(null)
+      setFileInputVersion(v => v + 1)
       await refresh()
-      setStatus('Business submitted. It will appear publicly after approval.')
+      setStatus(photoErrors.length ? `Business submitted for approval. Could not attach: ${photoErrors.join(' and ')}.` : 'Business submitted. It will appear publicly after approval.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not submit business.')
     } finally {
@@ -151,6 +168,18 @@ export default function BusinessRegistration() {
       <label>How can we verify this business?
         <textarea value={form.evidence_note} onChange={e => update('evidence_note', e.target.value)} placeholder="Example: I am the owner. The shop sign, business phone and website confirm these details." maxLength={500} />
       </label>
+
+      <details className="advanced-location verification-upload">
+        <summary><Camera size={16} /> Add verification photos</summary>
+        <p>For a physical shop, a clear shop-front photo is recommended. An inside photo is optional. These files are private, used only for verification and removed after the admin decision.</p>
+        <label>Shop-front / outside photo
+          <input key={`shopfront-${fileInputVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic" onChange={e => setShopfrontPhoto(e.target.files?.[0] || null)} />
+        </label>
+        <label>Inside photo (optional)
+          <input key={`inside-${fileInputVersion}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic" onChange={e => setInsidePhoto(e.target.files?.[0] || null)} />
+        </label>
+        <p className="muted">Virtual or home-based services do not need shop photos. Do not upload identity documents, bank statements or other sensitive personal documents.</p>
+      </details>
 
       <details className="advanced-location">
         <summary>Add more business details</summary>

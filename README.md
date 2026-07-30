@@ -13,7 +13,8 @@ The app helps residents find nearby offers, local jobs, free meals and community
 - Job applications without sign-up, with mandatory private CV upload
 - One secure access page for business owners and admins
 - Business registration / ownership-request workflow with admin approval
-- Optional private shop-front and inside verification photos
+- Optional private shop-front and inside verification photos for physical shops
+- Service-area / online business registration without publishing a home street address
 - Business profile management and simple posting for approved businesses
 - Safe auto-approval for posts that pass clear platform rules
 - Super Admin dashboard for registrations, evidence review, post moderation, job applications and platform oversight
@@ -34,6 +35,7 @@ The Business tab uses one authentication screen. Business owners can use a secur
 
 - New business registrations require approval before appearing publicly.
 - Public map businesses must pass the approved-business database rule and Newham boundary check.
+- Service-area businesses store a public Newham service-area label instead of a home street address and do not show a Directions action.
 - Approved businesses can publish posts automatically when required fields and platform checks pass.
 - Posts that need review remain pending for admin action.
 - Business verification photos are private and removed through the admin decision workflow.
@@ -75,9 +77,10 @@ supabase/FINAL_RUN_THIS_jobs_offers_applications_no_parking.sql
 supabase/FINAL_RUN_THIS_safe_auto_approval.sql
 supabase/FINAL_RUN_THIS_super_admin_dashboard.sql
 supabase/FINAL_RUN_THIS_release_hardening.sql
+supabase/FINAL_RUN_THIS_disable_parking.sql
 ```
 
-The final hardening file keeps CVs and business verification evidence private, applies final admin permissions and installs the release versions of the application functions.
+The hardening file keeps CVs and business verification evidence private, applies final admin permissions and installs the release versions of the application functions. The last file disables legacy parking rows, views, storage access and write RPC access for this release.
 
 After the SQL is installed, set the platform owner account:
 
@@ -124,13 +127,15 @@ Before public release verify the deployed build end to end:
 3. Location permission works when allowed and fails gracefully when Safari/browser permission is blocked.
 4. Business owner receives a secure email login link and reaches the Business portal.
 5. Password-enabled admin account uses the same access page and reaches the Admin/Super Admin workspace.
-6. Business registration submits using either precise browser location or full Newham postcode.
-7. Optional verification photos are private and visible only in the admin review workflow.
-8. Approval makes the business publicly visible and removes verification evidence through the admin workflow.
-9. Approved business creates offer, job, free-meal and community posts.
-10. Public user can view live posts and apply to a job without creating an account.
-11. CV is mandatory, remains private and opens for the relevant business/admin through a temporary link.
-12. Business directions open an external Google Maps directions URL with a readable destination.
+6. Physical business registration submits using either precise browser location or full Newham postcode.
+7. Service-area business registration accepts a Newham postcode without publishing a home address or Directions action.
+8. Optional verification photos are private and visible only in the admin review workflow.
+9. Approval makes the business publicly visible and removes verification evidence through the admin workflow.
+10. Approved business creates offer, job, free-meal and community posts.
+11. Public user can view live posts and apply to a job without creating an account.
+12. CV is mandatory, remains private and opens for the relevant business/admin through a temporary link.
+13. Physical-business directions open an external Google Maps directions URL with a readable destination.
+14. Parking remains coming soon and no legacy parking data is publicly exposed.
 
 ## Product rules
 

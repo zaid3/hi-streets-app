@@ -99,9 +99,17 @@ export default function BusinessRegistration() {
     try {
       setSaving(true)
       setStatus('Checking business details…')
-      const postcodePoint = serviceAreaOnly ? await postcodeMapPoint() : null
-      const mapPoint = postcodePoint || currentMapPoint() || await postcodeMapPoint()
-      const publicAddress = serviceAreaOnly ? `Serves Newham (${mapPoint.postcode.split(' ')[0]})` : form.address
+
+      let mapPoint: { lat: number; lng: number }
+      let publicAddress = form.address
+      if (serviceAreaOnly) {
+        const postcodePoint = await postcodeMapPoint()
+        mapPoint = postcodePoint
+        publicAddress = `Serves Newham (${postcodePoint.postcode.split(' ')[0]})`
+      } else {
+        mapPoint = currentMapPoint() || await postcodeMapPoint()
+      }
+
       const businessId = await registerBusiness({
         name: form.name,
         category: form.category,
@@ -161,8 +169,14 @@ export default function BusinessRegistration() {
         <input value={form.category} onChange={e => update('category', e.target.value)} placeholder="Restaurant, barber, pharmacy, solicitor…" maxLength={80} />
       </label>
       <label className="service-area-toggle"><span><input type="checkbox" checked={serviceAreaOnly} onChange={e => {
-        setServiceAreaOnly(e.target.checked)
-        if (e.target.checked) setForm(prev => ({ ...prev, lat: '', lng: '' }))
+        const next = e.target.checked
+        setServiceAreaOnly(next)
+        if (next) {
+          setForm(prev => ({ ...prev, lat: '', lng: '' }))
+          setShopfrontPhoto(null)
+          setInsidePhoto(null)
+          setFileInputVersion(v => v + 1)
+        }
       }} /> Service-area / online business</span><small>Use this for home-based, mobile or virtual services. Your home street address will not be requested or published.</small></label>
       <label>{serviceAreaOnly ? 'Newham service postcode' : 'Full business address and postcode'}
         <input value={form.address} onChange={e => update('address', e.target.value)} placeholder={serviceAreaOnly ? 'e.g. E6 2AA' : '123 Green Street, London E7 8LE'} maxLength={240} autoComplete={serviceAreaOnly ? 'postal-code' : 'street-address'} />

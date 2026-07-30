@@ -11,7 +11,8 @@ export default function AdminPanel() {
   const [pendingBusinesses, setPendingBusinesses] = useState<SuperAdminBusinessRow[]>([])
   const [latestPosts, setLatestPosts] = useState<SuperAdminPostRow[]>([])
   const [latestBusinesses, setLatestBusinesses] = useState<SuperAdminBusinessRow[]>([])
-  const [message, setMessage] = useState('Loading Super Admin dashboard…')
+  const [message, setMessage] = useState('Loading dashboard…')
+  const [actionId, setActionId] = useState('')
 
   async function load() {
     try {
@@ -35,25 +36,39 @@ export default function AdminPanel() {
       setLatestPosts(latestPostRows)
       setMessage('')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not load Super Admin dashboard.')
+      setMessage(error instanceof Error ? error.message : 'Could not load admin dashboard.')
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { void load() }, [])
 
   async function moderatePost(id: string, status: 'live' | 'rejected') {
-    if (!supabase) return
+    if (!supabase || actionId) return
+    if (status === 'rejected' && !window.confirm('Reject this post?')) return
+    setActionId(id)
     const { error } = await supabase.rpc('admin_moderate_post', { p_post_id: id, p_status: status })
-    if (error) return setMessage(error.message)
+    if (error) {
+      setMessage(error.message)
+      setActionId('')
+      return
+    }
     await load()
+    setActionId('')
     setMessage(status === 'live' ? 'Post approved.' : 'Post rejected.')
   }
 
   async function moderateBusiness(id: string, status: 'verified' | 'rejected') {
-    if (!supabase) return
+    if (!supabase || actionId) return
+    if (status === 'rejected' && !window.confirm('Reject this business registration?')) return
+    setActionId(id)
     const { error } = await supabase.rpc('admin_moderate_business_registration', { p_business_id: id, p_status: status })
-    if (error) return setMessage(error.message)
+    if (error) {
+      setMessage(error.message)
+      setActionId('')
+      return
+    }
     await load()
+    setActionId('')
     setMessage(status === 'verified' ? 'Business approved and visible publicly.' : 'Business rejected.')
   }
 
@@ -61,7 +76,7 @@ export default function AdminPanel() {
 
   return <div className="privacy-card super-admin-panel">
     <h2><BarChart3 size={20} /> {role === 'super_admin' ? 'Super Admin Dashboard' : 'Admin Dashboard'}</h2>
-    <p className="muted">See approvals, live content and recent activity in one place. Verified businesses can auto-publish safe posts; risky posts appear here.</p>
+    <p className="muted">Review registrations and posts before acting. Verified businesses can auto-publish posts that pass the platform checks; posts that need review appear here.</p>
     {message && <p className="form-status">{message}</p>}
 
     {overview && <div className="admin-stat-grid">
@@ -74,10 +89,10 @@ export default function AdminPanel() {
     </div>}
 
     <h3><Store size={17} /> Business approvals</h3>
-    {pendingBusinesses.length === 0 ? <p className="muted">No pending business registrations.</p> : pendingBusinesses.map(business => <article className="post-card" key={business.id}><div><Store size={20} /></div><div><h3>{business.name}</h3><p>{business.category} · {business.address}</p>{business.phone && <p>{business.phone}</p>}{business.website && <p>{business.website}</p>}{business.email && <p>{business.email}</p>}<div className="tags"><span>{business.verification_status}</span><span>{business.source || 'registration'}</span></div><div className="sheet-actions"><button onClick={() => moderateBusiness(business.id, 'verified')}><CheckCircle2 size={18} /> Approve business</button><button onClick={() => moderateBusiness(business.id, 'rejected')} className="danger"><XCircle size={18} /> Reject</button></div></div></article>)}
+    {pendingBusinesses.length === 0 ? <p className="muted">No pending business registrations.</p> : pendingBusinesses.map(business => <article className="post-card" key={business.id}><div><Store size={20} /></div><div><h3>{business.name}</h3><p>{business.category} · {business.address || 'Address not provided'}</p>{business.phone && <p>Phone: {business.phone}</p>}{business.website && <p>Website: {business.website}</p>}{business.email && <p>Email: {business.email}</p>}{business.registration_note && <div className="verification-note"><strong>Verification note</strong><p>{business.registration_note}</p></div>}<div className="tags"><span>{business.verification_status}</span><span>{business.source || 'registration'}</span></div><div className="sheet-actions"><button disabled={Boolean(actionId)} onClick={() => moderateBusiness(business.id, 'verified')}><CheckCircle2 size={18} /> {actionId === business.id ? 'Working…' : 'Approve business'}</button><button disabled={Boolean(actionId)} onClick={() => moderateBusiness(business.id, 'rejected')} className="danger"><XCircle size={18} /> Reject</button></div></div></article>)}
 
     <h3><FileText size={17} /> Posts needing review</h3>
-    {pendingPosts.length === 0 ? <p className="muted">No risky or incomplete posts waiting for review.</p> : pendingPosts.map(post => <article className="post-card" key={post.id}><div><strong>{post.type}</strong></div><div><h3>{post.title}</h3><p>{post.body}</p><p className="muted">{post.business_name || 'Business'}</p><div className="sheet-actions"><button onClick={() => moderatePost(post.id, 'live')}><CheckCircle2 size={18} /> Approve post</button><button onClick={() => moderatePost(post.id, 'rejected')} className="danger"><XCircle size={18} /> Reject</button></div></div></article>)}
+    {pendingPosts.length === 0 ? <p className="muted">No posts waiting for review.</p> : pendingPosts.map(post => <article className="post-card" key={post.id}><div><strong>{post.type}</strong></div><div><h3>{post.title}</h3><p>{post.body}</p><p className="muted">{post.business_name || 'Business'}</p><div className="sheet-actions"><button disabled={Boolean(actionId)} onClick={() => moderatePost(post.id, 'live')}><CheckCircle2 size={18} /> {actionId === post.id ? 'Working…' : 'Approve post'}</button><button disabled={Boolean(actionId)} onClick={() => moderatePost(post.id, 'rejected')} className="danger"><XCircle size={18} /> Reject</button></div></div></article>)}
 
     <h3>Latest registered businesses</h3>
     {latestBusinesses.slice(0, 8).map(business => <div className="admin-row" key={business.id}><strong>{business.name}</strong><span>{business.verification_status} · {business.category}</span></div>)}

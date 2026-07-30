@@ -277,9 +277,10 @@ export default function MapView({ posts }: { posts: Post[] }) {
         const data = await response.json()
         const lat = Number(data?.result?.latitude)
         const lng = Number(data?.result?.longitude)
+        const adminDistrict = String(data?.result?.admin_district || '').trim().toLowerCase()
         if (response.ok && Number.isFinite(lat) && Number.isFinite(lng)) {
-          if (!isInsideNewham({ lat, lng })) {
-            setLocationStatus('That postcode is outside Newham.')
+          if (adminDistrict !== 'newham' || !isInsideNewham({ lat, lng })) {
+            setLocationStatus('That postcode is outside the London Borough of Newham.')
             return
           }
           applyMapData(filteredBusinessGeoJson(enrichedBusinesses, filter, ''), userPoint)
@@ -300,14 +301,18 @@ export default function MapView({ posts }: { posts: Post[] }) {
         const data = await response.json()
         const lat = Number(data?.result?.latitude)
         const lng = Number(data?.result?.longitude)
+        const districts = Array.isArray(data?.result?.admin_district)
+          ? data.result.admin_district.map((value: unknown) => String(value).trim().toLowerCase())
+          : []
         if (response.ok && Number.isFinite(lat) && Number.isFinite(lng)) {
-          if (!isInsideNewham({ lat, lng })) {
-            setLocationStatus('That postcode area is outside Newham.')
+          if (!districts.includes('newham')) {
+            setLocationStatus('That postcode area does not cover Newham.')
             return
           }
+          const focus = isInsideNewham({ lat, lng }) ? { lat, lng } : closestNewhamFocus({ lat, lng })
           applyMapData(filteredBusinessGeoJson(enrichedBusinesses, filter, ''), userPoint)
-          map.easeTo({ center: [lng, lat], zoom: 14.6, duration: 450 })
-          setLocationStatus(`Showing ${String(data?.result?.outcode || query).toUpperCase()}.`)
+          map.easeTo({ center: [focus.lng, focus.lat], zoom: 14.6, duration: 450 })
+          setLocationStatus(`Showing ${String(data?.result?.outcode || query).toUpperCase()} in Newham.`)
           return
         }
       } catch {}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { KeyRound, LogIn, LogOut, ShieldCheck, Trash2 } from 'lucide-react'
+import { KeyRound, LogIn, LogOut, ShieldCheck } from 'lucide-react'
 import { getCurrentRole } from '../lib/data'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 import type { PostType, Role } from '../types'
@@ -78,18 +78,6 @@ export default function Profile({ onPost }: Props) {
     setMessage('Signed out.')
   }
 
-  async function deleteAccount() {
-    if (!supabase) return
-    const ok = window.confirm('Delete your HiStreets account? This cannot be undone.')
-    if (!ok) return
-    const { error } = await supabase.rpc('delete_my_account')
-    if (error) return setMessage(error.message)
-    await supabase.auth.signOut()
-    setSignedIn(false)
-    setRole(null)
-    setMessage('Account deleted.')
-  }
-
   if (authLoading) return <section className="profile-screen"><div className="auth-card"><ShieldCheck size={34} /><h1>Business access</h1><p>Checking your secure session…</p></div></section>
 
   if (!signedIn) return (
@@ -140,10 +128,8 @@ export default function Profile({ onPost }: Props) {
       <JobApplicationsPanel />
       <div className="privacy-card">
         <h2>Account</h2>
-        <div className="sheet-actions">
-          <button onClick={signOut}><LogOut size={18} /> Sign out</button>
-          <button className="danger" onClick={deleteAccount}><Trash2 size={18} /> Delete my account</button>
-        </div>
+        <button onClick={signOut}><LogOut size={18} /> Sign out</button>
+        <p className="muted">For account or personal-data deletion requests, use the privacy contact process.</p>
         {message && <p className="form-status">{message}</p>}
         <p><a href="/privacy.html">Privacy policy</a> · <a href="/terms.html">Terms</a></p>
       </div>

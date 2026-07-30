@@ -95,6 +95,19 @@ export default function BusinessRegistration() {
     return { lat, lng, postcode }
   }
 
+  async function serviceAreaMapPoint() {
+    const exact = await postcodeMapPoint()
+    const outcode = exact.postcode.split(' ')[0]
+    setStatus(`Setting service area ${outcode}…`)
+    const response = await fetch(`https://api.postcodes.io/outcodes/${encodeURIComponent(outcode)}`)
+    const data = await response.json()
+    const lat = Number(data?.result?.latitude)
+    const lng = Number(data?.result?.longitude)
+    if (!response.ok || !Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error('Could not set the service-area map point.')
+    if (!inNewham(lat, lng)) throw new Error('The service postcode area must be inside Newham.')
+    return { lat, lng, outcode }
+  }
+
   async function submit() {
     try {
       setSaving(true)
@@ -103,9 +116,9 @@ export default function BusinessRegistration() {
       let mapPoint: { lat: number; lng: number }
       let publicAddress = form.address
       if (serviceAreaOnly) {
-        const postcodePoint = await postcodeMapPoint()
-        mapPoint = postcodePoint
-        publicAddress = `Serves Newham (${postcodePoint.postcode.split(' ')[0]})`
+        const servicePoint = await serviceAreaMapPoint()
+        mapPoint = servicePoint
+        publicAddress = `Serves Newham (${servicePoint.outcode})`
       } else {
         mapPoint = currentMapPoint() || await postcodeMapPoint()
       }
@@ -184,7 +197,7 @@ export default function BusinessRegistration() {
 
       <div className={!serviceAreaOnly && mapPoint ? 'location-confirmed-card' : 'location-help-card'}>
         <strong>{serviceAreaOnly ? 'Service-area map point' : mapPoint ? 'Precise map point added' : 'Map location'}</strong>
-        <p>{serviceAreaOnly ? 'HiStreets will use the postcode area as an approximate service pin. Your home or private operating address is not stored by this form.' : mapPoint ? 'HiStreets will use the location you provided.' : 'A full postcode is enough for quick signup. For a more precise shop pin, stand at the business and use your current location.'}</p>
+        <p>{serviceAreaOnly ? 'HiStreets verifies the full postcode is in Newham, but stores only the outward postcode area as the public map point. Your home or private operating address is not stored by this form.' : mapPoint ? 'HiStreets will use the location you provided.' : 'A full postcode is enough for quick signup. For a more precise shop pin, stand at the business and use your current location.'}</p>
         {!serviceAreaOnly && <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use business location</button>}
       </div>
 

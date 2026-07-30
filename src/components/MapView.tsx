@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
 import { LocateFixed, Search } from 'lucide-react'
-import { MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER, paddedBounds } from '../lib/newham'
+import { MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER } from '../lib/newham'
 import { fetchBusinessById, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson } from '../lib/data'
 import type { Business, Post } from '../types'
 import BusinessDetailSheet from './BusinessDetailSheet'
@@ -176,11 +176,6 @@ function featureCoords(feature: any): [number, number] | null {
   return [Number(coords[0]), Number(coords[1])]
 }
 
-function isInsidePaddedNewham(point: { lat: number; lng: number }) {
-  const b = paddedBounds(0.03)
-  return point.lat >= b.south && point.lat <= b.north && point.lng >= b.west && point.lng <= b.east
-}
-
 function isInsideNewham(point: { lat: number; lng: number }) {
   return point.lat >= NEWHAM_BOUNDS.south && point.lat <= NEWHAM_BOUNDS.north && point.lng >= NEWHAM_BOUNDS.west && point.lng <= NEWHAM_BOUNDS.east
 }
@@ -190,15 +185,16 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function closestNewhamFocus(point: { lat: number; lng: number }) {
-  const b = paddedBounds(0.01)
+  const latPad = (NEWHAM_BOUNDS.north - NEWHAM_BOUNDS.south) * 0.01
+  const lngPad = (NEWHAM_BOUNDS.east - NEWHAM_BOUNDS.west) * 0.01
   return {
-    lat: clamp(point.lat, b.south, b.north),
-    lng: clamp(point.lng, b.west, b.east),
+    lat: clamp(point.lat, NEWHAM_BOUNDS.south + latPad, NEWHAM_BOUNDS.north - latPad),
+    lng: clamp(point.lng, NEWHAM_BOUNDS.west + lngPad, NEWHAM_BOUNDS.east - lngPad),
   }
 }
 
 function userLocationData(point: { lat: number; lng: number } | null): FeatureCollection {
-  if (!point) return EMPTY_FC
+  if (!point || !isInsideNewham(point)) return EMPTY_FC
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 'user-location' }, geometry: { type: 'Point', coordinates: [point.lng, point.lat] } }] }
 }
 
@@ -206,15 +202,19 @@ function looksLikeFullPostcode(query: string) {
   return /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(query.trim())
 }
 
+function looksLikeOutcode(query: string) {
+  return /^[A-Z]{1,2}\d[A-Z\d]?$/i.test(query.trim())
+}
+
 function focusFeatures(map: MapLibre, features: Array<any>) {
   const coords = features.map(featureCoords).filter(Boolean) as [number, number][]
   if (!coords.length) return false
   if (coords.length === 1) {
-    map.easeTo({ center: coords[0], zoom: 16.2, duration: 650 })
+    map.easeTo({ center: coords[0], zoom: 16.2, duration: 450 })
     return true
   }
   const bounds = coords.reduce((b, coord) => b.extend(coord), new maplibregl.LngLatBounds(coords[0], coords[0]))
-  map.fitBounds(bounds, { padding: 60, maxZoom: 15.8, duration: 650 })
+  map.fitBounds(bounds, { padding: 60, maxZoom: 15.8, duration: 450 })
   return true
 }
 
@@ -226,6 +226,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   const [selected, setSelected] = useState<Business | null>(null)
   const [filter, setFilter] = useState<LayerFilter>('all')
   const [searchTerm, setSearchTerm] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
   const [mapReady, setMapReady] = useState(false)
   const [userPoint, setUserPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState('')
@@ -233,7 +234,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
   const businessPostKinds = useMemo(() => getBusinessPostKinds(posts), [posts])
   const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
-  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter, searchTerm), [enrichedBusinesses, filter, searchTerm])
+  const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter, appliedSearch), [enrichedBusinesses, filter, appliedSearch])
 
   function applyMapData(nextBusinesses = visibleBusinesses, nextUserPoint = userPoint) {
     const map = mapRef.current
@@ -250,7 +251,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
     setSelected(business)
     const map = mapRef.current
     const point = coords || [business.lng, business.lat]
-    if (map && point) map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 16) })
+    if (map && point) map.easeTo({ center: point, zoom: Math.max(map.getZoom(), 16), duration: 400 })
   }
 
   async function submitSearch(event: FormEvent) {
@@ -260,13 +261,17 @@ export default function MapView({ posts }: { posts: Post[] }) {
     if (!map) return
 
     if (!query) {
+      setAppliedSearch('')
+      const reset = filteredBusinessGeoJson(enrichedBusinesses, filter, '')
+      applyMapData(reset, userPoint)
       setLocationStatus('Showing Newham map.')
-      map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 12, duration: 500 })
+      map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 12, duration: 400 })
       return
     }
 
     if (looksLikeFullPostcode(query)) {
       try {
+        setAppliedSearch('')
         setLocationStatus('Searching postcode…')
         const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(query)}`)
         const data = await response.json()
@@ -277,8 +282,9 @@ export default function MapView({ posts }: { posts: Post[] }) {
             setLocationStatus('That postcode is outside Newham.')
             return
           }
-          map.easeTo({ center: [lng, lat], zoom: 16.3, duration: 650 })
-          setLocationStatus(`Showing ${query.toUpperCase()}.`)
+          applyMapData(filteredBusinessGeoJson(enrichedBusinesses, filter, ''), userPoint)
+          map.easeTo({ center: [lng, lat], zoom: 16.3, duration: 450 })
+          setLocationStatus(`Showing ${String(data?.result?.postcode || query).toUpperCase()}.`)
           return
         }
       } catch {}
@@ -286,7 +292,31 @@ export default function MapView({ posts }: { posts: Post[] }) {
       return
     }
 
+    if (looksLikeOutcode(query)) {
+      try {
+        setAppliedSearch('')
+        setLocationStatus('Searching postcode area…')
+        const response = await fetch(`https://api.postcodes.io/outcodes/${encodeURIComponent(query)}`)
+        const data = await response.json()
+        const lat = Number(data?.result?.latitude)
+        const lng = Number(data?.result?.longitude)
+        if (response.ok && Number.isFinite(lat) && Number.isFinite(lng)) {
+          if (!isInsideNewham({ lat, lng })) {
+            setLocationStatus('That postcode area is outside Newham.')
+            return
+          }
+          applyMapData(filteredBusinessGeoJson(enrichedBusinesses, filter, ''), userPoint)
+          map.easeTo({ center: [lng, lat], zoom: 14.6, duration: 450 })
+          setLocationStatus(`Showing ${String(data?.result?.outcode || query).toUpperCase()}.`)
+          return
+        }
+      } catch {}
+      setLocationStatus('Postcode area not found. Try a Newham postcode or business name.')
+      return
+    }
+
     const matches = filteredBusinessGeoJson(enrichedBusinesses, filter, query)
+    setAppliedSearch(query)
     applyMapData(matches, userPoint)
     if (focusFeatures(map, matches.features)) {
       setLocationStatus(`${matches.features.length} result${matches.features.length === 1 ? '' : 's'} found.`)
@@ -297,23 +327,30 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
   function requestUserLocation() {
     setLocationPromptOpen(false)
-    if (!navigator.geolocation) return setLocationStatus('Location not supported on this browser')
+    const map = mapRef.current
+    if (!window.isSecureContext) return setLocationStatus('Location needs a secure HTTPS connection.')
+    if (!navigator.geolocation) return setLocationStatus('Location is not supported on this browser.')
     setLocationStatus('Finding your location…')
     navigator.geolocation.getCurrentPosition(
       position => {
         const point = { lat: position.coords.latitude, lng: position.coords.longitude }
-        const insideArea = isInsidePaddedNewham(point)
+        const insideArea = isInsideNewham(point)
         const focusPoint = insideArea ? point : closestNewhamFocus(point)
-        setUserPoint(point)
-        setLocationStatus(insideArea ? 'Showing places near your location.' : 'Showing the closest Newham area to your location.')
+        const visiblePoint = insideArea ? point : null
+        setUserPoint(visiblePoint)
+        setLocationStatus(insideArea ? 'Showing places near your location.' : 'Your location is outside Newham. Showing the closest Newham area.')
         requestAnimationFrame(() => {
-          applyMapData(visibleBusinesses, point)
-          const map = mapRef.current
-          if (map) map.easeTo({ center: [focusPoint.lng, focusPoint.lat], zoom: 16, duration: 850 })
+          applyMapData(visibleBusinesses, visiblePoint)
+          map?.easeTo({ center: [focusPoint.lng, focusPoint.lat], zoom: insideArea ? 16 : 14.8, duration: 500 })
         })
       },
-      error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location permission denied. Check Safari/location permission, or use Newham map for now.' : 'Could not get location. Showing Newham map.'),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+      error => {
+        setUserPoint(null)
+        if (error.code === error.PERMISSION_DENIED) setLocationStatus('Location is blocked. In Safari, allow location for app.histreets.uk, or use the Newham map without location.')
+        else if (error.code === error.TIMEOUT) setLocationStatus('Location timed out. Try again, or use the Newham map.')
+        else setLocationStatus('Could not get location. Showing Newham map.')
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
     )
   }
 
@@ -324,7 +361,9 @@ export default function MapView({ posts }: { posts: Post[] }) {
       setBusinessesGeoJson(data)
       requestAnimationFrame(() => applyMapData(enriched, userPoint))
     }).catch(() => setLocationStatus('Could not load the map data.'))
-  }, [businessPostKinds])
+    // Business data is loaded once. Post badges update locally from the posts prop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     businessesGeoJsonRef.current = enrichedBusinesses
@@ -371,7 +410,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
         if (typeof clusterId !== 'number' || !coordinates) return
         try {
           const zoom = await source.getClusterExpansionZoom(clusterId)
-          if (typeof zoom === 'number') map.easeTo({ center: coordinates, zoom })
+          if (typeof zoom === 'number') map.easeTo({ center: coordinates, zoom, duration: 400 })
         } catch {}
       })
 
@@ -400,7 +439,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
     <section className="map-screen">
       <form className="map-search" aria-label="Search HiStreets" onSubmit={submitSearch}>
         <button className="map-search-button" type="submit" aria-label="Search"><Search size={18} /></button>
-        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search business, street or postcode…" />
+        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search business, street or postcode…" autoComplete="off" enterKeyHint="search" />
       </form>
       <div className="map-filterbar">
         <select className="category-select" value={filter === 'community' ? 'all' : filter} onChange={e => setFilter(e.target.value as LayerFilter)} aria-label="Filter by category">

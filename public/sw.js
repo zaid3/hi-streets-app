@@ -1,4 +1,4 @@
-const CACHE_NAME = 'histreets-shell-v2'
+const CACHE_NAME = 'histreets-shell-v3'
 const APP_SHELL = ['/manifest.json', '/icon.svg']
 
 self.addEventListener('install', event => {
@@ -14,6 +14,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const request = event.request
   if (request.method !== 'GET') return
+
   event.respondWith(
     fetch(request).then(response => {
       const copy = response.clone()
@@ -21,6 +22,18 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {})
       }
       return response
-    }).catch(() => caches.match(request).then(cached => cached || caches.match('/manifest.json')))
+    }).catch(async () => {
+      const cached = await caches.match(request)
+      if (cached) return cached
+
+      if (request.mode === 'navigate') {
+        return new Response(
+          '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HiStreets offline</title></head><body><main style="font-family:system-ui,sans-serif;max-width:520px;margin:15vh auto;padding:24px"><h1>HiStreets is offline</h1><p>Reconnect to the internet and refresh to load the latest Newham map, offers and jobs.</p></main></body></html>',
+          { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+        )
+      }
+
+      return new Response('', { status: 503 })
+    }),
   )
 })

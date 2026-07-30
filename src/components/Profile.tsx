@@ -3,7 +3,9 @@ import { KeyRound, LogIn, LogOut, ShieldCheck } from 'lucide-react'
 import { getCurrentRole } from '../lib/data'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 import type { PostType, Role } from '../types'
+import AdminOwnershipRequests from './AdminOwnershipRequests'
 import AdminPanel from './AdminPanel'
+import BusinessOwnershipRequest from './BusinessOwnershipRequest'
 import BusinessPostingDashboard from './BusinessPostingDashboard'
 import BusinessRegistration from './BusinessRegistration'
 import JobApplicationsPanel from './JobApplicationsPanel'
@@ -103,8 +105,9 @@ export default function Profile({ onPost }: Props) {
     <section className="profile-screen">
       <header className="screen-header">
         <h1>{role === 'super_admin' ? 'Super Admin' : 'Admin'}</h1>
-        <p>Review business registrations, moderate posts, inspect job applications and monitor HiStreets activity.</p>
+        <p>Review ownership requests, business registrations, posts and job applications from one workspace.</p>
       </header>
+      <AdminOwnershipRequests />
       <AdminPanel />
       <JobApplicationsPanel />
       <div className="privacy-card">
@@ -120,8 +123,9 @@ export default function Profile({ onPost }: Props) {
     <section className="profile-screen">
       <header className="screen-header">
         <h1>Business portal</h1>
-        <p>Register or request ownership of your business first. After approval, complete your profile, post offers/jobs/free meals and review applications.</p>
+        <p>If your business is already on HiStreets, request ownership. Otherwise register it as a new business. After approval you can complete your profile, publish local posts and review job applications.</p>
       </header>
+      <BusinessOwnershipRequest />
       <BusinessRegistration />
       <OwnerBusinessProfile />
       <BusinessPostingDashboard onPost={onPost} />

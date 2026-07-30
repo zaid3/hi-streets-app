@@ -8,8 +8,27 @@ import PostComposer from './components/PostComposer'
 import { loadPosts } from './lib/data'
 import type { Post, PostType, TabKey } from './types'
 
+const tabPaths: Record<TabKey, string> = {
+  map: '/map',
+  offers: '/offers',
+  jobs: '/jobs',
+  community: '/community',
+  parking: '/parking',
+  profile: '/business',
+}
+
+function tabFromPath(pathname: string): TabKey {
+  const path = pathname.replace(/\/+$/, '') || '/'
+  if (path === '/offers') return 'offers'
+  if (path === '/jobs') return 'jobs'
+  if (path === '/community') return 'community'
+  if (path === '/parking') return 'parking'
+  if (path === '/business' || path === '/profile') return 'profile'
+  return 'map'
+}
+
 export default function App() {
-  const [tab, setTab] = useState<TabKey>('map')
+  const [tab, setTab] = useState<TabKey>(() => tabFromPath(window.location.pathname))
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [composerOpen, setComposerOpen] = useState(false)
@@ -20,7 +39,30 @@ export default function App() {
     loadPosts().then(setPosts).finally(() => setLoading(false))
   }, [refreshFlag])
 
+  useEffect(() => {
+    const onPopState = () => {
+      setComposerOpen(false)
+      setTab(tabFromPath(window.location.pathname))
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  useEffect(() => {
+    if (window.location.pathname === '/' || !Object.values(tabPaths).includes(window.location.pathname)) {
+      const target = tabPaths[tab]
+      window.history.replaceState({}, '', `${target}${window.location.search}${window.location.hash}`)
+    }
+  }, [])
+
   const livePosts = useMemo(() => posts.filter(p => p.status === 'live'), [posts])
+
+  function changeTab(nextTab: TabKey) {
+    setComposerOpen(false)
+    setTab(nextTab)
+    const target = tabPaths[nextTab]
+    if (window.location.pathname !== target) window.history.pushState({}, '', target)
+  }
 
   function openComposer(type: PostType = 'offer') {
     setComposerType(type)
@@ -37,7 +79,7 @@ export default function App() {
       {tab === 'parking' && <LocalParkingComingSoon />}
       {tab === 'profile' && <Profile onPost={openComposer} />}
       {composerOpen && <PostComposer initialType={composerType} onClose={() => setComposerOpen(false)} onSubmitted={() => { setComposerOpen(false); setRefreshFlag(v => v + 1) }} />}
-      <BottomTabs active={tab} onChange={setTab} />
+      <BottomTabs active={tab} onChange={changeTab} />
     </main>
   )
 }

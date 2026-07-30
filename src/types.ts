@@ -2,6 +2,7 @@ export type TabKey = 'map' | 'offers' | 'jobs' | 'community' | 'parking' | 'prof
 export type PostType = 'offer' | 'job' | 'free_meal' | 'community'
 export type Role = 'user' | 'business' | 'charity' | 'admin' | 'super_admin'
 export type ClaimMethod = 'phone_otp' | 'domain_email' | 'website_code' | 'document'
+export type BusinessEvidenceKind = 'shopfront' | 'inside'
 
 export interface Business {
   id: string
@@ -51,6 +52,14 @@ export interface BusinessRegistrationInput {
   lat: number
   lng: number
   evidence_note: string
+}
+
+export interface BusinessVerificationEvidence {
+  id: string
+  business_id: string
+  kind: BusinessEvidenceKind
+  storage_path: string
+  created_at?: string | null
 }
 
 export interface BusinessProfileInput {

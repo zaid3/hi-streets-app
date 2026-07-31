@@ -1,3 +1,9 @@
+function errorCode(error: unknown) {
+  if (!error || typeof error !== 'object' || !('code' in error)) return null
+  const code = Number((error as { code?: unknown }).code)
+  return Number.isFinite(code) ? code : null
+}
+
 export function getPosition(options: PositionOptions) {
   return new Promise<GeolocationPosition>((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, options)
@@ -17,8 +23,7 @@ export async function getReliableUserPosition() {
       return quick
     }
   } catch (error) {
-    const geoError = error as GeolocationPositionError
-    if (geoError?.code === 1) throw error
+    if (errorCode(error) === 1) throw error
     return getPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
   }
 }
@@ -30,16 +35,15 @@ export async function getPreciseBusinessPosition() {
   try {
     return await getPosition({ enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 })
   } catch (error) {
-    const geoError = error as GeolocationPositionError
-    if (geoError?.code === 1) throw error
+    if (errorCode(error) === 1) throw error
     return getPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 })
   }
 }
 
 export function locationErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && !(error as GeolocationPositionError).code) return error.message
-  const geoError = error as GeolocationPositionError
-  if (geoError?.code === 1) return 'Location is blocked. Allow location for HiStreets in your browser or site settings, then try again.'
-  if (geoError?.code === 3) return 'Location timed out. Check that location services are on, then try again.'
+  const code = errorCode(error)
+  if (error instanceof Error && code === null) return error.message
+  if (code === 1) return 'Location is blocked. Allow location for HiStreets in your browser or site settings, then try again.'
+  if (code === 3) return 'Location timed out. Check that location services are on, then try again.'
   return fallback
 }

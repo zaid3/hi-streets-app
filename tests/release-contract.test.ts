@@ -22,10 +22,12 @@ test('PWA manifest launches the Newham map as a standalone app', async () => {
 
 test('mobile viewport and iPhone standalone metadata are present', async () => {
   const html = await read('index.html')
+  const polish = await read('src/release-polish.css')
   assert.match(html, /name="viewport"[^>]*viewport-fit=cover/)
   assert.match(html, /rel="manifest" href="\/manifest\.json"/)
   assert.match(html, /apple-mobile-web-app-capable/)
   assert.match(html, /apple-mobile-web-app-title/)
+  assert.match(polish, /height:100vh;height:100dvh/)
 })
 
 test('map location flow is user initiated, progressive and HTTPS aware', async () => {

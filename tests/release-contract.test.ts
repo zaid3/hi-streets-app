@@ -8,28 +8,36 @@ async function read(path: string) {
 
 test('PWA manifest launches the Newham map as a standalone app', async () => {
   const manifest = JSON.parse(await read('public/manifest.json'))
+  assert.equal(manifest.id, '/')
   assert.equal(manifest.start_url, '/map')
   assert.equal(manifest.scope, '/')
   assert.equal(manifest.display, 'standalone')
+  assert.equal(manifest.orientation, 'any')
   assert.equal(manifest.name, 'HiStreets')
   assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0)
 })
 
-test('mobile viewport supports safe-area devices', async () => {
+test('mobile viewport and iPhone standalone metadata are present', async () => {
   const html = await read('index.html')
   assert.match(html, /name="viewport"[^>]*viewport-fit=cover/)
   assert.match(html, /rel="manifest" href="\/manifest\.json"/)
+  assert.match(html, /apple-mobile-web-app-capable/)
+  assert.match(html, /apple-mobile-web-app-title/)
 })
 
-test('map location flow is user initiated and HTTPS aware', async () => {
+test('map location flow is user initiated, progressive and HTTPS aware', async () => {
   const mapView = await read('src/components/MapView.tsx')
   assert.match(mapView, /Use your location\?/)
   assert.match(mapView, /onClick=\{requestUserLocation\}/)
   assert.match(mapView, /window\.isSecureContext/)
-  assert.match(mapView, /navigator\.geolocation\.getCurrentPosition/)
+  assert.match(mapView, /geolocation\.getCurrentPosition/)
+  assert.match(mapView, /getReliablePosition\(navigator\.geolocation\)/)
+  assert.match(mapView, /enableHighAccuracy:\s*false/)
   assert.match(mapView, /enableHighAccuracy:\s*true/)
-  assert.match(mapView, /PERMISSION_DENIED/)
-  assert.match(mapView, /TIMEOUT/)
+  assert.match(mapView, /LOCATION_PROMPT_KEY/)
+  assert.match(mapView, /geoError\?\.code === 1/)
+  assert.match(mapView, /geoError\?\.code === 3/)
+  assert.match(mapView, /aria-live="polite"/)
 })
 
 test('service worker has a navigation-safe offline fallback', async () => {

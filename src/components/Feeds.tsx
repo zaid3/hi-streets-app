@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Briefcase, CalendarClock, HandHeart, LocateFixed, Send, Tag } from 'lucide-react'
 import { emptyStateText, submitJobApplication } from '../lib/data'
+import { getReliableUserPosition, locationErrorMessage } from '../lib/geolocation'
 import type { Post, PostType } from '../types'
 
 const icon = { offer: Tag, job: Briefcase, free_meal: HandHeart, community: HandHeart }
@@ -25,6 +26,7 @@ function dateValue(value?: string | null) {
 export function Feed({ type, posts }: FeedProps) {
   const [userPoint, setUserPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState('')
+  const [locating, setLocating] = useState(false)
   const [applyingPost, setApplyingPost] = useState<Post | null>(null)
   const [sortMode, setSortMode] = useState<SortMode>('newest')
   const actualTypes: PostType[] = type === 'community-group' ? ['free_meal', 'community'] : [type]
@@ -37,19 +39,20 @@ export function Feed({ type, posts }: FeedProps) {
     return filtered
   }, [posts, type, userPoint, sortMode])
 
-  function useLocation(nextMode: SortMode = 'nearest') {
+  async function useLocation(nextMode: SortMode = 'nearest') {
+    if (locating) return
     setSortMode(nextMode)
-    if (!window.isSecureContext) return setLocationStatus('Location needs a secure HTTPS connection.')
-    if (!navigator.geolocation) return setLocationStatus('Location is not supported on this browser.')
+    setLocating(true)
     setLocationStatus('Finding nearby posts…')
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        setUserPoint({ lat: position.coords.latitude, lng: position.coords.longitude })
-        setLocationStatus('Showing nearest first.')
-      },
-      error => setLocationStatus(error.code === error.PERMISSION_DENIED ? 'Location is blocked in your browser settings.' : 'Could not get location.'),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
-    )
+    try {
+      const position = await getReliableUserPosition()
+      setUserPoint({ lat: position.coords.latitude, lng: position.coords.longitude })
+      setLocationStatus('Showing nearest first.')
+    } catch (error) {
+      setLocationStatus(locationErrorMessage(error, 'Could not get location. You can still browse all Newham posts.'))
+    } finally {
+      setLocating(false)
+    }
   }
 
   return (
@@ -58,15 +61,15 @@ export function Feed({ type, posts }: FeedProps) {
         <h1>{type === 'community-group' ? 'Community' : titles[type]}</h1>
         <p>{type === 'job' ? 'Find local jobs. Apply without an account. CV is required.' : type === 'offer' ? 'Use your location to show the nearest offers first.' : 'Find free meals and community support near you.'}</p>
         <div className="sheet-actions">
-          <button onClick={() => useLocation('nearest')}><LocateFixed size={17} /> Use my location</button>
+          <button type="button" onClick={() => useLocation('nearest')} disabled={locating}><LocateFixed size={17} /> {locating ? 'Finding…' : 'Use my location'}</button>
         </div>
-        {locationStatus && <p className="form-status">{locationStatus}</p>}
+        {locationStatus && <p className="form-status" role="status" aria-live="polite">{locationStatus}</p>}
       </header>
       <div className="chip-row">
-        <button onClick={() => setSortMode('newest')} className={sortMode === 'newest' ? 'active' : ''}>Newest</button>
-        <button onClick={() => useLocation('nearest')} className={sortMode === 'nearest' ? 'active' : ''}>Nearest</button>
-        <button onClick={() => setSortMode('ending')} className={sortMode === 'ending' ? 'active' : ''}>Ending soon</button>
-        {type === 'job' && <button onClick={() => setSortMode('easy')} className={sortMode === 'easy' ? 'active' : ''}>Easy apply</button>}
+        <button type="button" onClick={() => setSortMode('newest')} className={sortMode === 'newest' ? 'active' : ''}>Newest</button>
+        <button type="button" onClick={() => useLocation('nearest')} disabled={locating} className={sortMode === 'nearest' ? 'active' : ''}>Nearest</button>
+        <button type="button" onClick={() => setSortMode('ending')} className={sortMode === 'ending' ? 'active' : ''}>Ending soon</button>
+        {type === 'job' && <button type="button" onClick={() => setSortMode('easy')} className={sortMode === 'easy' ? 'active' : ''}>Easy apply</button>}
       </div>
       {items.length === 0 ? <Empty message={emptyStateText[emptyKey]} /> : items.map(post => <PostCard key={post.id} post={post} distance={userPoint ? kmDistance(post, userPoint) : null} onApply={setApplyingPost} />)}
       {applyingPost && <JobApplySheet post={applyingPost} onClose={() => setApplyingPost(null)} />}
@@ -81,7 +84,7 @@ function Empty({ message }: { message: string }) {
 function PostCard({ post, distance, onApply }: { post: Post; distance: number | null; onApply: (post: Post) => void }) {
   const Icon = icon[post.type]
   const expires = new Date(post.expires_at)
-  return <article className={`post-card ${post.type}`}><div className="post-icon"><Icon size={20} /></div><div><h3>{post.title}</h3><p>{post.body}</p><div className="post-meta"><span>{post.business?.name || 'Newham business'}</span>{Number.isFinite(distance) && <span>{distance!.toFixed(1)} km away</span>}<span><CalendarClock size={14} /> Ends {Number.isNaN(expires.getTime()) ? 'soon' : expires.toLocaleDateString()}</span></div>{post.type === 'job' && <><div className="tags"><span>Newham</span><span>Easy apply</span><span>CV required</span></div><button onClick={() => onApply(post)}><Send size={17} /> Apply in app</button></>}</div></article>
+  return <article className={`post-card ${post.type}`}><div className="post-icon"><Icon size={20} /></div><div><h3>{post.title}</h3><p>{post.body}</p><div className="post-meta"><span>{post.business?.name || 'Newham business'}</span>{Number.isFinite(distance) && <span>{distance!.toFixed(1)} km away</span>}<span><CalendarClock size={14} /> Ends {Number.isNaN(expires.getTime()) ? 'soon' : expires.toLocaleDateString()}</span></div>{post.type === 'job' && <><div className="tags"><span>Newham</span><span>Easy apply</span><span>CV required</span></div><button type="button" onClick={() => onApply(post)}><Send size={17} /> Apply in app</button></>}</div></article>
 }
 
 function JobApplySheet({ post, onClose }: { post: Post; onClose: () => void }) {
@@ -114,7 +117,7 @@ function JobApplySheet({ post, onClose }: { post: Post; onClose: () => void }) {
         cv_file: cv,
       })
       setStatus('Application submitted. The business will contact you directly if they move forward.')
-      setTimeout(onClose, 1800)
+      window.setTimeout(onClose, 1800)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not submit application')
     } finally {
@@ -124,5 +127,5 @@ function JobApplySheet({ post, onClose }: { post: Post; onClose: () => void }) {
 
   const disabled = submitting || !name.trim() || !email.trim() || !phone.trim() || !cv
 
-  return <div className="bottom-sheet"><button className="sheet-close" onClick={onClose}>×</button><div className="sheet-handle" /><h2>Apply for this job</h2><p className="muted">No account needed. Add your contact details and CV. The business will contact you directly if shortlisted.</p><div className="no-live-posts"><strong>{post.title}</strong><span>{post.business?.name || 'Newham business'}</span></div><label>Your full name<input value={name} maxLength={120} autoComplete="name" onChange={e => setName(e.target.value)} placeholder="Your name" /></label><label>Email<input type="email" value={email} maxLength={160} autoComplete="email" onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></label><label>Phone or WhatsApp<input value={phone} maxLength={50} autoComplete="tel" onChange={e => setPhone(e.target.value)} placeholder="Your contact number" /></label><label>Short note<textarea value={coverNote} maxLength={1500} onChange={e => setCoverNote(e.target.value)} placeholder="Optional: your availability or short message" /></label><label>Upload CV<input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required onChange={e => setCv(e.target.files?.[0] || null)} /></label><button onClick={submit} disabled={disabled}><Send size={17} /> {submitting ? 'Submitting…' : 'Submit application'}</button>{status && <p className="form-status">{status}</p>}</div>
+  return <div className="bottom-sheet"><button type="button" className="sheet-close" onClick={onClose}>×</button><div className="sheet-handle" /><h2>Apply for this job</h2><p className="muted">No account needed. Add your contact details and CV. The business will contact you directly if shortlisted.</p><div className="no-live-posts"><strong>{post.title}</strong><span>{post.business?.name || 'Newham business'}</span></div><label>Your full name<input value={name} maxLength={120} autoComplete="name" onChange={e => setName(e.target.value)} placeholder="Your name" /></label><label>Email<input type="email" value={email} maxLength={160} autoComplete="email" onChange={e => setEmail(e.target.value)} placeholder="you@example.com" /></label><label>Phone or WhatsApp<input value={phone} maxLength={50} autoComplete="tel" onChange={e => setPhone(e.target.value)} placeholder="Your contact number" /></label><label>Short note<textarea value={coverNote} maxLength={1500} onChange={e => setCoverNote(e.target.value)} placeholder="Optional: your availability or short message" /></label><label>Upload CV<input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required onChange={e => setCv(e.target.files?.[0] || null)} /></label><button type="button" onClick={submit} disabled={disabled}><Send size={17} /> {submitting ? 'Submitting…' : 'Submit application'}</button>{status && <p className="form-status" role="status" aria-live="polite">{status}</p>}</div>
 }

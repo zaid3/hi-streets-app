@@ -12,6 +12,7 @@ type BusinessPostKinds = Record<string, { offer: boolean; job: boolean; communit
 type CategoryInfo = { group: string; marker: string; label: string; icon: string; aliases: string }
 
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
+const LOCATION_PROMPT_KEY = 'histreets_location_prompted_v1'
 
 const markerDefinitions: Array<{ id: string; label: string; color: string }> = [
   { id: 'restaurant', label: '🍽', color: '#F2762E' },
@@ -218,6 +219,42 @@ function focusFeatures(map: MapLibre, features: Array<any>) {
   return true
 }
 
+function readPosition(geolocation: Geolocation, options: PositionOptions) {
+  return new Promise<GeolocationPosition>((resolve, reject) => {
+    geolocation.getCurrentPosition(resolve, reject, options)
+  })
+}
+
+async function getReliablePosition(geolocation: Geolocation) {
+  try {
+    const quick = await readPosition(geolocation, { enableHighAccuracy: false, timeout: 7000, maximumAge: 300000 })
+    if (Number.isFinite(quick.coords.accuracy) && quick.coords.accuracy <= 250) return quick
+    try {
+      return await readPosition(geolocation, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
+    } catch {
+      return quick
+    }
+  } catch (error) {
+    const geoError = error as GeolocationPositionError
+    if (geoError?.code === 1) throw error
+    return readPosition(geolocation, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
+  }
+}
+
+function locationPromptWasSeen() {
+  try {
+    return window.sessionStorage.getItem(LOCATION_PROMPT_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function rememberLocationPrompt() {
+  try {
+    window.sessionStorage.setItem(LOCATION_PROMPT_KEY, '1')
+  } catch {}
+}
+
 export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
@@ -230,7 +267,8 @@ export default function MapView({ posts }: { posts: Post[] }) {
   const [mapReady, setMapReady] = useState(false)
   const [userPoint, setUserPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState('')
-  const [locationPromptOpen, setLocationPromptOpen] = useState(true)
+  const [locationPromptOpen, setLocationPromptOpen] = useState(() => !locationPromptWasSeen())
+  const [locating, setLocating] = useState(false)
 
   const businessPostKinds = useMemo(() => getBusinessPostKinds(posts), [posts])
   const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
@@ -330,33 +368,47 @@ export default function MapView({ posts }: { posts: Post[] }) {
     }
   }
 
-  function requestUserLocation() {
+  function dismissLocationPrompt() {
+    rememberLocationPrompt()
     setLocationPromptOpen(false)
+  }
+
+  async function requestUserLocation() {
+    if (locating) return
+    dismissLocationPrompt()
     const map = mapRef.current
-    if (!window.isSecureContext) return setLocationStatus('Location needs a secure HTTPS connection.')
-    if (!navigator.geolocation) return setLocationStatus('Location is not supported on this browser.')
+    if (!window.isSecureContext) {
+      setLocationStatus('Location needs a secure HTTPS connection.')
+      return
+    }
+    if (!navigator.geolocation) {
+      setLocationStatus('Location is not supported on this browser.')
+      return
+    }
+
+    setLocating(true)
     setLocationStatus('Finding your location…')
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const point = { lat: position.coords.latitude, lng: position.coords.longitude }
-        const insideArea = isInsideNewham(point)
-        const focusPoint = insideArea ? point : closestNewhamFocus(point)
-        const visiblePoint = insideArea ? point : null
-        setUserPoint(visiblePoint)
-        setLocationStatus(insideArea ? 'Showing places near your location.' : 'Your location is outside Newham. Showing the closest Newham area.')
-        requestAnimationFrame(() => {
-          applyMapData(visibleBusinesses, visiblePoint)
-          map?.easeTo({ center: [focusPoint.lng, focusPoint.lat], zoom: insideArea ? 16 : 14.8, duration: 500 })
-        })
-      },
-      error => {
-        setUserPoint(null)
-        if (error.code === error.PERMISSION_DENIED) setLocationStatus('Location is blocked. In Safari, allow location for app.histreets.uk, or use the Newham map without location.')
-        else if (error.code === error.TIMEOUT) setLocationStatus('Location timed out. Try again, or use the Newham map.')
-        else setLocationStatus('Could not get location. Showing Newham map.')
-      },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
-    )
+    try {
+      const position = await getReliablePosition(navigator.geolocation)
+      const point = { lat: position.coords.latitude, lng: position.coords.longitude }
+      const insideArea = isInsideNewham(point)
+      const focusPoint = insideArea ? point : closestNewhamFocus(point)
+      const visiblePoint = insideArea ? point : null
+      setUserPoint(visiblePoint)
+      setLocationStatus(insideArea ? 'Showing places near your location.' : 'Your location is outside Newham. Showing the closest Newham area.')
+      requestAnimationFrame(() => {
+        applyMapData(visibleBusinesses, visiblePoint)
+        map?.easeTo({ center: [focusPoint.lng, focusPoint.lat], zoom: insideArea ? 16 : 14.8, duration: 500 })
+      })
+    } catch (error) {
+      setUserPoint(null)
+      const geoError = error as GeolocationPositionError
+      if (geoError?.code === 1) setLocationStatus('Location is blocked. Allow location for HiStreets in your browser or site settings, then tap Near me again.')
+      else if (geoError?.code === 3) setLocationStatus('Location timed out. Check that location services are on, then try Near me again.')
+      else setLocationStatus('Could not get location. You can still use the Newham map and postcode search.')
+    } finally {
+      setLocating(false)
+    }
   }
 
   useEffect(() => {
@@ -450,12 +502,12 @@ export default function MapView({ posts }: { posts: Post[] }) {
         <select className="category-select" value={filter === 'community' ? 'all' : filter} onChange={e => setFilter(e.target.value as LayerFilter)} aria-label="Filter by category">
           {categoryOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
         </select>
-        <button className={filter === 'community' ? 'quick-filter active' : 'quick-filter'} onClick={() => setFilter(filter === 'community' ? 'all' : 'community')}>Free meals</button>
+        <button type="button" className={filter === 'community' ? 'quick-filter active' : 'quick-filter'} onClick={() => setFilter(filter === 'community' ? 'all' : 'community')}>Free meals</button>
       </div>
-      <button className="locate-button" onClick={requestUserLocation} aria-label="Use my location"><LocateFixed size={17} /> Near me</button>
-      {locationStatus && <div className="location-status">{locationStatus}</div>}
+      <button type="button" className="locate-button" onClick={requestUserLocation} aria-label="Use my location" disabled={locating}><LocateFixed size={17} /> {locating ? 'Finding…' : 'Near me'}</button>
+      {locationStatus && <div className="location-status" role="status" aria-live="polite">{locationStatus}</div>}
       <div ref={nodeRef} className="map-canvas" />
-      {locationPromptOpen && !userPoint && <div className="location-gate"><div><h2>Use your location?</h2><p>HiStreets works best when you share location, so we can show nearby offers, jobs, free meals and local businesses in Newham.</p><button onClick={requestUserLocation}><LocateFixed size={17} /> Show what is near me</button><button className="secondary" onClick={() => setLocationPromptOpen(false)}>Use Newham map for now</button></div></div>}
+      {locationPromptOpen && !userPoint && <div className="location-gate" role="dialog" aria-modal="true" aria-labelledby="location-gate-title"><div><h2 id="location-gate-title">Use your location?</h2><p>HiStreets works best when you share location, so we can show nearby offers, jobs, free meals and local businesses in Newham.</p><button type="button" onClick={requestUserLocation} disabled={locating}><LocateFixed size={17} /> {locating ? 'Finding your location…' : 'Show what is near me'}</button><button type="button" className="secondary" onClick={dismissLocationPrompt}>Use Newham map for now</button></div></div>}
       {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button><BusinessDetailSheet business={selected} posts={posts.filter(p => p.business_id === selected.id)} /></div>}
     </section>
   )

@@ -51,6 +51,22 @@ test('feed location sorting uses the mobile reliability helper', async () => {
   assert.match(geolocation, /timeout:\s*15000/)
 })
 
+test('business location has a precise mobile path and postcode fallback', async () => {
+  const registration = await read('src/components/BusinessRegistration.tsx')
+  const geolocation = await read('src/lib/geolocation.ts')
+  assert.match(registration, /getPreciseBusinessPosition\(\)/)
+  assert.match(registration, /disabled=\{locating\}/)
+  assert.match(registration, /postcodeMapPoint\(\)/)
+  assert.match(geolocation, /maximumAge:\s*30000/)
+})
+
+test('six navigation destinations remain on one mobile tab row', async () => {
+  const tabs = await read('src/components/BottomTabs.tsx')
+  const polish = await read('src/release-polish.css')
+  assert.equal((tabs.match(/key:\s*'/g) || []).length, 6)
+  assert.match(polish, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/)
+})
+
 test('business portal returns magic links to the business route', async () => {
   const profile = await read('src/components/Profile.tsx')
   assert.match(profile, /emailRedirectTo:\s*`\$\{window\.location\.origin\}\/business`/)

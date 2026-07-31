@@ -15,6 +15,9 @@ test('PWA manifest launches the Newham map as a standalone app', async () => {
   assert.equal(manifest.orientation, 'any')
   assert.equal(manifest.name, 'HiStreets')
   assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0)
+  assert.ok(manifest.icons.some((icon: { sizes?: string }) => icon.sizes === '192x192'))
+  assert.ok(manifest.icons.some((icon: { sizes?: string }) => icon.sizes === '512x512'))
+  assert.ok(manifest.icons.some((icon: { purpose?: string }) => String(icon.purpose || '').includes('maskable')))
 })
 
 test('mobile viewport and iPhone standalone metadata are present', async () => {
@@ -84,11 +87,13 @@ test('job applications require a private CV-compatible flow', async () => {
   assert.match(feeds, /\.pdf.*\.doc.*\.docx/)
 })
 
-test('service worker has a navigation-safe offline fallback', async () => {
+test('service worker has a navigation-safe offline fallback and caches install icons', async () => {
   const serviceWorker = await read('public/sw.js')
   assert.match(serviceWorker, /request\.mode === 'navigate'/)
   assert.match(serviceWorker, /HiStreets is offline/)
   assert.match(serviceWorker, /status:\s*503/)
+  assert.match(serviceWorker, /icon-192\.svg/)
+  assert.match(serviceWorker, /icon-512\.svg/)
 })
 
 test('release keeps parking disabled until reliable data exists', async () => {

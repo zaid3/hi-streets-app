@@ -40,6 +40,34 @@ test('map location flow is user initiated, progressive and HTTPS aware', async (
   assert.match(mapView, /aria-live="polite"/)
 })
 
+test('feed location sorting uses the mobile reliability helper', async () => {
+  const feeds = await read('src/components/Feeds.tsx')
+  const geolocation = await read('src/lib/geolocation.ts')
+  assert.match(feeds, /getReliableUserPosition\(\)/)
+  assert.match(feeds, /disabled=\{locating\}/)
+  assert.match(feeds, /aria-live="polite"/)
+  assert.match(geolocation, /enableHighAccuracy:\s*false/)
+  assert.match(geolocation, /enableHighAccuracy:\s*true/)
+  assert.match(geolocation, /timeout:\s*15000/)
+})
+
+test('business portal returns magic links to the business route', async () => {
+  const profile = await read('src/components/Profile.tsx')
+  assert.match(profile, /emailRedirectTo:\s*`\$\{window\.location\.origin\}\/business`/)
+  assert.match(profile, /signInWithOtp/)
+  assert.match(profile, /signInWithPassword/)
+})
+
+test('job applications require a private CV-compatible flow', async () => {
+  const data = await read('src/lib/data.ts')
+  const feeds = await read('src/components/Feeds.tsx')
+  assert.match(data, /storage\.from\('job-cvs'\)\.createSignedUrl/)
+  assert.match(data, /CV is required/)
+  assert.match(data, /10 \* 1024 \* 1024/)
+  assert.match(feeds, /CV is mandatory/)
+  assert.match(feeds, /\.pdf.*\.doc.*\.docx/)
+})
+
 test('service worker has a navigation-safe offline fallback', async () => {
   const serviceWorker = await read('public/sw.js')
   assert.match(serviceWorker, /request\.mode === 'navigate'/)
@@ -49,6 +77,8 @@ test('service worker has a navigation-safe offline fallback', async () => {
 
 test('release keeps parking disabled until reliable data exists', async () => {
   const readme = await read('README.md')
+  const data = await read('src/lib/data.ts')
   assert.match(readme, /Parking section kept as coming soon/i)
   assert.match(readme, /No fake businesses, jobs, offers, meals or parking/i)
+  assert.match(data, /Parking is not active in this version/)
 })

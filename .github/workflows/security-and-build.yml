@@ -23,7 +23,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-checks:
-    name: Tests, TypeScript and production build
+    name: Tests, audit, TypeScript and production build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,5 +34,7 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
+      - name: Production dependency audit
+        run: npm audit --omit=dev --audit-level=high
       - name: Release checks
         run: npm run check

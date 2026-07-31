@@ -1,4 +1,4 @@
-name: Security and build
+name: Security and release
 
 on:
   push:
@@ -22,8 +22,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build:
-    name: TypeScript build
+  release-checks:
+    name: Tests, TypeScript and production build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,8 +32,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - name: Install
-        run: npm ci
-      - name: Build
-        run: npm run build
+      - name: Install dependencies
+        run: npm install
+      - name: Release checks
+        run: npm run check

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Camera, MapPin, Send, Store } from 'lucide-react'
 import { loadMyBusinesses, registerBusiness, uploadBusinessVerificationEvidence } from '../lib/data'
+import { getPreciseBusinessPosition, locationErrorMessage } from '../lib/geolocation'
 import { inNewham, NEWHAM_CENTER } from '../lib/newham'
 import type { Business } from '../types'
 
@@ -42,6 +43,7 @@ export default function BusinessRegistration() {
   const [fileInputVersion, setFileInputVersion] = useState(0)
   const [status, setStatus] = useState('')
   const [saving, setSaving] = useState(false)
+  const [locating, setLocating] = useState(false)
 
   useEffect(() => { void refresh() }, [])
 
@@ -54,24 +56,26 @@ export default function BusinessRegistration() {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
-  function useCurrentLocation() {
+  async function useCurrentLocation() {
     if (serviceAreaOnly) return setStatus('Service-area businesses use a borough-level service pin instead of an exact home or operating location.')
-    if (!navigator.geolocation) return setStatus('Location is not supported on this browser. Add a full Newham postcode instead.')
+    if (locating) return
+    setLocating(true)
     setStatus('Getting the business location…')
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const lat = position.coords.latitude
-        const lng = position.coords.longitude
-        if (!inNewham(lat, lng)) {
-          setStatus('This location is outside the Newham map area. Add the business address and Newham postcode instead.')
-          return
-        }
-        setForm(prev => ({ ...prev, lat: lat.toFixed(7), lng: lng.toFixed(7) }))
-        setStatus('Precise business location added.')
-      },
-      error => setStatus(error.code === error.PERMISSION_DENIED ? 'Location is blocked. That is okay — add the full address and postcode and HiStreets will use the postcode location.' : 'Could not get location. Add the full address and postcode instead.'),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
-    )
+    try {
+      const position = await getPreciseBusinessPosition()
+      const lat = position.coords.latitude
+      const lng = position.coords.longitude
+      if (!inNewham(lat, lng)) {
+        setStatus('This location is outside the Newham map area. Add the business address and Newham postcode instead.')
+        return
+      }
+      setForm(prev => ({ ...prev, lat: lat.toFixed(7), lng: lng.toFixed(7) }))
+      setStatus(position.coords.accuracy <= 250 ? 'Business location added.' : 'Approximate location added. Check the address and postcode before submitting.')
+    } catch (error) {
+      setStatus(locationErrorMessage(error, 'Could not get location. Add the full business address and Newham postcode instead.'))
+    } finally {
+      setLocating(false)
+    }
   }
 
   function currentMapPoint() {
@@ -194,9 +198,9 @@ export default function BusinessRegistration() {
       </label>
 
       <div className={!serviceAreaOnly && mapPoint ? 'location-confirmed-card' : 'location-help-card'}>
-        <strong>{serviceAreaOnly ? 'Private service-area location' : mapPoint ? 'Precise map point added' : 'Map location'}</strong>
+        <strong>{serviceAreaOnly ? 'Private service-area location' : mapPoint ? 'Map point added' : 'Map location'}</strong>
         <p>{serviceAreaOnly ? 'HiStreets verifies that the postcode belongs to Newham, publishes only the outward postcode label and uses a borough-level service pin. Your full postcode and home or private operating address are not stored by this form.' : mapPoint ? 'HiStreets will use the location you provided.' : 'A full postcode is enough for quick signup. For a more precise shop pin, stand at the business and use your current location.'}</p>
-        {!serviceAreaOnly && <button type="button" onClick={useCurrentLocation}><MapPin size={17} /> Use business location</button>}
+        {!serviceAreaOnly && <button type="button" onClick={useCurrentLocation} disabled={locating}><MapPin size={17} /> {locating ? 'Finding location…' : 'Use business location'}</button>}
       </div>
 
       <label>How can we verify this business?
@@ -250,7 +254,7 @@ export default function BusinessRegistration() {
       </details>}
 
       <button onClick={submit} disabled={disabled}><Send size={17} /> {saving ? 'Submitting…' : 'Submit for approval'}</button>
-      {status && <p className="form-status">{status}</p>}
+      {status && <p className="form-status" role="status" aria-live="polite">{status}</p>}
     </div>
   )
 }

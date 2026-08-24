@@ -52,6 +52,20 @@ test('opportunity gap stores aggregate category counts only behind service-role 
   assert.match(migration, /grant select, insert, update, delete on table public\.ai_opportunity_daily to service_role/)
 })
 
+test('business opportunity insight is authenticated and hidden below an anonymous threshold', async () => {
+  const edge = await read('supabase/functions/histreets-opportunity/index.ts')
+  const dashboard = await read('src/components/BusinessPostingDashboard.tsx')
+  const client = await read('src/lib/ai.ts')
+  assert.match(edge, /db\.auth\.getUser/)
+  assert.match(edge, /signalCount<5/)
+  assert.match(edge, /No individual resident query is exposed/)
+  assert.match(edge, /ai_opportunity_daily/)
+  assert.match(client, /functions\.invoke\('histreets-opportunity'/)
+  assert.match(dashboard, /Opportunity Gap/)
+  assert.match(dashboard, /anonymous signals \/ 7 days/)
+  assert.match(dashboard, /Create an offer with Copilot/)
+})
+
 test('Business Copilot is authenticated, factual and cannot auto-publish', async () => {
   const edge = await read('supabase/functions/histreets-ai/index.ts')
   const composer = await read('src/components/PostComposer.tsx')

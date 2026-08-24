@@ -20,11 +20,17 @@ test.describe('HiStreets desktop business shell', () => {
     expect(shellBox).not.toBeNull()
     expect(tabsBox).not.toBeNull()
     expect(cardBox).not.toBeNull()
+
+    const shellLeft = shellBox!.x
+    const shellRight = shellBox!.x + shellBox!.width
+    const cardLeft = cardBox!.x
+    const cardRight = cardBox!.x + cardBox!.width
+
     expect(shellBox!.width).toBeLessThanOrEqual(782)
     expect(shellBox!.width).toBeGreaterThanOrEqual(700)
     expect(tabsBox!.width).toBeLessThanOrEqual(730)
-    expect(cardBox!.right).toBeLessThanOrEqual(shellBox!.right + 1)
-    expect(cardBox!.left).toBeGreaterThanOrEqual(shellBox!.left - 1)
+    expect(cardRight).toBeLessThanOrEqual(shellRight + 1)
+    expect(cardLeft).toBeGreaterThanOrEqual(shellLeft - 1)
 
     const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(horizontalOverflow).toBeLessThanOrEqual(1)

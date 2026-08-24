@@ -23,10 +23,13 @@ test('PWA manifest launches the Newham map as a standalone app', async () => {
 test('mobile viewport and iPhone standalone metadata are present', async () => {
   const html = await read('index.html')
   const polish = await read('src/release-polish.css')
+  const serviceWorker = await read('public/sw.js')
   assert.match(html, /name="viewport"[^>]*viewport-fit=cover/)
   assert.match(html, /rel="manifest" href="\/manifest\.json"/)
   assert.match(html, /apple-mobile-web-app-capable/)
   assert.match(html, /apple-mobile-web-app-title/)
+  assert.match(html, /rel="apple-touch-icon"[^>]*href="\/apple-touch-icon\.png"/)
+  assert.match(serviceWorker, /apple-touch-icon\.png/)
   assert.match(polish, /height:100vh;height:100dvh/)
 })
 
@@ -92,6 +95,19 @@ test('business location has a precise mobile path and postcode fallback', async 
   assert.match(geolocation, /maximumAge:\s*30000/)
 })
 
+test('database boundary support is service-role controlled and registration fails closed', async () => {
+  const boundary = await read('supabase/FINAL_RUN_THIS_boundary_support.sql')
+  const duplicateGuard = await read('supabase/FINAL_RUN_THIS_duplicate_guard.sql')
+  const readme = await read('README.md')
+  assert.match(boundary, /create table if not exists public\.boundaries/)
+  assert.match(boundary, /grant execute on function public\.upsert_boundary\(text,jsonb,text\) to service_role/)
+  assert.match(boundary, /grant execute on function public\.filter_businesses_to_newham\(\) to service_role/)
+  assert.match(boundary, /newham_boundary_geojson/)
+  assert.match(duplicateGuard, /Newham boundary is not installed/)
+  assert.match(duplicateGuard, /st_covers\(v_newham, v_geom\)/)
+  assert.match(readme, /npm run seed:boundary/)
+})
+
 test('six navigation destinations remain on one mobile tab row', async () => {
   const tabs = await read('src/components/BottomTabs.tsx')
   const polish = await read('src/release-polish.css')
@@ -106,12 +122,13 @@ test('business portal returns magic links to the business route', async () => {
   assert.match(profile, /signInWithPassword/)
 })
 
-test('job applications require a private CV-compatible flow', async () => {
+test('job applications require private CV flow and clean up failed uploads', async () => {
   const data = await read('src/lib/data.ts')
   const feeds = await read('src/components/Feeds.tsx')
   assert.match(data, /storage\.from\('job-cvs'\)\.createSignedUrl/)
   assert.match(data, /CV is required/)
   assert.match(data, /10 \* 1024 \* 1024/)
+  assert.match(data, /storage\.from\('job-cvs'\)\.remove\(\[path\]\)/)
   assert.match(feeds, /CV is mandatory/)
   assert.match(feeds, /\.pdf.*\.doc.*\.docx/)
 })
@@ -123,6 +140,7 @@ test('service worker has a navigation-safe offline fallback and caches install i
   assert.match(serviceWorker, /status:\s*503/)
   assert.match(serviceWorker, /icon-192\.svg/)
   assert.match(serviceWorker, /icon-512\.svg/)
+  assert.match(serviceWorker, /apple-touch-icon\.png/)
 })
 
 test('release keeps parking disabled until reliable data exists', async () => {

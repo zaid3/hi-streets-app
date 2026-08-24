@@ -5,6 +5,7 @@ import './styles.css'
 import './histreets-ui.css'
 import './final-polish.css'
 import './release-polish.css'
+import './smart-search.css'
 import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

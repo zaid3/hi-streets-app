@@ -39,6 +39,22 @@ export type BusinessCopilotResponse = {
   published: false
 }
 
+export type BusinessOpportunity = {
+  eligible: boolean
+  reason?: string
+  threshold?: number
+  area?: string
+  category?: string
+  category_label?: string
+  signal_count?: number
+  live_offer_count?: number
+  period_days?: number
+  level?: 'emerging' | 'growing' | 'strong'
+  suggestion?: string
+  seed_prompt?: string
+  privacy_note?: string
+}
+
 function messageFromError(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message
   return fallback
@@ -67,4 +83,14 @@ export async function draftBusinessPost(prompt: string, businessId: string): Pro
   if (error) throw new Error(messageFromError(error, 'Business Copilot is temporarily unavailable.'))
   if (data?.error) throw new Error(String(data.error))
   return data as BusinessCopilotResponse
+}
+
+export async function loadBusinessOpportunity(businessId: string): Promise<BusinessOpportunity> {
+  if (!supabaseConfigured || !supabase || !businessId) return { eligible: false, reason: 'No approved business selected.' }
+  const { data, error } = await supabase.functions.invoke('histreets-opportunity', {
+    body: { business_id: businessId },
+  })
+  if (error) throw new Error(messageFromError(error, 'Local opportunity intelligence is temporarily unavailable.'))
+  if (data?.error) throw new Error(String(data.error))
+  return data as BusinessOpportunity
 }

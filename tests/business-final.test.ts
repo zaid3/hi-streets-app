@@ -35,10 +35,41 @@ test('bootstrap admin identity is private and not committed to source', async ()
   assert.doesNotMatch(source, /zaid39@atomicmai\.io/i)
 })
 
+test('final business database contract includes registration, ownership and Super Admin moderation', async () => {
+  const migration = await read('supabase/migrations/20260824_final_business_admin_contract_and_private_storage.sql')
+  assert.match(migration, /profiles_role_check[\s\S]*super_admin/)
+  assert.match(migration, /function public\.register_my_business/)
+  assert.match(migration, /function public\.admin_moderate_business_registration/)
+  assert.match(migration, /function public\.admin_dashboard_overview/)
+  assert.match(migration, /function public\.admin_business_verification_evidence/)
+  assert.match(migration, /function public\.request_business_ownership/)
+  assert.match(migration, /function public\.admin_moderate_ownership_request/)
+  assert.match(migration, /current_user_role\(\) not in \('admin','super_admin'\)/)
+})
+
+test('job CVs and verification evidence are private and browser access is least-privilege', async () => {
+  const migration = await read('supabase/migrations/20260824_final_business_admin_contract_and_private_storage.sql')
+  assert.match(migration, /update storage\.buckets set public=false where id='job-cvs'/)
+  assert.match(migration, /business-verification','business-verification',false/)
+  assert.match(migration, /drop policy if exists public_read_job_cvs/)
+  assert.match(migration, /authenticated_read_job_cvs/)
+  assert.match(migration, /can_read_job_cv/)
+  assert.match(migration, /can_manage_business_evidence/)
+})
+
+test('dangerous maintenance operations are not executable by browser roles', async () => {
+  const migration = await read('supabase/migrations/20260824_final_business_admin_contract_and_private_storage.sql')
+  assert.match(migration, /businesses_backup enable row level security/)
+  assert.match(migration, /filter_businesses_to_newham\(\) from public,anon,authenticated/)
+  assert.match(migration, /upsert_boundary\(text,jsonb,text\) from public,anon,authenticated/)
+  assert.match(migration, /business_research_export\(\) from public,anon,authenticated/)
+})
+
 test('final business CSS preserves user zoom and mobile-safe input sizing', async () => {
   const css = await read('src/final-business.css')
   const html = await read('index.html')
   assert.match(css, /profile-screen input.*font-size:16px!important/s)
+  assert.match(css, /auth-hero-title/)
   assert.match(css, /@media\(min-width:760px\)/)
   assert.match(css, /bottom-tabs.*width:min\(728px/s)
   assert.doesNotMatch(html, /user-scalable=no/)

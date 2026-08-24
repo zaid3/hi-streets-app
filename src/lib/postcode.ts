@@ -45,7 +45,7 @@ export function outcodeCoversNewham(result: JsonRecord | null | undefined) {
 
 async function lookup(path: string, fetchImpl: typeof fetch = fetch, timeoutMs = 9000): Promise<PostcodeLookup> {
   const controller = new AbortController()
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs)
+  const timer = globalThis.setTimeout(() => controller.abort(), timeoutMs)
   try {
     const response = await fetchImpl(`${POSTCODES_IO_BASE}/${path}`, {
       method: 'GET',
@@ -62,7 +62,7 @@ async function lookup(path: string, fetchImpl: typeof fetch = fetch, timeoutMs =
       result: body?.result && typeof body.result === 'object' ? body.result : null,
     }
   } finally {
-    window.clearTimeout(timer)
+    globalThis.clearTimeout(timer)
   }
 }
 

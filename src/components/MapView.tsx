@@ -1,8 +1,18 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
 import { LocateFixed, Search } from 'lucide-react'
-import { MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER } from '../lib/newham'
 import { fetchBusinessById, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson } from '../lib/data'
+import { getReliableUserPosition, locationErrorMessage } from '../lib/geolocation'
+import { MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER } from '../lib/newham'
+import {
+  fullPostcodeIsInNewham,
+  looksLikeFullPostcode,
+  looksLikeOutcode,
+  lookupFullPostcode,
+  lookupOutcode,
+  outcodeCoversNewham,
+  postcodePoint,
+} from '../lib/postcode'
 import type { Business, Post } from '../types'
 import BusinessDetailSheet from './BusinessDetailSheet'
 
@@ -10,6 +20,8 @@ type LayerFilter = 'all' | 'food' | 'grocery' | 'shops' | 'beauty' | 'health' | 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 type BusinessPostKinds = Record<string, { offer: boolean; job: boolean; community: boolean }>
 type CategoryInfo = { group: string; marker: string; label: string; icon: string; aliases: string }
+
+type RawMapImage = { width: number; height: number; data: Uint8ClampedArray }
 
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
 const LOCATION_PROMPT_KEY = 'histreets_location_prompted_v1'
@@ -82,29 +94,71 @@ function groupMatchesFilter(group: string, filter: LayerFilter) {
   return false
 }
 
-function svgIcon(label: string, fill: string) {
-  const size = label.length > 1 ? 18 : 23
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="${fill}" stroke="white" stroke-width="6"/><text x="32" y="40" text-anchor="middle" dominant-baseline="middle" font-family="Apple Color Emoji, Segoe UI Emoji, Arial, sans-serif" font-size="${size}" font-weight="800" fill="white">${label}</text></svg>`
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+function rgb(fill: string) {
+  const value = Number.parseInt(fill.replace('#', ''), 16)
+  return {
+    r: Number.isFinite(value) ? (value >> 16) & 255 : 15,
+    g: Number.isFinite(value) ? (value >> 8) & 255 : 110,
+    b: Number.isFinite(value) ? value & 255 : 107,
+  }
 }
 
-function addImage(map: MapLibre, id: string, src: string) {
-  return new Promise<void>((resolve, reject) => {
-    if (map.hasImage(id)) return resolve()
-    const image = new Image(64, 64)
-    image.onload = () => { map.addImage(id, image); resolve() }
-    image.onerror = () => reject(new Error(`Could not load ${id}`))
-    image.src = src
-  })
+function fallbackMarkerImage(fill: string): RawMapImage {
+  const size = 64
+  const data = new Uint8ClampedArray(size * size * 4)
+  const color = rgb(fill)
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const dx = x - 32
+      const dy = y - 32
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      if (distance > 31) continue
+      const offset = (y * size + x) * 4
+      const isBorder = distance > 25
+      data[offset] = isBorder ? 255 : color.r
+      data[offset + 1] = isBorder ? 255 : color.g
+      data[offset + 2] = isBorder ? 255 : color.b
+      data[offset + 3] = 255
+    }
+  }
+  return { width: size, height: size, data }
 }
 
-async function addCategoryImages(map: MapLibre) {
-  await Promise.all([
-    ...markerDefinitions.map(marker => addImage(map, `cat-${marker.id}`, svgIcon(marker.label, marker.color))),
-    addImage(map, 'offer-icon', svgIcon('%', '#F2762E')),
-    addImage(map, 'job-icon', svgIcon('💼', '#2D6CDF')),
-    addImage(map, 'community-icon', svgIcon('❤', '#2E9E5B')),
-  ])
+function markerImage(label: string, fill: string): ImageData | RawMapImage {
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 64
+    const context = canvas.getContext('2d')
+    if (!context) return fallbackMarkerImage(fill)
+    context.beginPath()
+    context.arc(32, 32, 28, 0, Math.PI * 2)
+    context.fillStyle = fill
+    context.fill()
+    context.lineWidth = 6
+    context.strokeStyle = '#ffffff'
+    context.stroke()
+    context.fillStyle = '#ffffff'
+    context.font = `${label.length > 1 ? 18 : 23}px "Apple Color Emoji", "Segoe UI Emoji", Arial, sans-serif`
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    context.fillText(label, 32, 33)
+    return context.getImageData(0, 0, 64, 64)
+  } catch {
+    return fallbackMarkerImage(fill)
+  }
+}
+
+function addMarkerImage(map: MapLibre, id: string, label: string, fill: string) {
+  if (map.hasImage(id)) return
+  map.addImage(id, markerImage(label, fill) as any)
+}
+
+function addCategoryImages(map: MapLibre) {
+  for (const marker of markerDefinitions) addMarkerImage(map, `cat-${marker.id}`, marker.label, marker.color)
+  addMarkerImage(map, 'offer-icon', '%', '#F2762E')
+  addMarkerImage(map, 'job-icon', '💼', '#2D6CDF')
+  addMarkerImage(map, 'community-icon', '❤', '#2E9E5B')
 }
 
 function markerIconExpression(): any {
@@ -123,7 +177,7 @@ function maskFromBoundary(boundary: FeatureCollection): FeatureCollection {
     if (geom?.type === 'Polygon') holes.push(...geom.coordinates.slice(0, 1))
     if (geom?.type === 'MultiPolygon') for (const poly of geom.coordinates) holes.push(poly[0])
   }
-  if (!holes.length) return { type: 'FeatureCollection', features: [] }
+  if (!holes.length) return EMPTY_FC
   const world = [[[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]]]
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [world[0], ...holes] } }] }
 }
@@ -174,7 +228,10 @@ function setGeoJson(map: MapLibre | null, sourceId: string, data: FeatureCollect
 function featureCoords(feature: any): [number, number] | null {
   const coords = feature?.geometry?.coordinates
   if (!Array.isArray(coords) || coords.length < 2) return null
-  return [Number(coords[0]), Number(coords[1])]
+  const lng = Number(coords[0])
+  const lat = Number(coords[1])
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null
+  return [lng, lat]
 }
 
 function isInsideNewham(point: { lat: number; lng: number }) {
@@ -199,14 +256,6 @@ function userLocationData(point: { lat: number; lng: number } | null): FeatureCo
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { id: 'user-location' }, geometry: { type: 'Point', coordinates: [point.lng, point.lat] } }] }
 }
 
-function looksLikeFullPostcode(query: string) {
-  return /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(query.trim())
-}
-
-function looksLikeOutcode(query: string) {
-  return /^[A-Z]{1,2}\d[A-Z\d]?$/i.test(query.trim())
-}
-
 function focusFeatures(map: MapLibre, features: Array<any>) {
   const coords = features.map(featureCoords).filter(Boolean) as [number, number][]
   if (!coords.length) return false
@@ -217,28 +266,6 @@ function focusFeatures(map: MapLibre, features: Array<any>) {
   const bounds = coords.reduce((b, coord) => b.extend(coord), new maplibregl.LngLatBounds(coords[0], coords[0]))
   map.fitBounds(bounds, { padding: 60, maxZoom: 15.8, duration: 450 })
   return true
-}
-
-function readPosition(geolocation: Geolocation, options: PositionOptions) {
-  return new Promise<GeolocationPosition>((resolve, reject) => {
-    geolocation.getCurrentPosition(resolve, reject, options)
-  })
-}
-
-async function getReliablePosition(geolocation: Geolocation) {
-  try {
-    const quick = await readPosition(geolocation, { enableHighAccuracy: false, timeout: 7000, maximumAge: 300000 })
-    if (Number.isFinite(quick.coords.accuracy) && quick.coords.accuracy <= 250) return quick
-    try {
-      return await readPosition(geolocation, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
-    } catch {
-      return quick
-    }
-  } catch (error) {
-    const geoError = error as GeolocationPositionError
-    if (geoError?.code === 1) throw error
-    return readPosition(geolocation, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 })
-  }
 }
 
 function locationPromptWasSeen() {
@@ -255,6 +282,11 @@ function rememberLocationPrompt() {
   } catch {}
 }
 
+function postcodeLookupFailure(status: number) {
+  if (status === 404) return 'Postcode not found. Check it and try again.'
+  return 'Postcode lookup is temporarily unavailable. You can still search by business or street.'
+}
+
 export default function MapView({ posts }: { posts: Post[] }) {
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
@@ -269,6 +301,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   const [locationStatus, setLocationStatus] = useState('')
   const [locationPromptOpen, setLocationPromptOpen] = useState(() => !locationPromptWasSeen())
   const [locating, setLocating] = useState(false)
+  const [searching, setSearching] = useState(false)
 
   const businessPostKinds = useMemo(() => getBusinessPostKinds(posts), [posts])
   const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
@@ -296,7 +329,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
     event.preventDefault()
     const map = mapRef.current
     const query = searchTerm.trim()
-    if (!map) return
+    if (!map || searching) return
 
     if (!query) {
       setAppliedSearch('')
@@ -308,53 +341,65 @@ export default function MapView({ posts }: { posts: Post[] }) {
     }
 
     if (looksLikeFullPostcode(query)) {
+      setAppliedSearch('')
+      setSearching(true)
+      setLocationStatus('Searching postcode…')
       try {
-        setAppliedSearch('')
-        setLocationStatus('Searching postcode…')
-        const response = await fetch(`https://api.postcodes.io/postcodes/${encodeURIComponent(query)}`)
-        const data = await response.json()
-        const lat = Number(data?.result?.latitude)
-        const lng = Number(data?.result?.longitude)
-        const adminDistrict = String(data?.result?.admin_district || '').trim().toLowerCase()
-        if (response.ok && Number.isFinite(lat) && Number.isFinite(lng)) {
-          if (adminDistrict !== 'newham' || !isInsideNewham({ lat, lng })) {
-            setLocationStatus('That postcode is outside the London Borough of Newham.')
-            return
-          }
-          applyMapData(filteredBusinessGeoJson(enrichedBusinesses, filter, ''), userPoint)
-          map.easeTo({ center: [lng, lat], zoom: 16.3, duration: 450 })
-          setLocationStatus(`Showing ${String(data?.result?.postcode || query).toUpperCase()}.`)
+        const lookup = await lookupFullPostcode(query)
+        if (!lookup.ok || !lookup.result) {
+          setLocationStatus(postcodeLookupFailure(lookup.status))
           return
         }
-      } catch {}
-      setLocationStatus('Postcode not found. Try a Newham postcode or business name.')
+        const point = postcodePoint(lookup.result)
+        if (!point) {
+          setLocationStatus('That postcode does not have a usable map location.')
+          return
+        }
+        if (!fullPostcodeIsInNewham(lookup.result) || !isInsideNewham(point)) {
+          setLocationStatus('That postcode is outside the London Borough of Newham.')
+          return
+        }
+        applyMapData(filteredBusinessGeoJson(enrichedBusinesses, filter, ''), userPoint)
+        map.easeTo({ center: [point.lng, point.lat], zoom: 16.3, duration: 450 })
+        setLocationStatus(`Showing ${String(lookup.result.postcode || query).toUpperCase()}.`)
+      } catch (error) {
+        const timedOut = error instanceof DOMException && error.name === 'AbortError'
+        setLocationStatus(timedOut ? 'Postcode search timed out. Check your connection and try again.' : 'Postcode lookup is temporarily unavailable. You can still search by business or street.')
+      } finally {
+        setSearching(false)
+      }
       return
     }
 
     if (looksLikeOutcode(query)) {
+      setAppliedSearch('')
+      setSearching(true)
+      setLocationStatus('Searching postcode area…')
       try {
-        setAppliedSearch('')
-        setLocationStatus('Searching postcode area…')
-        const response = await fetch(`https://api.postcodes.io/outcodes/${encodeURIComponent(query)}`)
-        const data = await response.json()
-        const lat = Number(data?.result?.latitude)
-        const lng = Number(data?.result?.longitude)
-        const districts = Array.isArray(data?.result?.admin_district)
-          ? data.result.admin_district.map((value: unknown) => String(value).trim().toLowerCase())
-          : []
-        if (response.ok && Number.isFinite(lat) && Number.isFinite(lng)) {
-          if (!districts.includes('newham')) {
-            setLocationStatus('That postcode area does not cover Newham.')
-            return
-          }
-          const focus = isInsideNewham({ lat, lng }) ? { lat, lng } : closestNewhamFocus({ lat, lng })
-          applyMapData(filteredBusinessGeoJson(enrichedBusinesses, filter, ''), userPoint)
-          map.easeTo({ center: [focus.lng, focus.lat], zoom: 14.6, duration: 450 })
-          setLocationStatus(`Showing ${String(data?.result?.outcode || query).toUpperCase()} in Newham.`)
+        const lookup = await lookupOutcode(query)
+        if (!lookup.ok || !lookup.result) {
+          setLocationStatus(postcodeLookupFailure(lookup.status))
           return
         }
-      } catch {}
-      setLocationStatus('Postcode area not found. Try a Newham postcode or business name.')
+        const point = postcodePoint(lookup.result)
+        if (!point) {
+          setLocationStatus('That postcode area does not have a usable map location.')
+          return
+        }
+        if (!outcodeCoversNewham(lookup.result)) {
+          setLocationStatus('That postcode area does not cover Newham.')
+          return
+        }
+        const focus = isInsideNewham(point) ? point : closestNewhamFocus(point)
+        applyMapData(filteredBusinessGeoJson(enrichedBusinesses, filter, ''), userPoint)
+        map.easeTo({ center: [focus.lng, focus.lat], zoom: 14.6, duration: 450 })
+        setLocationStatus(`Showing ${String(lookup.result.outcode || query).toUpperCase()} in Newham.`)
+      } catch (error) {
+        const timedOut = error instanceof DOMException && error.name === 'AbortError'
+        setLocationStatus(timedOut ? 'Postcode search timed out. Check your connection and try again.' : 'Postcode lookup is temporarily unavailable. You can still search by business or street.')
+      } finally {
+        setSearching(false)
+      }
       return
     }
 
@@ -389,7 +434,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
     setLocating(true)
     setLocationStatus('Finding your location…')
     try {
-      const position = await getReliablePosition(navigator.geolocation)
+      const position = await getReliableUserPosition()
       const point = { lat: position.coords.latitude, lng: position.coords.longitude }
       const insideArea = isInsideNewham(point)
       const focusPoint = insideArea ? point : closestNewhamFocus(point)
@@ -402,10 +447,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
       })
     } catch (error) {
       setUserPoint(null)
-      const geoError = error as GeolocationPositionError
-      if (geoError?.code === 1) setLocationStatus('Location is blocked. Allow location for HiStreets in your browser or site settings, then tap Near me again.')
-      else if (geoError?.code === 3) setLocationStatus('Location timed out. Check that location services are on, then try Near me again.')
-      else setLocationStatus('Could not get location. You can still use the Newham map and postcode search.')
+      setLocationStatus(locationErrorMessage(error, 'Could not get location. You can still use the Newham map and postcode search.'))
     } finally {
       setLocating(false)
     }
@@ -417,7 +459,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
       businessesGeoJsonRef.current = enriched
       setBusinessesGeoJson(data)
       requestAnimationFrame(() => applyMapData(enriched, userPoint))
-    }).catch(() => setLocationStatus('Could not load the map data.'))
+    }).catch(() => setLocationStatus('Could not load the business map data. The base map and postcode search are still available.'))
     // Business data is loaded once. Post badges update locally from the posts prop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -441,49 +483,66 @@ export default function MapView({ posts }: { posts: Post[] }) {
     mapRef.current = map
 
     map.on('load', async () => {
-      map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 12, duration: 0 })
-      await addCategoryImages(map)
-      const boundary = await loadNewhamBoundaryGeoJson()
-      map.addSource('newham-mask', { type: 'geojson', data: maskFromBoundary(boundary) as any })
-      map.addLayer({ id: 'newham-mask-fill', type: 'fill', source: 'newham-mask', paint: { 'fill-color': '#000000', 'fill-opacity': 0.55 } } as any)
-      map.addSource('business-dots', { type: 'geojson', data: businessesGeoJsonRef.current as any })
-      map.addLayer({ id: 'business-visible-dots', type: 'circle', source: 'business-dots', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 5], 'circle-color': ['case', ['get', 'has_offer'], '#F2762E', ['get', 'has_job'], '#2D6CDF', ['get', 'has_community'], '#2E9E5B', '#0F6E6B'], 'circle-opacity': 0.56, 'circle-stroke-width': 1.4, 'circle-stroke-color': '#ffffff' } } as any)
-      map.addSource('businesses', { type: 'geojson', data: businessesGeoJsonRef.current as any, cluster: true, clusterMaxZoom: 15, clusterRadius: 50 })
-      map.addLayer({ id: 'business-clusters', type: 'circle', source: 'businesses', filter: ['has', 'point_count'], paint: { 'circle-color': '#0F6E6B', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28, 200, 34] } } as any)
-      map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'businesses', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 }, paint: { 'text-color': '#ffffff' } } as any)
-      map.addLayer({ id: 'business-pins', type: 'symbol', source: 'businesses', filter: ['!', ['has', 'point_count']], layout: { 'icon-image': markerIconExpression(), 'icon-size': 0.64, 'icon-allow-overlap': false } } as any)
-      map.addLayer({ id: 'business-action-badges', type: 'symbol', source: 'businesses', filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'primary_kind'], '']], layout: { 'icon-image': actionBadgeExpression, 'icon-size': 0.44, 'icon-offset': [18, -18], 'icon-allow-overlap': true } } as any)
-      map.addSource('user-location', { type: 'geojson', data: userLocationData(userPoint) as any })
-      map.addLayer({ id: 'user-location-pulse', type: 'circle', source: 'user-location', paint: { 'circle-radius': 18, 'circle-color': '#2D6CDF', 'circle-opacity': 0.2 } } as any)
-      map.addLayer({ id: 'user-location-dot', type: 'circle', source: 'user-location', paint: { 'circle-radius': 7, 'circle-color': '#2D6CDF', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } } as any)
-      setMapReady(true)
-      requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, userPoint))
+      try {
+        map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 12, duration: 0 })
+        addCategoryImages(map)
 
-      map.on('click', 'business-clusters', async e => {
-        const features = map.queryRenderedFeatures(e.point, { layers: ['business-clusters'] })
-        const clusterId = features[0]?.properties?.cluster_id
-        const source = map.getSource('businesses') as maplibregl.GeoJSONSource
-        const coordinates = (features[0]?.geometry as any)?.coordinates
-        if (typeof clusterId !== 'number' || !coordinates) return
-        try {
-          const zoom = await source.getClusterExpansionZoom(clusterId)
-          if (typeof zoom === 'number') map.easeTo({ center: coordinates, zoom, duration: 400 })
-        } catch {}
-      })
+        const boundary = await loadNewhamBoundaryGeoJson()
+        const mask = maskFromBoundary(boundary)
+        if (mask.features.length > 0) {
+          map.addSource('newham-mask', { type: 'geojson', data: mask as any })
+          map.addLayer({ id: 'newham-mask-fill', type: 'fill', source: 'newham-mask', paint: { 'fill-color': '#000000', 'fill-opacity': 0.55 } } as any)
+        }
 
-      async function openBusinessFromMap(e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) {
-        const feature = e.features?.[0]
-        const id = String(feature?.properties?.id || '')
-        await openBusinessById(id, featureCoords(feature))
+        map.addSource('business-dots', { type: 'geojson', data: businessesGeoJsonRef.current as any })
+        map.addLayer({ id: 'business-visible-dots', type: 'circle', source: 'business-dots', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 3, 15, 5], 'circle-color': ['case', ['get', 'has_offer'], '#F2762E', ['get', 'has_job'], '#2D6CDF', ['get', 'has_community'], '#2E9E5B', '#0F6E6B'], 'circle-opacity': 0.56, 'circle-stroke-width': 1.4, 'circle-stroke-color': '#ffffff' } } as any)
+        map.addSource('businesses', { type: 'geojson', data: businessesGeoJsonRef.current as any, cluster: true, clusterMaxZoom: 15, clusterRadius: 50 })
+        map.addLayer({ id: 'business-clusters', type: 'circle', source: 'businesses', filter: ['has', 'point_count'], paint: { 'circle-color': '#0F6E6B', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28, 200, 34] } } as any)
+        map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'businesses', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 12 }, paint: { 'text-color': '#ffffff' } } as any)
+        map.addLayer({ id: 'business-pins', type: 'symbol', source: 'businesses', filter: ['!', ['has', 'point_count']], layout: { 'icon-image': markerIconExpression(), 'icon-size': 0.64, 'icon-allow-overlap': false } } as any)
+        map.addLayer({ id: 'business-action-badges', type: 'symbol', source: 'businesses', filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'primary_kind'], '']], layout: { 'icon-image': actionBadgeExpression, 'icon-size': 0.44, 'icon-offset': [18, -18], 'icon-allow-overlap': true } } as any)
+        map.addSource('user-location', { type: 'geojson', data: userLocationData(userPoint) as any })
+        map.addLayer({ id: 'user-location-pulse', type: 'circle', source: 'user-location', paint: { 'circle-radius': 18, 'circle-color': '#2D6CDF', 'circle-opacity': 0.2 } } as any)
+        map.addLayer({ id: 'user-location-dot', type: 'circle', source: 'user-location', paint: { 'circle-radius': 7, 'circle-color': '#2D6CDF', 'circle-stroke-width': 3, 'circle-stroke-color': '#ffffff' } } as any)
+
+        setMapReady(true)
+        requestAnimationFrame(() => applyMapData(businessesGeoJsonRef.current, userPoint))
+
+        map.on('click', async event => {
+          const features = map.queryRenderedFeatures(event.point, { layers: ['business-action-badges', 'business-pins', 'business-clusters'] })
+          const feature = features[0]
+          if (!feature) return
+
+          if (feature.layer.id === 'business-clusters') {
+            const clusterId = feature.properties?.cluster_id
+            const source = map.getSource('businesses') as maplibregl.GeoJSONSource
+            const coordinates = featureCoords(feature)
+            if (typeof clusterId !== 'number' || !coordinates) return
+            try {
+              const zoom = await source.getClusterExpansionZoom(clusterId)
+              if (typeof zoom === 'number') map.easeTo({ center: coordinates, zoom, duration: 400 })
+            } catch {}
+            return
+          }
+
+          const id = String(feature.properties?.id || '')
+          await openBusinessById(id, featureCoords(feature))
+        })
+
+        ;['business-clusters', 'business-pins', 'business-action-badges'].forEach(layer => {
+          map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
+          map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
+        })
+      } catch (error) {
+        console.error('HiStreets map initialisation failed', error)
+        setLocationStatus('The map could not finish loading. Refresh the page or check your connection.')
       }
-      map.on('click', 'business-pins', openBusinessFromMap)
-      map.on('click', 'business-action-badges', openBusinessFromMap)
-      map.on('click', 'business-visible-dots', openBusinessFromMap)
-      ;['business-clusters', 'business-pins', 'business-action-badges', 'business-visible-dots'].forEach(layer => {
-        map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer' })
-        map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = '' })
-      })
     })
+
+    map.on('error', event => {
+      if (!map.loaded()) console.warn('HiStreets map resource error', event.error)
+    })
+
     return () => { mapRef.current = null; map.remove() }
   }, [])
 
@@ -495,8 +554,8 @@ export default function MapView({ posts }: { posts: Post[] }) {
   return (
     <section className="map-screen">
       <form className="map-search" aria-label="Search HiStreets" onSubmit={submitSearch}>
-        <button className="map-search-button" type="submit" aria-label="Search"><Search size={18} /></button>
-        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search business, street or postcode…" autoComplete="off" enterKeyHint="search" />
+        <button className="map-search-button" type="submit" aria-label="Search" disabled={searching}><Search size={18} /></button>
+        <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search business, street or postcode…" autoComplete="off" enterKeyHint="search" aria-busy={searching} />
       </form>
       <div className="map-filterbar">
         <select className="category-select" value={filter === 'community' ? 'all' : filter} onChange={e => setFilter(e.target.value as LayerFilter)} aria-label="Filter by category">
@@ -508,7 +567,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
       {locationStatus && <div className="location-status" role="status" aria-live="polite">{locationStatus}</div>}
       <div ref={nodeRef} className="map-canvas" />
       {locationPromptOpen && !userPoint && <div className="location-gate" role="dialog" aria-modal="true" aria-labelledby="location-gate-title"><div><h2 id="location-gate-title">Use your location?</h2><p>HiStreets works best when you share location, so we can show nearby offers, jobs, free meals and local businesses in Newham.</p><button type="button" onClick={requestUserLocation} disabled={locating}><LocateFixed size={17} /> {locating ? 'Finding your location…' : 'Show what is near me'}</button><button type="button" className="secondary" onClick={dismissLocationPrompt}>Use Newham map for now</button></div></div>}
-      {selected && <div className="bottom-sheet"><button className="sheet-close" onClick={() => setSelected(null)}>×</button><BusinessDetailSheet business={selected} posts={posts.filter(p => p.business_id === selected.id)} /></div>}
+      {selected && <div className="bottom-sheet"><button type="button" className="sheet-close" onClick={() => setSelected(null)} aria-label="Close business details">×</button><BusinessDetailSheet business={selected} posts={posts.filter(p => p.business_id === selected.id)} /></div>}
     </section>
   )
 }

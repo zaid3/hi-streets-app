@@ -5,7 +5,7 @@ import { loadMyVerifiedBusinesses } from '../lib/data'
 import type { Business, PostType } from '../types'
 
 type Props = {
-  onPost: (type: PostType, copilotPrompt?: string) => void
+  onPost: (type: PostType) => void
 }
 
 export default function BusinessPostingDashboard({ onPost }: Props) {
@@ -38,6 +38,11 @@ export default function BusinessPostingDashboard({ onPost }: Props) {
     return () => { cancelled = true }
   }, [businessId])
 
+  function turnOpportunityIntoOffer() {
+    if (opportunity?.seed_prompt) window.sessionStorage.setItem('histreets:copilot-seed', opportunity.seed_prompt)
+    onPost('offer')
+  }
+
   return (
     <div className="privacy-card business-dashboard">
       <h2>Post from an approved business</h2>
@@ -58,7 +63,7 @@ export default function BusinessPostingDashboard({ onPost }: Props) {
           <strong>{opportunity.level === 'strong' ? 'Strong local signal' : opportunity.level === 'growing' ? 'Growing local signal' : 'Emerging local signal'}</strong>
           <p>{opportunity.suggestion}</p>
           <div className="opportunity-stats"><span><b>{opportunity.signal_count}</b> anonymous signals / 7 days</span><span><b>{opportunity.live_offer_count}</b> live offers in area</span></div>
-          <button type="button" onClick={() => onPost('offer', opportunity.seed_prompt)}><Sparkles size={17} /> Turn this into an offer</button>
+          <button type="button" onClick={turnOpportunityIntoOffer}><Sparkles size={17} /> Turn this into an offer</button>
           <small className="opportunity-privacy"><ShieldCheck size={13} /> {opportunity.privacy_note}</small>
         </div>
       </section>}

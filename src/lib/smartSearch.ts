@@ -49,6 +49,12 @@ function clean(value: string | undefined) {
   return (value || '').trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+function formattedPostcode(value: string) {
+  const compact = normalisePostcodeInput(value)
+  if (looksLikeFullPostcode(value) && compact.length > 3) return `${compact.slice(0, -3)} ${compact.slice(-3)}`
+  return compact
+}
+
 function businessScore(query: string, business: SmartSearchBusiness) {
   const q = clean(query)
   if (!q) return 0
@@ -79,15 +85,15 @@ export function buildSmartSearchSuggestions(query: string, businesses: SmartSear
   if (!trimmed) return quickSmartSearches.slice(0, 6)
 
   const suggestions: SmartSearchSuggestion[] = []
-  const normalisedPostcode = normalisePostcodeInput(trimmed)
+  const postcode = formattedPostcode(trimmed)
 
   if (looksLikeFullPostcode(trimmed) || looksLikeOutcode(trimmed)) {
     suggestions.push({
-      id: `postcode-${normalisedPostcode}`,
+      id: `postcode-${postcode.replace(/\s/g, '')}`,
       kind: 'postcode',
-      title: `Search ${normalisedPostcode}`,
+      title: `Search ${postcode}`,
       subtitle: looksLikeFullPostcode(trimmed) ? 'Go to this Newham postcode' : 'Search this Newham postcode area',
-      query: normalisedPostcode,
+      query: postcode,
     })
   }
 

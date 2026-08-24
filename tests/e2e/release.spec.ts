@@ -47,13 +47,15 @@ test.describe('HiStreets final mobile release', () => {
     await page.getByRole('button', { name: 'Use Newham map for now' }).click()
     const search = smartSearch(page)
     await search.focus()
-    await expect(page.getByRole('listbox', { name: 'Popular searches' })).toBeVisible()
-    await expect(page.getByRole('option', { name: /Restaurants & takeaway/i })).toBeVisible()
+    const popular = page.getByRole('listbox', { name: 'Popular searches' })
+    await expect(popular).toBeVisible()
+    await expect(popular.getByRole('option', { name: /Restaurants & takeaway/i })).toBeVisible()
 
     await search.fill('pharmacy near me')
-    await expect(page.getByRole('listbox', { name: 'Smart search suggestions' })).toBeVisible()
-    await expect(page.getByRole('option', { name: /Health & pharmacy/i })).toBeVisible()
-    await expect(page.getByRole('option', { name: /Use my location/i })).toBeVisible()
+    const smart = page.getByRole('listbox', { name: 'Smart search suggestions' })
+    await expect(smart).toBeVisible()
+    await expect(smart.getByRole('option', { name: /Health & pharmacy/i })).toBeVisible()
+    await expect(smart.getByRole('option', { name: /Use my location/i })).toBeVisible()
   })
 
   test('natural language jobs search opens the jobs feed', async ({ page }) => {

@@ -115,15 +115,16 @@ test.describe('HiStreets final mobile release', () => {
 
   test('direct public and business routes render instead of 404ing', async ({ page }) => {
     const routes: Array<[string, string]> = [
-      ['/offers', 'Offers'],
-      ['/jobs', 'Jobs'],
+      ['/offers', 'Offers near you'],
+      ['/jobs', 'Jobs in Newham'],
       ['/community', 'Community'],
       ['/parking', 'Local parking'],
       ['/business', 'Business access'],
     ]
 
     for (const [path, heading] of routes) {
-      await page.goto(path)
+      const response = await page.goto(path)
+      expect(response?.ok()).toBeTruthy()
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
     }
   })

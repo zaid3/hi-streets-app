@@ -1,0 +1,43 @@
+import { expect, test } from '@playwright/test'
+
+test.describe('HiStreets desktop business shell', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'chromium-desktop', 'desktop layout contract')
+    await page.goto('/business')
+  })
+
+  test('desktop keeps phone-like app proportions without overlap', async ({ page }) => {
+    const shell = page.locator('.app-shell')
+    const tabs = page.locator('.bottom-tabs')
+    const card = page.locator('.auth-card-final')
+
+    await expect(card).toBeVisible()
+    await expect(tabs).toBeVisible()
+
+    const shellBox = await shell.boundingBox()
+    const tabsBox = await tabs.boundingBox()
+    const cardBox = await card.boundingBox()
+    expect(shellBox).not.toBeNull()
+    expect(tabsBox).not.toBeNull()
+    expect(cardBox).not.toBeNull()
+    expect(shellBox!.width).toBeLessThanOrEqual(782)
+    expect(shellBox!.width).toBeGreaterThanOrEqual(700)
+    expect(tabsBox!.width).toBeLessThanOrEqual(730)
+    expect(cardBox!.right).toBeLessThanOrEqual(shellBox!.right + 1)
+    expect(cardBox!.left).toBeGreaterThanOrEqual(shellBox!.left - 1)
+
+    const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+    expect(horizontalOverflow).toBeLessThanOrEqual(1)
+  })
+
+  test('desktop bottom navigation remains one row and centered', async ({ page }) => {
+    const buttons = page.locator('.bottom-tabs button')
+    await expect(buttons).toHaveCount(6)
+    const rects = await buttons.evaluateAll(nodes => nodes.map(node => {
+      const r = node.getBoundingClientRect()
+      return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right) }
+    }))
+    expect(Math.max(...rects.map(r => r.top)) - Math.min(...rects.map(r => r.top))).toBeLessThanOrEqual(2)
+    for (let i = 1; i < rects.length; i++) expect(rects[i].left).toBeGreaterThanOrEqual(rects[i - 1].right - 2)
+  })
+})

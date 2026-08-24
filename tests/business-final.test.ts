@@ -57,12 +57,17 @@ test('job CVs and verification evidence are private and browser access is least-
   assert.match(migration, /can_manage_business_evidence/)
 })
 
-test('dangerous maintenance operations are not executable by browser roles', async () => {
+test('dangerous maintenance and import operations are not executable by browser roles', async () => {
   const migration = await read('supabase/migrations/20260824_final_business_admin_contract_and_private_storage.sql')
+  const hardening = await read('supabase/migrations/20260824_final_rpc_execution_hardening.sql')
   assert.match(migration, /businesses_backup enable row level security/)
   assert.match(migration, /filter_businesses_to_newham\(\) from public,anon,authenticated/)
   assert.match(migration, /upsert_boundary\(text,jsonb,text\) from public,anon,authenticated/)
   assert.match(migration, /business_research_export\(\) from public,anon,authenticated/)
+  assert.match(hardening, /apply_overture_business_enrichment[\s\S]*from public,anon,authenticated/)
+  assert.match(hardening, /upsert_osm_business[\s\S]*from public,anon,authenticated/)
+  assert.match(hardening, /upsert_overture_place[\s\S]*from public,anon,authenticated/)
+  assert.match(hardening, /handle_new_user\(\) from public,anon,authenticated/)
 })
 
 test('final business CSS preserves user zoom and mobile-safe input sizing', async () => {

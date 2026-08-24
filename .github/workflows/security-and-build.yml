@@ -34,7 +34,39 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
+      - name: Save generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-package-lock
+          path: package-lock.json
+          retention-days: 1
       - name: Production dependency audit
         run: npm audit --omit=dev --audit-level=high
       - name: Release checks
         run: npm run check
+
+  browser-release:
+    name: Mobile Chromium and WebKit release smoke tests
+    runs-on: ubuntu-latest
+    needs: release-checks
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Install Chromium and WebKit
+        run: npx playwright install --with-deps chromium webkit
+      - name: Run browser release tests
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

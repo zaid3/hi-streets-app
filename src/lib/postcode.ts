@@ -19,13 +19,16 @@ export function looksLikeFullPostcode(value: string) {
 }
 
 export function looksLikeOutcode(value: string) {
-  const compact = normalisePostcodeInput(value)
+  const trimmed = value.trim()
+  if (/\s/.test(trimmed)) return false
+  const compact = normalisePostcodeInput(trimmed)
   return /^[A-Z]{1,2}\d[A-Z\d]?$/.test(compact)
 }
 
 export function postcodePoint(result: JsonRecord | null | undefined) {
-  const lat = Number(result?.latitude)
-  const lng = Number(result?.longitude)
+  if (result?.latitude == null || result?.longitude == null) return null
+  const lat = Number(result.latitude)
+  const lng = Number(result.longitude)
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
   return { lat, lng }
 }

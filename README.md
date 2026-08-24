@@ -1,13 +1,41 @@
 # HiStreets
 
-HiStreets is a mobile-first local discovery platform for the London Borough of Newham.
+HiStreets is a mobile-first local discovery platform for the London Borough of Newham. It connects residents with useful things happening nearby — local offers, jobs, free meals, community support and approved local businesses — through a map-first experience.
 
-The app helps residents find nearby offers, local jobs, free meals and community support from approved local businesses and community organisations. It is designed for simple public use, low-friction business participation and privacy-conscious local operation.
+The product is designed around three principles: **local usefulness, explainability and privacy by default**.
+
+## What makes HiStreets different
+
+- **Map-first discovery** — browse approved local businesses and live opportunities without creating an account.
+- **Smart local search** — search businesses, services, streets, full postcodes and outward postcodes, or use natural phrases such as “pharmacy near me” and “jobs hiring near me”.
+- **HiPulse** — an explainable 0–100 local activity signal derived from currently available HiStreets offers, jobs, community support and approved-business coverage.
+- **Need-to-action design** — move directly from a local signal to an offer, job, community resource or business rather than stopping at a dashboard metric.
+- **Privacy-conscious architecture** — no advertising trackers, no sale of user data, private CV/evidence storage and no behavioural profile required for HiPulse or smart-search intent matching.
+- **Newham-bounded operation** — postcode, business registration and public map rules are constrained to the London Borough of Newham.
+
+## HiPulse: explainable neighbourhood intelligence
+
+HiPulse is a HiStreets product signal that answers a practical question: **how much useful, currently actionable local activity is visible on the platform right now?**
+
+The score is deliberately transparent. It combines four capped factors:
+
+| Factor | Maximum | Input |
+| --- | ---: | --- |
+| Live activity | 40 | Current offers, jobs and community-support posts |
+| Business diversity | 20 | Distinct approved business categories |
+| Local coverage | 20 | Approved businesses visible to the public map |
+| Signal balance | 20 | Activity spread across commerce, jobs and community support |
+
+Every score shown in the mobile interface exposes its factor contribution. HiPulse does not use a personal profile, search history or continuous location trail.
+
+HiPulse measures **HiStreets platform activity**. It is not an official London Borough of Newham statistic, economic forecast or ranking. See [`docs/hipulse.md`](docs/hipulse.md) for the scoring methodology, confidence language, privacy approach and current limitations.
 
 ## Core product
 
 - Map-first local discovery bounded to Newham
-- Search by local business, street, full postcode or outward postcode
+- App-style smart search with live suggestions and natural-language intent matching
+- Search by local business, service, street, full postcode or outward postcode
+- Optional user-initiated “near me” location flow with postcode/manual-map fallback
 - Nearby offers, jobs, free meals and community support
 - Public browsing without account creation
 - Job applications without sign-up, with mandatory private CV upload
@@ -46,13 +74,15 @@ The Business tab uses one authentication screen. Business owners can use a secur
 - Written verification notes are cleared after approval or rejection while the basic verification result/audit trail is retained.
 - Job CVs are stored in a private bucket and opened through short-lived signed links by the relevant business or authorised admin.
 - Failed job applications clean up the just-uploaded CV instead of leaving an orphan file.
+- Smart-search intent matching runs in the browser and does not require sending each search phrase to a third-party AI provider.
+- HiPulse uses current public platform signals rather than personal behavioural data.
 - Reviews are not active in the current release.
 - No advertising trackers and no sale of user data.
 - No Google Places data is used for business content.
 
 ## Technology stack
 
-- React
+- React 18
 - Vite
 - TypeScript
 - MapLibre GL JS
@@ -61,6 +91,20 @@ The Business tab uses one authentication screen. Business owners can use a secur
 - Supabase Storage
 - Progressive Web App shell
 - Playwright mobile Chromium and WebKit release tests
+
+## Engineering and release quality
+
+The repository uses feature branches and pull requests for product changes. The release workflow checks:
+
+- secret leakage
+- production dependency audit
+- unit and product-contract tests
+- TypeScript compilation
+- Vite production build
+- mobile Chromium smoke tests
+- mobile WebKit smoke tests
+
+HiPulse has dedicated unit tests for score behaviour and browser tests for the mobile sheet and signal-to-action navigation. Existing map, location, postcode, smart-search, navigation, direct-route and PWA tests remain part of the same release gate.
 
 ## Environment variables
 
@@ -125,7 +169,7 @@ supabase/FINAL_RUN_THIS_duplicate_guard.sql
 supabase/FINAL_RUN_THIS_disable_parking.sql
 ```
 
-The release hardening file keeps CVs and business verification evidence private and installs final admin permissions. The ownership file adds the existing-business ownership workflow. Boundary support makes Newham enforcement explicit. The duplicate guard prevents users from bypassing the ownership flow and now refuses new registrations if the Newham boundary is missing. The last file disables legacy parking rows, views, storage access and write RPC access for this release.
+The release hardening file keeps CVs and business verification evidence private and installs final admin permissions. The ownership file adds the existing-business ownership workflow. Boundary support makes Newham enforcement explicit. The duplicate guard prevents users from bypassing the ownership flow and refuses new registrations if the Newham boundary is missing. The last file disables legacy parking rows, views, storage access and write RPC access for this release.
 
 After the SQL is installed, set the platform owner account:
 
@@ -174,36 +218,36 @@ npx playwright install chromium webkit
 npm run test:e2e
 ```
 
-The GitHub `Security and release` workflow runs secret scanning, a production dependency audit, unit/release-contract tests, TypeScript, a production build, and mobile Chromium/WebKit smoke tests.
-
 ## Release verification
 
 Before public release verify the deployed build end to end:
 
 1. The `Newham` row exists in `public.boundaries`, has valid geometry and the map outside-boundary mask is visible.
 2. Map loads inside Newham bounds without a blocking loading state.
-3. Business/street search works and an empty result fails gracefully.
-4. Full postcode search accepts spaced or compact Newham postcodes, validates Newham by the official district code/name and rejects non-Newham postcodes.
-5. Outward postcode search works only for postcode areas whose Postcodes.io district list includes Newham.
-6. Postcode requests time out cleanly instead of leaving the search box stuck.
-7. Location permission is requested only after a user action, works when allowed and leaves postcode/manual map use available when Safari/browser permission is denied.
-8. The map still initialises if the Newham boundary RPC returns no feature, while business registration remains blocked server-side until the boundary is installed.
-9. Business owner receives a secure email login link and reaches the Business portal.
-10. Password-enabled admin account uses the same access page and reaches the Admin/Super Admin workspace.
-11. Existing unclaimed approved business can be found, ownership requested and linked by Super Admin without creating a duplicate.
-12. Attempting to register the same existing/pending business is rejected by the database guard.
-13. Physical new-business registration submits using either precise browser location or full Newham postcode.
-14. Service-area business registration verifies a Newham postcode but stores only an outward-postcode map point and no Directions action.
-15. Optional verification photos are private and visible only in the admin review workflow.
-16. Approval makes the new business publicly visible and removes verification evidence through the admin workflow.
-17. Approved business creates offer, job, free-meal and community posts.
-18. Public user can view live posts and apply to a job without creating an account.
-19. CV is mandatory, remains private, is cleaned up if application creation fails, and opens for the relevant business/admin through a temporary link.
-20. Physical-business directions open an external Google Maps directions URL with a readable destination.
-21. All six bottom navigation destinations remain on one row in mobile Chromium and WebKit.
-22. Direct `/map`, `/offers`, `/jobs`, `/community`, `/parking` and `/business` navigation renders through the SPA fallback.
-23. PWA manifest and service worker load successfully.
-24. Parking remains coming soon and no legacy parking data is publicly exposed.
+3. Smart search opens suggestions and natural-language intent routes to the correct local experience.
+4. Business/street search works and an empty result fails gracefully.
+5. Full postcode search accepts spaced or compact Newham postcodes, validates Newham by the official district code/name and rejects non-Newham postcodes.
+6. Outward postcode search works only for postcode areas whose Postcodes.io district list includes Newham.
+7. Postcode requests time out cleanly instead of leaving the search box stuck.
+8. Location permission is requested only after a user action, works when allowed and leaves postcode/manual map use available when Safari/browser permission is denied.
+9. HiPulse opens on mobile, exposes its scoring factors and links from signals to the relevant product screen.
+10. The map still initialises if the Newham boundary RPC returns no feature, while business registration remains blocked server-side until the boundary is installed.
+11. Business owner receives a secure email login link and reaches the Business portal.
+12. Password-enabled admin account uses the same access page and reaches the Admin/Super Admin workspace.
+13. Existing unclaimed approved business can be found, ownership requested and linked by Super Admin without creating a duplicate.
+14. Attempting to register the same existing/pending business is rejected by the database guard.
+15. Physical new-business registration submits using either precise browser location or full Newham postcode.
+16. Service-area business registration verifies a Newham postcode but stores only an outward-postcode map point and no Directions action.
+17. Optional verification photos are private and visible only in the admin review workflow.
+18. Approval makes the new business publicly visible and removes verification evidence through the admin workflow.
+19. Approved business creates offer, job, free-meal and community posts.
+20. Public user can view live posts and apply to a job without creating an account.
+21. CV is mandatory, remains private, is cleaned up if application creation fails, and opens for the relevant business/admin through a temporary link.
+22. Physical-business directions open an external Google Maps directions URL with a readable destination.
+23. All six bottom navigation destinations remain on one row in mobile Chromium and WebKit.
+24. Direct `/map`, `/offers`, `/jobs`, `/community`, `/parking` and `/business` navigation renders through the SPA fallback.
+25. PWA manifest and service worker load successfully.
+26. Parking remains coming soon and no legacy parking data is publicly exposed.
 
 ## Product rules
 

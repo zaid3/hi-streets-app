@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import BottomTabs from './components/BottomTabs'
+import HiPulse from './components/HiPulse'
 import MapView from './components/MapView'
 import SmartMapSearch from './components/SmartMapSearch'
 import { Feed } from './components/Feeds'
@@ -73,7 +74,7 @@ export default function App() {
   return (
     <main className="app-shell">
       {loading && <div className="boot-loader">Loading HiStreets…</div>}
-      {tab === 'map' && <><MapView posts={livePosts} /><SmartMapSearch onNavigate={changeTab} /></>}
+      {tab === 'map' && <><MapView posts={livePosts} /><SmartMapSearch onNavigate={changeTab} /><HiPulse posts={livePosts} onNavigate={changeTab} /></>}
       {tab === 'offers' && <Feed type="offer" posts={livePosts} />}
       {tab === 'jobs' && <Feed type="job" posts={livePosts} />}
       {tab === 'community' && <Feed type="community-group" posts={livePosts} />}

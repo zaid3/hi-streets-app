@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Send, Store } from 'lucide-react'
+import { Bot, Send, Sparkles, Store } from 'lucide-react'
+import { draftBusinessPost, type BusinessCopilotDraft } from '../lib/ai'
 import { createPost, loadMyVerifiedBusinesses } from '../lib/data'
 import type { Business, PostType } from '../types'
 
@@ -12,6 +13,12 @@ type Props = {
 function defaultExpiry(type: PostType = 'offer') {
   const d = new Date()
   d.setDate(d.getDate() + (type === 'job' ? 30 : 7))
+  return d.toISOString().slice(0, 10)
+}
+
+function expiryFromDays(days: number) {
+  const d = new Date()
+  d.setDate(d.getDate() + Math.max(1, Math.min(60, days)))
   return d.toISOString().slice(0, 10)
 }
 
@@ -50,6 +57,10 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   const [recurrence, setRecurrence] = useState('')
   const [status, setStatus] = useState('Loading your approved businesses…')
   const [submitting, setSubmitting] = useState(false)
+  const [copilotPrompt, setCopilotPrompt] = useState('')
+  const [copilotDraft, setCopilotDraft] = useState<BusinessCopilotDraft | null>(null)
+  const [copilotLoading, setCopilotLoading] = useState(false)
+  const [copilotStatus, setCopilotStatus] = useState('')
 
   useEffect(() => {
     loadMyVerifiedBusinesses().then(rows => {
@@ -64,6 +75,33 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
     window.setTimeout(() => {
       document.getElementById('business-register-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }, 120)
+  }
+
+  async function askCopilot() {
+    if (!copilotPrompt.trim()) return setCopilotStatus('Tell the Copilot what you want to post.')
+    try {
+      setCopilotLoading(true)
+      setCopilotStatus('Creating a factual draft from your instructions…')
+      setCopilotDraft(null)
+      const response = await draftBusinessPost(copilotPrompt, businessId)
+      setCopilotDraft(response.draft)
+      setCopilotStatus(response.draft.missing_fields.length ? `Draft ready. Check the missing details before publishing: ${response.draft.missing_fields.join(', ')}.` : 'Draft ready. Review it before using it.')
+    } catch (error) {
+      setCopilotStatus(error instanceof Error ? error.message : 'Business Copilot is temporarily unavailable.')
+    } finally {
+      setCopilotLoading(false)
+    }
+  }
+
+  function useCopilotDraft() {
+    if (!copilotDraft) return
+    setType(copilotDraft.type)
+    setTitle(copilotDraft.title)
+    setBody(copilotDraft.body)
+    setCategory(copilotDraft.category || defaultCategory(copilotDraft.type))
+    setExpiresAt(expiryFromDays(copilotDraft.expiry_days))
+    setRecurrence(copilotDraft.recurrence || '')
+    setCopilotStatus('Draft copied into the post form. You are still in control — review and submit when ready.')
   }
 
   async function submit() {
@@ -118,10 +156,26 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
       <p className="muted">Approved businesses can post quickly. Clean posts go live automatically. Risky or incomplete posts wait for review.</p>
 
       <label>Approved business
-        <select value={businessId} onChange={e => setBusinessId(e.target.value)} disabled={loadingBusinesses}>
+        <select value={businessId} onChange={e => { setBusinessId(e.target.value); setCopilotDraft(null) }} disabled={loadingBusinesses}>
           {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </label>
+
+      <section className="business-copilot-card" aria-labelledby="business-copilot-title">
+        <div className="business-copilot-head"><span><Bot size={20} /></span><div><small>AI assistant</small><h3 id="business-copilot-title">QuickPost with Business Copilot</h3></div></div>
+        <p>Write naturally. Example: “20% off biryani after 5pm today” or “need a part-time waiter Friday to Sunday, around 20 hours”.</p>
+        <textarea value={copilotPrompt} onChange={e => setCopilotPrompt(e.target.value)} placeholder="Tell HiStreets what you want to post…" maxLength={800} />
+        <button type="button" className="copilot-generate" onClick={() => void askCopilot()} disabled={copilotLoading || !businessId}><Sparkles size={17} /> {copilotLoading ? 'Drafting…' : 'Create draft with AI'}</button>
+        {copilotDraft && <div className="copilot-preview">
+          <small>{copilotDraft.type.replace('_', ' ')} · {copilotDraft.category}</small>
+          <strong>{copilotDraft.title}</strong>
+          <p>{copilotDraft.body}</p>
+          {copilotDraft.missing_fields.length > 0 && <div className="copilot-missing"><b>Before publishing:</b> {copilotDraft.missing_fields.join(', ')}</div>}
+          <button type="button" onClick={useCopilotDraft}>Use this draft</button>
+        </div>}
+        {copilotStatus && <p className="form-status" role="status" aria-live="polite">{copilotStatus}</p>}
+        <small className="copilot-trust">AI drafts only from what you provide and your verified business profile. It cannot publish without your review.</small>
+      </section>
 
       <label>Post type
         <select value={type} onChange={e => {

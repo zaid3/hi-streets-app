@@ -30,19 +30,46 @@ test('mobile viewport and iPhone standalone metadata are present', async () => {
   assert.match(polish, /height:100vh;height:100dvh/)
 })
 
-test('map location flow is user initiated, progressive and HTTPS aware', async () => {
+test('map location flow is user initiated, shared with feeds and HTTPS aware', async () => {
   const mapView = await read('src/components/MapView.tsx')
+  const geolocation = await read('src/lib/geolocation.ts')
   assert.match(mapView, /Use your location\?/)
   assert.match(mapView, /onClick=\{requestUserLocation\}/)
   assert.match(mapView, /window\.isSecureContext/)
-  assert.match(mapView, /geolocation\.getCurrentPosition/)
-  assert.match(mapView, /getReliablePosition\(navigator\.geolocation\)/)
-  assert.match(mapView, /enableHighAccuracy:\s*false/)
-  assert.match(mapView, /enableHighAccuracy:\s*true/)
+  assert.match(mapView, /getReliableUserPosition\(\)/)
   assert.match(mapView, /LOCATION_PROMPT_KEY/)
-  assert.match(mapView, /geoError\?\.code === 1/)
-  assert.match(mapView, /geoError\?\.code === 3/)
+  assert.match(mapView, /disabled=\{locating\}/)
   assert.match(mapView, /aria-live="polite"/)
+  assert.match(geolocation, /geolocation\.getCurrentPosition/)
+  assert.match(geolocation, /enableHighAccuracy:\s*false/)
+  assert.match(geolocation, /enableHighAccuracy:\s*true/)
+  assert.match(geolocation, /timeout:\s*15000/)
+  assert.match(geolocation, /Location is blocked/)
+})
+
+test('map postcode search has Newham validation, timeout protection and accessible busy state', async () => {
+  const mapView = await read('src/components/MapView.tsx')
+  const postcode = await read('src/lib/postcode.ts')
+  assert.match(mapView, /lookupFullPostcode\(query\)/)
+  assert.match(mapView, /lookupOutcode\(query\)/)
+  assert.match(mapView, /fullPostcodeIsInNewham/)
+  assert.match(mapView, /outcodeCoversNewham/)
+  assert.match(mapView, /aria-busy=\{searching\}/)
+  assert.match(postcode, /E09000025/)
+  assert.match(postcode, /api\.postcodes\.io/)
+  assert.match(postcode, /AbortController/)
+  assert.match(postcode, /postcodes\/\$\{encodeURIComponent\(compact\)\}/)
+  assert.match(postcode, /outcodes\/\$\{encodeURIComponent\(compact\)\}/)
+})
+
+test('map marker setup avoids asynchronous SVG image loading and map taps resolve one target', async () => {
+  const mapView = await read('src/components/MapView.tsx')
+  assert.match(mapView, /document\.createElement\('canvas'\)/)
+  assert.match(mapView, /fallbackMarkerImage/)
+  assert.doesNotMatch(mapView, /new Image\(/)
+  assert.match(mapView, /queryRenderedFeatures\(event\.point/)
+  assert.doesNotMatch(mapView, /map\.on\('click', 'business-visible-dots'/)
+  assert.match(mapView, /HiStreets map initialisation failed/)
 })
 
 test('feed location sorting uses the mobile reliability helper', async () => {

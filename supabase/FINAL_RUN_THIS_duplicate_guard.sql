@@ -1,5 +1,6 @@
 -- HiStreets duplicate-registration guard.
 -- Run after FINAL_RUN_THIS_ownership_requests.sql and before FINAL_RUN_THIS_disable_parking.sql.
+-- The Newham boundary must already be installed before this function is used.
 
 create or replace function public.register_my_business(
   p_name text,
@@ -25,6 +26,7 @@ declare
   v_geom geometry(Point,4326);
   v_fields text[] := array['name','category','description','address','phone','website','whatsapp','email','opening_hours'];
   v_existing public.businesses%rowtype;
+  v_newham geometry;
 begin
   if v_uid is null then raise exception 'sign in required'; end if;
 
@@ -38,10 +40,18 @@ begin
   if nullif(trim(coalesce(p_evidence_note,'')), '') is null then raise exception 'verification note required'; end if;
   if p_lat is null or p_lng is null then raise exception 'business location required'; end if;
 
+  select geom into v_newham
+  from public.boundaries
+  where name = 'Newham'
+  limit 1;
+
+  if v_newham is null then
+    raise exception 'Newham boundary is not installed. An administrator must run the boundary import before accepting business registrations.';
+  end if;
+
   v_geom := st_setsrid(st_makepoint(p_lng, p_lat), 4326);
 
-  if exists (select 1 from public.boundaries where name='Newham')
-     and not st_contains((select geom from public.boundaries where name='Newham'), v_geom) then
+  if not st_covers(v_newham, v_geom) then
     raise exception 'business must be inside Newham';
   end if;
 

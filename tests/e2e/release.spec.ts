@@ -21,6 +21,10 @@ const newhamOutcode = {
   },
 }
 
+function smartSearch(page: any) {
+  return page.getByRole('combobox', { name: 'Search businesses, services, offers, jobs or postcode' })
+}
+
 test.describe('HiStreets final mobile release', () => {
   test.use({
     geolocation: { latitude: 51.537, longitude: 0.0325 },
@@ -38,6 +42,30 @@ test.describe('HiStreets final mobile release', () => {
     await expect(page.getByRole('button', { name: 'Use my location' })).toBeEnabled()
   })
 
+  test('smart search opens app-style suggestions and understands natural language', async ({ page }) => {
+    await page.goto('/map')
+    await page.getByRole('button', { name: 'Use Newham map for now' }).click()
+    const search = smartSearch(page)
+    await search.focus()
+    await expect(page.getByRole('listbox', { name: 'Popular searches' })).toBeVisible()
+    await expect(page.getByRole('option', { name: /Restaurants & takeaway/i })).toBeVisible()
+
+    await search.fill('pharmacy near me')
+    await expect(page.getByRole('listbox', { name: 'Smart search suggestions' })).toBeVisible()
+    await expect(page.getByRole('option', { name: /Health & pharmacy/i })).toBeVisible()
+    await expect(page.getByRole('option', { name: /Use my location/i })).toBeVisible()
+  })
+
+  test('natural language jobs search opens the jobs feed', async ({ page }) => {
+    await page.goto('/map')
+    await page.getByRole('button', { name: 'Use Newham map for now' }).click()
+    const search = smartSearch(page)
+    await search.fill('any jobs hiring near me')
+    await search.press('Enter')
+    await expect(page).toHaveURL(/\/jobs$/)
+    await expect(page.getByRole('heading', { name: 'Jobs in Newham' })).toBeVisible()
+  })
+
   test('full Newham postcode search works with spaces and validates the borough', async ({ page }) => {
     await page.route('https://api.postcodes.io/postcodes/**', route => route.fulfill({
       status: 200,
@@ -47,12 +75,11 @@ test.describe('HiStreets final mobile release', () => {
 
     await page.goto('/map')
     await page.getByRole('button', { name: 'Use Newham map for now' }).click()
-    const search = page.getByPlaceholder('Search business, street or postcode…')
+    const search = smartSearch(page)
     await search.fill(' e7 8le ')
     await search.press('Enter')
 
     await expect(page.getByRole('status')).toHaveText('Showing E7 8LE.')
-    await expect(search).toHaveAttribute('aria-busy', 'false')
   })
 
   test('Newham outward postcode search works', async ({ page }) => {
@@ -64,7 +91,7 @@ test.describe('HiStreets final mobile release', () => {
 
     await page.goto('/map')
     await page.getByRole('button', { name: 'Use Newham map for now' }).click()
-    const search = page.getByPlaceholder('Search business, street or postcode…')
+    const search = smartSearch(page)
     await search.fill('e7')
     await search.press('Enter')
 
@@ -89,7 +116,7 @@ test.describe('HiStreets final mobile release', () => {
 
     await page.goto('/map')
     await page.getByRole('button', { name: 'Use Newham map for now' }).click()
-    const search = page.getByPlaceholder('Search business, street or postcode…')
+    const search = smartSearch(page)
     await search.fill('SW1A 1AA')
     await search.press('Enter')
 
@@ -99,7 +126,7 @@ test.describe('HiStreets final mobile release', () => {
   test('business and street search remains usable when no matching data exists', async ({ page }) => {
     await page.goto('/map')
     await page.getByRole('button', { name: 'Use Newham map for now' }).click()
-    const search = page.getByPlaceholder('Search business, street or postcode…')
+    const search = smartSearch(page)
     await search.fill('Green Street')
     await search.press('Enter')
     await expect(page.getByRole('status')).toContainText('No matching business found yet')

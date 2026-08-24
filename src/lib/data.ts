@@ -261,7 +261,10 @@ export async function submitJobApplication(input: { post_id: string; applicant_n
     p_cover_note: input.cover_note?.trim() || '',
     p_cv_url: path,
   })
-  if (error) throw error
+  if (error) {
+    await supabase.storage.from('job-cvs').remove([path]).catch(() => {})
+    throw error
+  }
 }
 
 export async function loadMyJobApplications(): Promise<JobApplication[]> {

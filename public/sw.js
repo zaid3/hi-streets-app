@@ -1,5 +1,5 @@
-const CACHE_NAME = 'histreets-shell-v3'
-const APP_SHELL = ['/manifest.json', '/icon.svg']
+const CACHE_NAME = 'histreets-shell-v5'
+const APP_SHELL = ['/manifest.json', '/icon.svg', '/icon-192.svg', '/icon-512.svg', '/apple-touch-icon.png']
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)))
@@ -18,7 +18,7 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     fetch(request).then(response => {
       const copy = response.clone()
-      if (request.url.includes('/assets/') || request.url.endsWith('/manifest.json') || request.url.endsWith('/icon.svg')) {
+      if (request.url.includes('/assets/') || request.url.endsWith('/manifest.json') || request.url.includes('/icon')) {
         caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(() => {})
       }
       return response

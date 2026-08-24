@@ -6,24 +6,29 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
+    "test": "npm run test:unit",
+    "test:unit": "tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "check": "npm run test:unit && npm run build",
     "start": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "seed:boundary": "tsx scripts/import-newham-boundary.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.43.0",
-    "lucide-react": "^0.468.0",
-    "maplibre-gl": "^4.3.2",
-    "proj4": "^2.11.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@supabase/supabase-js": "2.112.3",
+    "lucide-react": "0.468.0",
+    "maplibre-gl": "4.7.1",
+    "proj4": "2.21.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "tsx": "^4.16.2",
-    "typescript": "^5.5.4",
-    "vite": "^5.4.2"
+    "@playwright/test": "1.62.1",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "tsx": "4.23.12",
+    "typescript": "5.9.3",
+    "vite": "5.4.21"
   }
 }

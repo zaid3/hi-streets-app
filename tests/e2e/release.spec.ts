@@ -58,6 +58,26 @@ test.describe('HiStreets final mobile release', () => {
     await expect(smart.getByRole('option', { name: /Use my location/i })).toBeVisible()
   })
 
+  test('iPhone search field stays at 16px and Ask HiStreets opens a mobile-safe sheet', async ({ page }) => {
+    await page.goto('/map')
+    await page.getByRole('button', { name: 'Use Newham map for now' }).click()
+    const search = smartSearch(page)
+    await search.focus()
+    expect(await search.evaluate(node => getComputedStyle(node).fontSize)).toBe('16px')
+
+    await search.fill('cheap food near E7 tonight')
+    await expect(page.getByRole('button', { name: /Ask HiStreets AI/i })).toBeVisible()
+    await page.getByRole('button', { name: /Ask HiStreets AI/i }).click()
+
+    const dialog = page.getByRole('dialog', { name: 'Ask HiStreets' })
+    await expect(dialog).toBeVisible()
+    const box = await dialog.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.x).toBeGreaterThanOrEqual(0)
+    expect(box!.width).toBeLessThanOrEqual((await page.viewportSize())!.width + 1)
+    await expect(dialog).toContainText(/AI unavailable|Understanding your need|verified HiStreets/i)
+  })
+
   test('natural language jobs search opens the jobs feed', async ({ page }) => {
     await page.goto('/map')
     await page.getByRole('button', { name: 'Use Newham map for now' }).click()

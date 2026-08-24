@@ -8,6 +8,7 @@ import './release-polish.css'
 import './smart-search.css'
 import './hipulse.css'
 import './business-copilot.css'
+import './final-business.css'
 import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

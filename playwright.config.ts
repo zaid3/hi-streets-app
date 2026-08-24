@@ -28,5 +28,10 @@ export default defineConfig({
       name: 'webkit-mobile',
       use: { ...devices['iPhone 15'] },
     },
+    {
+      name: 'chromium-desktop',
+      testMatch: /business-desktop\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
   ],
 })

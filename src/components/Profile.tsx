@@ -83,7 +83,8 @@ export default function Profile({ onPost }: Props) {
     <section className="profile-screen business-shell auth-screen">
       <div className="auth-brand-panel">
         <span className="portal-mark"><Building2 size={20} /> HiStreets for Business</span>
-        <h1>One secure place to run your local presence.</h1>
+        <h1>Business access</h1>
+        <h2 className="auth-hero-title">One secure place to run your local presence.</h2>
         <p>Claim or register your business, publish local offers and jobs, use Business Copilot, and respond to real local demand signals.</p>
         <div className="auth-feature-row"><span><Sparkles size={16} /> AI-assisted posting</span><span><ShieldCheck size={16} /> Verified businesses</span><span><LockKeyhole size={16} /> Private admin controls</span></div>
       </div>

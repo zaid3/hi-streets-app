@@ -1,49 +1,40 @@
 import { useEffect, useState } from 'react'
-import { KeyRound, LogIn, LogOut, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Building2, KeyRound, Link2, LockKeyhole, LogOut, ShieldCheck, Sparkles } from 'lucide-react'
 import { getCurrentRole } from '../lib/data'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 import type { PostType, Role } from '../types'
 import AdminOwnershipRequests from './AdminOwnershipRequests'
 import AdminPanel from './AdminPanel'
+import AdminUserManagement from './AdminUserManagement'
 import BusinessOwnershipRequest from './BusinessOwnershipRequest'
 import BusinessPostingDashboard from './BusinessPostingDashboard'
 import BusinessRegistration from './BusinessRegistration'
 import JobApplicationsPanel from './JobApplicationsPanel'
 import OwnerBusinessProfile from './OwnerBusinessProfile'
 
-type Props = {
-  onPost: (type: PostType) => void
-}
+type Props = { onPost: (type: PostType) => void }
+type LoginMode = 'link' | 'password'
 
 export default function Profile({ onPost }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [mode, setMode] = useState<LoginMode>('link')
   const [signedIn, setSignedIn] = useState(false)
   const [role, setRole] = useState<Role | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [working, setWorking] = useState(false)
   const [message, setMessage] = useState('')
 
   async function resolveSession(hasUser: boolean) {
     setSignedIn(hasUser)
-    if (!hasUser) {
-      setRole(null)
-      setAuthLoading(false)
-      return
-    }
+    if (!hasUser) { setRole(null); setAuthLoading(false); return }
     setAuthLoading(true)
-    try {
-      setRole(await getCurrentRole())
-    } finally {
-      setAuthLoading(false)
-    }
+    try { setRole(await getCurrentRole()) }
+    finally { setAuthLoading(false) }
   }
 
   useEffect(() => {
-    if (!supabase) {
-      setAuthLoading(false)
-      return
-    }
-
+    if (!supabase) { setAuthLoading(false); return }
     supabase.auth.getUser().then(({ data }) => void resolveSession(Boolean(data.user)))
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       window.setTimeout(() => { void resolveSession(Boolean(session?.user)) }, 0)
@@ -52,91 +43,102 @@ export default function Profile({ onPost }: Props) {
   }, [])
 
   async function sendMagicLink() {
-    if (!supabaseConfigured || !supabase) return setMessage('HiStreets login is not configured yet.')
-    if (!email.trim()) return setMessage('Enter your email first.')
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/business` },
-    })
-    setMessage(error ? error.message : 'Secure login link sent. Check your email, then return to the HiStreets Business portal.')
+    if (!supabaseConfigured || !supabase) return setMessage('HiStreets secure access is not configured.')
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail) return setMessage('Enter your email address first.')
+    try {
+      setWorking(true)
+      setMessage('Sending your secure access link…')
+      const { error } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: { emailRedirectTo: `${window.location.origin}/business`, shouldCreateUser: true },
+      })
+      setMessage(error ? error.message : 'Check your email. Open the HiStreets link on this device to finish signing in. First-time business users are created automatically.')
+    } finally { setWorking(false) }
   }
 
   async function passwordLogin() {
-    if (!supabaseConfigured || !supabase) return setMessage('HiStreets login is not configured yet.')
-    if (!email.trim() || !password) return setMessage('Enter email and password.')
-    setMessage('Signing in…')
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-    if (error) return setMessage(error.message)
-    setPassword('')
-    setMessage('Signed in.')
+    if (!supabaseConfigured || !supabase) return setMessage('HiStreets secure access is not configured.')
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail || !password) return setMessage('Enter both email and password.')
+    try {
+      setWorking(true)
+      setMessage('Signing in securely…')
+      const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
+      if (error) return setMessage(error.message === 'Invalid login credentials' ? 'Email or password is incorrect. If this is your first visit, use the secure email link instead.' : error.message)
+      setPassword('')
+      setMessage('Signed in.')
+    } finally { setWorking(false) }
   }
 
   async function signOut() {
     if (!supabase) return
     await supabase.auth.signOut()
-    setSignedIn(false)
-    setRole(null)
-    setPassword('')
-    setMessage('Signed out.')
+    setSignedIn(false); setRole(null); setPassword(''); setMessage('Signed out.')
   }
 
-  if (authLoading) return <section className="profile-screen"><div className="auth-card"><ShieldCheck size={34} /><h1>Business access</h1><p>Checking your secure session…</p></div></section>
+  if (authLoading) return <section className="profile-screen business-shell"><div className="auth-loading-card"><ShieldCheck size={30} /><strong>Securing your HiStreets workspace…</strong></div></section>
 
   if (!signedIn) return (
-    <section className="profile-screen">
-      <div className="auth-card">
-        <ShieldCheck size={34} />
-        <h1>Business access</h1>
-        <p>Residents do not need an account to browse the map, find offers or apply for jobs. Business owners and HiStreets admins use this same secure access page.</p>
-        <input type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} />
-        <input type="password" autoComplete="current-password" placeholder="Password, if your account has one" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && password) void passwordLogin() }} />
-        <div className="auth-actions">
-          <button onClick={sendMagicLink}><LogIn size={18} /> Email me a secure login link</button>
-          <button className="dark-action" onClick={passwordLogin}><KeyRound size={18} /> Sign in with password</button>
+    <section className="profile-screen business-shell auth-screen">
+      <div className="auth-brand-panel">
+        <span className="portal-mark"><Building2 size={20} /> HiStreets for Business</span>
+        <h1>One secure place to run your local presence.</h1>
+        <p>Claim or register your business, publish local offers and jobs, use Business Copilot, and respond to real local demand signals.</p>
+        <div className="auth-feature-row"><span><Sparkles size={16} /> AI-assisted posting</span><span><ShieldCheck size={16} /> Verified businesses</span><span><LockKeyhole size={16} /> Private admin controls</span></div>
+      </div>
+
+      <div className="auth-card auth-card-final">
+        <div className="auth-card-title"><span><ShieldCheck size={22} /></span><div><small>Secure business portal</small><h2>Sign in to HiStreets</h2></div></div>
+        <p className="auth-intro">Business owners and HiStreets admins use this page. Residents never need an account to browse the public app.</p>
+
+        <div className="login-mode-switch" role="tablist" aria-label="Choose sign in method">
+          <button className={mode === 'link' ? 'active' : ''} onClick={() => { setMode('link'); setMessage('') }} type="button"><Link2 size={16} /> Email link</button>
+          <button className={mode === 'password' ? 'active' : ''} onClick={() => { setMode('password'); setMessage('') }} type="button"><KeyRound size={16} /> Password</button>
         </div>
-        <p className="trust">Business owners can use the email link for the quickest access. Password-enabled accounts use the same form. Your account role decides which dashboard opens.</p>
-        {message && <p className="form-status">{message}</p>}
-        <p className="tiny-links"><a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a></p>
+
+        <label className="auth-field"><span>Email address</span><input type="email" inputMode="email" autoCapitalize="none" autoComplete="email" placeholder="name@business.co.uk" value={email} onChange={e => setEmail(e.target.value)} /></label>
+
+        {mode === 'password' && <label className="auth-field"><span>Password</span><input type="password" autoComplete="current-password" placeholder="Enter your password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void passwordLogin() }} /></label>}
+
+        {mode === 'link' ? <button className="auth-primary" type="button" onClick={() => void sendMagicLink()} disabled={working}><span>{working ? 'Sending…' : 'Send secure login link'}</span><ArrowRight size={18} /></button> : <button className="auth-primary" type="button" onClick={() => void passwordLogin()} disabled={working}><span>{working ? 'Signing in…' : 'Sign in with password'}</span><ArrowRight size={18} /></button>}
+
+        <div className="auth-help"><strong>{mode === 'link' ? 'First time here?' : 'No password yet?'}</strong><span>{mode === 'link' ? 'The secure email link creates your business access account safely. No separate sign-up form is needed.' : 'Switch to Email link. It is the recommended first-time access method.'}</span></div>
+        {message && <p className="form-status auth-status" role="status" aria-live="polite">{message}</p>}
+        <p className="tiny-links"><a href="/privacy.html">Privacy</a><span>·</span><a href="/terms.html">Terms</a></p>
       </div>
     </section>
   )
 
   if (role === 'admin' || role === 'super_admin') return (
-    <section className="profile-screen">
-      <header className="screen-header">
-        <h1>{role === 'super_admin' ? 'Super Admin' : 'Admin'}</h1>
-        <p>Review ownership requests, business registrations, posts and job applications from one workspace.</p>
+    <section className="profile-screen business-shell admin-workspace">
+      <header className="portal-header">
+        <div><span className="eyebrow"><ShieldCheck size={14} /> {role === 'super_admin' ? 'Developer control centre' : 'Admin workspace'}</span><h1>{role === 'super_admin' ? 'Super Admin' : 'Admin'}</h1><p>Manage users, businesses, ownership, posts and applications from one responsive workspace.</p></div>
+        <button className="portal-signout" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button>
       </header>
+      {role === 'super_admin' && <AdminUserManagement />}
       <AdminOwnershipRequests />
       <AdminPanel />
       <JobApplicationsPanel />
-      <div className="privacy-card">
-        <h2>Account</h2>
-        <button onClick={signOut}><LogOut size={18} /> Sign out</button>
-        {message && <p className="form-status">{message}</p>}
-        <p><a href="/privacy.html">Privacy policy</a> · <a href="/terms.html">Terms</a></p>
-      </div>
+      {message && <p className="form-status">{message}</p>}
     </section>
   )
 
   return (
-    <section className="profile-screen">
-      <header className="screen-header">
-        <h1>Business portal</h1>
-        <p>If your business is already on HiStreets, request ownership. Otherwise register it as a new business. After approval you can complete your profile, publish local posts and review job applications.</p>
+    <section className="profile-screen business-shell owner-workspace">
+      <header className="portal-header">
+        <div><span className="eyebrow"><Building2 size={14} /> Business workspace</span><h1>Your HiStreets business</h1><p>Claim or register once, then manage your profile, AI-assisted posts and job applications here.</p></div>
+        <button className="portal-signout" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button>
       </header>
+      <div className="portal-section-label"><span>1</span><div><strong>Connect your business</strong><small>Claim an existing listing or register a new one.</small></div></div>
       <BusinessOwnershipRequest />
       <BusinessRegistration />
+      <div className="portal-section-label"><span>2</span><div><strong>Manage & grow</strong><small>Update your public profile and use local intelligence.</small></div></div>
       <OwnerBusinessProfile />
       <BusinessPostingDashboard onPost={onPost} />
       <JobApplicationsPanel />
-      <div className="privacy-card">
-        <h2>Account</h2>
-        <button onClick={signOut}><LogOut size={18} /> Sign out</button>
-        <p className="muted">For account or personal-data deletion requests, use the privacy contact process.</p>
-        {message && <p className="form-status">{message}</p>}
-        <p><a href="/privacy.html">Privacy policy</a> · <a href="/terms.html">Terms</a></p>
-      </div>
+      {message && <p className="form-status">{message}</p>}
+      <footer className="portal-footer"><a href="/privacy.html">Privacy policy</a><span>·</span><a href="/terms.html">Terms</a></footer>
     </section>
   )
 }

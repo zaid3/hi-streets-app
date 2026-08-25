@@ -79,7 +79,7 @@ Super Admin tools include user/role management, business registration and owners
 
 ### Parking
 
-Parking remains clearly marked **Coming Soon** until reliable, authoritative local parking information can be integrated. HiStreets does not publish guessed parking restrictions.
+**Parking section kept as coming soon** until reliable, authoritative local parking information can be integrated. HiStreets does not publish guessed parking restrictions.
 
 ## What makes the architecture different
 
@@ -101,7 +101,7 @@ Current design principles include:
 - role and ownership checks for protected business/admin operations
 - owner review before AI-assisted business drafts are published
 - aggregate Opportunity Gap signals rather than individual resident search histories
-- no fabricated businesses, jobs, offers, meals or parking data
+- **No fake businesses, jobs, offers, meals or parking**
 - no active public review/rating system in this release
 
 See the public Privacy and Terms pages in the app for user-facing information.
@@ -210,6 +210,14 @@ Database migrations are tracked under [`supabase/migrations`](supabase/migration
 Service-role keys, AI provider keys, SMTP credentials and other privileged secrets must remain in secure deployment/server environments and must never be placed in browser code or committed to Git.
 
 The official Newham boundary must exist and be valid before boundary-dependent business registration is considered operational. Business registration is designed to fail closed when the trusted borough boundary is unavailable.
+
+From a trusted operator environment with the required server-side maintenance credentials, install or refresh the official boundary with:
+
+```bash
+npm run seed:boundary
+```
+
+Never expose the service-role key in frontend environment variables.
 
 ## Production checklist
 

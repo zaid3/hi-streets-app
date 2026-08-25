@@ -6,6 +6,7 @@ test.describe('HiStreets final business access', () => {
     await expect(page.getByRole('heading', { name: 'Sign in to HiStreets', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /Email link/ })).toBeVisible()
     await expect(page.getByRole('button', { name: /Password/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Create account/ })).toBeVisible()
 
     const email = page.getByLabel('Email address')
     await expect(email).toBeVisible()
@@ -20,19 +21,26 @@ test.describe('HiStreets final business access', () => {
     const password = page.getByLabel('Password')
     await expect(password).toBeVisible()
     expect(await password.evaluate(el => getComputedStyle(el).fontSize)).toBe('16px')
+    await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible()
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(overflow).toBeLessThanOrEqual(1)
   })
 
-  test('first-time users are guided to secure email-link access', async ({ page }) => {
+  test('first-time users have both passwordless and explicit account creation paths', async ({ page }) => {
     await page.goto('/business')
-    await expect(page.getByText('First time here?')).toBeVisible()
-    await expect(page.getByText(/No separate sign-up form is needed/)).toBeVisible()
+    await expect(page.getByText('Fastest first-time access')).toBeVisible()
+    await expect(page.getByText(/No password is required/)).toBeVisible()
     await expect(page.getByRole('button', { name: /Send secure login link/ })).toBeVisible()
+
+    await page.getByRole('button', { name: /Create account/ }).click()
+    await expect(page.getByRole('heading', { name: 'Create your HiStreets account' })).toBeVisible()
+    await expect(page.getByLabel('Password')).toBeVisible()
+    await expect(page.getByLabel('Confirm password')).toBeVisible()
+    await expect(page.getByRole('button', { name: /Create business account/ })).toBeVisible()
   })
 
-  test('business shell scrolls fully above the fixed navigation', async ({ page }) => {
+  test('business shell scrolls fully above the fixed navigation without a visible scrollbar rail', async ({ page }) => {
     await page.goto('/business')
     const shell = page.locator('.business-shell')
     const tabs = page.locator('.bottom-tabs')
@@ -46,11 +54,13 @@ test.describe('HiStreets final business access', () => {
         overflowY: css.overflowY,
         paddingBottom: Number.parseFloat(css.paddingBottom),
         scrollPaddingBottom: Number.parseFloat(css.scrollPaddingBottom),
+        scrollbarWidth: css.getPropertyValue('scrollbar-width'),
       }
     })
     expect(style.overflowY).toBe('auto')
     expect(style.paddingBottom).toBeGreaterThan(navHeight + 40)
     expect(style.scrollPaddingBottom).toBeGreaterThan(navHeight + 40)
+    expect(style.scrollbarWidth).toBe('none')
 
     await shell.evaluate(el => {
       const probe = document.createElement('div')

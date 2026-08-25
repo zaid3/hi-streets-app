@@ -6,7 +6,7 @@
   "start_url": "/map",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#FAFAF7",
+  "background_color": "#0A0A0A",
   "theme_color": "#0A0A0A",
   "orientation": "any",
   "categories": ["navigation", "lifestyle", "business"],

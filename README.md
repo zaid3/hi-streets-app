@@ -1,191 +1,169 @@
 # HiStreets
 
-HiStreets is a mobile-first local discovery platform for the London Borough of Newham. It connects residents with useful things happening nearby — local offers, jobs, free meals, community support and approved local businesses — through a map-first experience.
+**Helping local businesses grow with technology.**
 
-The product is designed around three principles: **local usefulness, explainability and privacy by default**.
+HiStreets is an open-source, Newham-first digital high street. It helps residents discover local businesses, offers, jobs and community support while giving local business teams simple tools to become more visible, publish opportunities and use neighbourhood intelligence without building their own technology platform.
 
-## What makes HiStreets different
+**Website:** https://histreets.uk/  
+**Live app:** https://app.histreets.uk/  
+**Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)  
+**Security:** [SECURITY.md](SECURITY.md)
 
-- **Map-first discovery** — browse approved local businesses and live opportunities without creating an account.
-- **Smart local search** — search businesses, services, streets, full postcodes and outward postcodes, or use natural phrases such as “pharmacy near me” and “jobs hiring near me”.
-- **HiPulse** — an explainable 0–100 local activity signal derived from currently available HiStreets offers, jobs, community support and approved-business coverage.
-- **Need-to-action design** — move directly from a local signal to an offer, job, community resource or business rather than stopping at a dashboard metric.
-- **Privacy-conscious architecture** — no advertising trackers, no sale of user data, private CV/evidence storage and no behavioural profile required for HiPulse or smart-search intent matching.
-- **Newham-bounded operation** — postcode, business registration and public map rules are constrained to the London Borough of Newham.
+> HiStreets is not trying to replace the local high street. It is trying to strengthen it — making useful local activity easier to discover and giving local businesses a shared digital layer.
 
-## HiPulse: explainable neighbourhood intelligence
+## Why HiStreets exists
 
-HiPulse is a HiStreets product signal that answers a practical question: **how much useful, currently actionable local activity is visible on the platform right now?**
+National brands can reach customers through apps, websites, email campaigns, loyalty programmes, advertising teams and large recruitment platforms. Local businesses often have the same need to communicate an offer, find a local employee or reach nearby residents, but should not need a large digital team to do it.
 
-The score is deliberately transparent. It combines four capped factors:
+At the same time, useful neighbourhood information is fragmented. A local job might only appear in a shop window. A restaurant offer may only reach existing followers. A community group may be providing support a few streets away from someone who does not know it exists.
 
-| Factor | Maximum | Input |
-| --- | ---: | --- |
-| Live activity | 40 | Current offers, jobs and community-support posts |
-| Business diversity | 20 | Distinct approved business categories |
-| Local coverage | 20 | Approved businesses visible to the public map |
-| Signal balance | 20 | Activity spread across commerce, jobs and community support |
+HiStreets brings those everyday local connections into one place.
 
-Every score shown in the mobile interface exposes its factor contribution. HiPulse does not use a personal profile, search history or continuous location trail.
+## Product
 
-HiPulse measures **HiStreets platform activity**. It is not an official London Borough of Newham statistic, economic forecast or ranking. See [`docs/hipulse.md`](docs/hipulse.md) for the scoring methodology, confidence language, privacy approach and current limitations.
+### Map-first local discovery
 
-## Core product
+Residents can browse approved local businesses and useful activity geographically across Newham. The product supports business/service search, streets, full postcodes, outward postcodes and optional user-initiated “near me” location.
 
-- Map-first local discovery bounded to Newham
-- App-style smart search with live suggestions and natural-language intent matching
-- Search by local business, service, street, full postcode or outward postcode
-- Optional user-initiated “near me” location flow with postcode/manual-map fallback
-- Nearby offers, jobs, free meals and community support
-- Public browsing without account creation
-- Job applications without sign-up, with mandatory private CV upload
-- One secure access page for business owners and admins
-- New-business registration plus ownership requests for existing approved, unclaimed listings
-- Backend duplicate protection for existing and already-pending business registrations
-- Optional private shop-front and inside verification photos for physical shops
-- Service-area / online business registration without publishing a home street address or precise home location
-- Business profile management and simple posting for approved businesses
-- Safe auto-approval for posts that pass clear platform rules
-- Super Admin dashboard for ownership requests, registrations, evidence review, post moderation, job applications and platform oversight
-- Parking section kept as coming soon until reliable local parking data is available
+### Local offers
 
-## User roles
+Local businesses can publish offers that become visible through HiStreets rather than relying only on their own website, social following or passing foot traffic.
 
-| Role | Purpose |
-| --- | --- |
-| User | Browse the map, find posts and apply for jobs without logging in |
-| Business | Manage an approved business, publish posts and view job applications |
-| Admin | Review ownership requests, businesses, evidence and posts |
-| Super Admin | Full platform owner view with overview metrics, approvals and application oversight |
+### Local jobs
 
-The Business tab uses one authentication screen. Business owners can use a secure email link. Password-enabled accounts use the same form. The stored profile role determines which dashboard appears after authentication.
+Approved businesses can publish local vacancies and residents can discover opportunities near home. Job applications do not require a resident account; CVs are stored privately and opened by the relevant business or authorised admin through temporary access links.
 
-## Trust and privacy model
+### Community support and free meals
 
-- New business registrations require approval before appearing publicly.
-- Existing approved, unclaimed businesses can be linked through an admin-reviewed ownership request rather than creating a duplicate listing.
-- Exact existing or pending business registrations are also blocked at the database layer.
-- Public map businesses must pass the approved-business database rule and Newham boundary check.
-- Business registration fails closed if the official Newham boundary has not been installed.
-- Service-area businesses verify a full Newham postcode but store only the outward postcode area as the public map point and do not show a Directions action.
-- Approved businesses can publish posts automatically when required fields and platform checks pass.
-- Posts that need review remain pending for admin action.
-- Business verification photos are private and removed through the admin decision workflow.
-- Written verification notes are cleared after approval or rejection while the basic verification result/audit trail is retained.
-- Job CVs are stored in a private bucket and opened through short-lived signed links by the relevant business or authorised admin.
-- Failed job applications clean up the just-uploaded CV instead of leaving an orphan file.
-- Smart-search intent matching runs in the browser and does not require sending each search phrase to a third-party AI provider.
-- HiPulse uses current public platform signals rather than personal behavioural data.
-- Reviews are not active in the current release.
-- No advertising trackers and no sale of user data.
-- No Google Places data is used for business content.
+Commerce and community sit inside the same local ecosystem. HiStreets surfaces community-support activity and free-meal initiatives alongside businesses, offers and jobs.
 
-## Technology stack
+### Ask HiStreets AI
+
+Ask HiStreets lets residents describe a local need in natural language. The AI layer interprets intent and works with HiStreets local data rather than inventing businesses, jobs or offers. Sensitive requests use privacy-conscious fallback behaviour rather than becoming commercial demand signals.
+
+### Business Copilot
+
+Business owners can describe an offer or job in simple words and receive an AI-assisted draft. The business remains in control: Copilot creates a draft for review and does not auto-publish it.
+
+### HiPulse
+
+HiPulse is an explainable 0–100 HiStreets activity signal derived from currently visible platform activity such as offers, jobs, community support, approved-business coverage and category diversity.
+
+HiPulse is a **HiStreets product signal**. It is not an official London Borough of Newham statistic, economic forecast or neighbourhood ranking. See [docs/hipulse.md](docs/hipulse.md) for the scoring model and limitations.
+
+### Opportunity Gap
+
+Opportunity Gap explores the difference between sufficiently aggregated local demand signals and available local supply. It is designed to help relevant businesses understand unmet neighbourhood needs without exposing an individual resident's search history. Privacy thresholds are used before a business can receive an opportunity signal.
+
+### Business workspace
+
+A business can:
+
+- create a secure account
+- search for and claim an existing approved listing
+- register a new business when it is not already listed
+- submit private verification evidence
+- manage an approved business profile
+- publish offers, jobs, free meals and community-support posts
+- use Business Copilot
+- view relevant job applications
+- use Opportunity Gap when sufficient aggregate signals exist
+
+Returning owners are taken toward management rather than repeatedly being forced through full onboarding.
+
+### Admin and Super Admin
+
+Business owners, Admins and Super Admins use the **same secure access page**. Authentication establishes the user identity; the stored role and server/database checks determine which workspace and operations are available.
+
+Super Admin tools include user/role management, business registration and ownership review, moderation and platform oversight. Admin privileges are not granted by a hidden frontend route or button.
+
+### Parking
+
+Parking remains clearly marked **Coming Soon** until reliable, authoritative local parking information can be integrated. HiStreets does not publish guessed parking restrictions.
+
+## What makes the architecture different
+
+HiStreets combines several local workflows that are usually separated:
+
+**resident need → local discovery → anonymous aggregate signal → opportunity gap → business insight → AI-assisted business action → new local supply → resident discovery**
+
+The value is not one isolated AI feature. It is the connection between geospatial discovery, local commerce, employment, community support, explainable signals and owner-controlled AI assistance.
+
+## Trust and privacy
+
+Current design principles include:
+
+- public resident browsing without account creation
+- approved-business rules before listings become public
+- Newham geographic enforcement for relevant registration and map flows
+- private job CV storage
+- private business-verification evidence
+- role and ownership checks for protected business/admin operations
+- owner review before AI-assisted business drafts are published
+- aggregate Opportunity Gap signals rather than individual resident search histories
+- no fabricated businesses, jobs, offers, meals or parking data
+- no active public review/rating system in this release
+
+See the public Privacy and Terms pages in the app for user-facing information.
+
+## Account access
+
+HiStreets keeps the account experience intentionally simple:
+
+- **New user:** Create account → email + password → confirm email when required.
+- **Returning user:** Sign in → email + password.
+- **Forgot password:** request a secure reset email and choose a new password.
+- **Optional passwordless sign-in:** an existing account can request a one-time secure email link.
+- **Admins:** use the same sign-in page; the authorised role determines the admin workspace after authentication.
+
+The frontend currently requires **12 or more characters** when creating or resetting a password. Supabase Auth handles password authentication and sessions.
+
+## Newham first
+
+HiStreets starts with the London Borough of Newham deliberately. The aim is to make one real local ecosystem useful before adapting the model to other boroughs and communities.
+
+## Technology
 
 - React 18
-- Vite
 - TypeScript
+- Vite
 - MapLibre GL JS
 - Supabase Auth
-- Supabase Postgres/PostGIS
+- Supabase Postgres / PostGIS
 - Supabase Storage
+- Supabase Edge Functions
+- Google Gemini through server-side Edge Function integration for AI-assisted flows
 - Progressive Web App shell
-- Playwright mobile Chromium and WebKit release tests
+- Playwright browser release testing
+
+## AI architecture
+
+Production AI-related functions include:
+
+- `histreets-ai` — resident intent assistance and owner-reviewed business drafting
+- `histreets-opportunity` — privacy-thresholded business opportunity signals
+- `histreets-admin-users` — authenticated Super Admin user/role management
+
+AI provider secrets stay server-side and are not committed to the frontend repository.
 
 ## Engineering and release quality
 
-The repository uses feature branches and pull requests for product changes. The release workflow checks:
+Changes are developed through branches and pull requests. The release workflow checks:
 
 - secret leakage
 - production dependency audit
-- unit and product-contract tests
+- source/product contracts
 - TypeScript compilation
-- Vite production build
-- mobile Chromium smoke tests
-- mobile WebKit smoke tests
+- production Vite build
+- mobile Chromium behaviour
+- mobile WebKit / iPhone behaviour
+- desktop Business/Admin layout contracts
+- route/navigation behaviour
+- scroll and fixed-navigation clearance
 
-HiPulse has dedicated unit tests for score behaviour and browser tests for the mobile sheet and signal-to-action navigation. Existing map, location, postcode, smart-search, navigation, direct-route and PWA tests remain part of the same release gate.
+The browser suite covers Map, Offers, Jobs, Community, Parking and Business navigation as well as core map/search/location/HiPulse/business-access behaviours.
 
-## Environment variables
-
-Frontend runtime:
-
-```bash
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-```
-
-Boundary maintenance/import only:
-
-```bash
-VITE_SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-```
-
-Server-side maintenance secrets belong only in the local terminal or deployment environment. Do not commit service-role keys, tokens or private credentials.
-
-## Database setup
-
-### 1. Install the application database rules
-
-Run these SQL files in this order from the Supabase SQL Editor:
-
-```text
-supabase/FINAL_RUN_THIS_marketplace_setup.sql
-supabase/FINAL_RUN_THIS_jobs_offers_applications_no_parking.sql
-supabase/FINAL_RUN_THIS_safe_auto_approval.sql
-supabase/FINAL_RUN_THIS_super_admin_dashboard.sql
-supabase/FINAL_RUN_THIS_release_hardening.sql
-supabase/FINAL_RUN_THIS_ownership_requests.sql
-supabase/FINAL_RUN_THIS_boundary_support.sql
-```
-
-### 2. Install the official Newham boundary
-
-From a trusted local/operator environment, set `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, then run:
-
-```bash
-npm run seed:boundary
-```
-
-The importer fetches an official Newham local-authority boundary, writes it through the service-role-only boundary RPC and removes only unclaimed OSM imports that are outside the borough. Do not put the service-role key in the frontend environment.
-
-Confirm the boundary exists before continuing:
-
-```sql
-select name, st_isvalid(geom) as valid, source, updated_at
-from public.boundaries
-where name = 'Newham';
-```
-
-There must be exactly one `Newham` row and `valid` must be `true`.
-
-### 3. Install the final registration and parking guards
-
-Run:
-
-```text
-supabase/FINAL_RUN_THIS_duplicate_guard.sql
-supabase/FINAL_RUN_THIS_disable_parking.sql
-```
-
-The release hardening file keeps CVs and business verification evidence private and installs final admin permissions. The ownership file adds the existing-business ownership workflow. Boundary support makes Newham enforcement explicit. The duplicate guard prevents users from bypassing the ownership flow and refuses new registrations if the Newham boundary is missing. The last file disables legacy parking rows, views, storage access and write RPC access for this release.
-
-After the SQL is installed, set the platform owner account:
-
-```sql
-update public.profiles
-set role = 'super_admin'
-where id = (
-  select id
-  from auth.users
-  where email = 'YOUR_EMAIL_HERE'
-);
-```
-
-The Auth user must exist first. Log in once or create the user in Supabase Authentication before assigning the role.
-
-## Development
+## Local development
 
 Install dependencies:
 
@@ -193,69 +171,85 @@ Install dependencies:
 npm install
 ```
 
-Start the development server:
+Create local frontend environment values:
+
+```bash
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+Start development:
 
 ```bash
 npm run dev
 ```
 
-Run source/unit release tests:
+Run source/unit release checks:
 
 ```bash
 npm run test:unit
 ```
 
-Run the production TypeScript/Vite build:
+Run the production build:
 
 ```bash
 npm run build
 ```
 
-Run the mobile browser release suite locally after installing Playwright browsers:
+Install browser test dependencies and run Playwright:
 
 ```bash
 npx playwright install chromium webkit
 npm run test:e2e
 ```
 
-## Release verification
+## Database and server-side configuration
 
-Before public release verify the deployed build end to end:
+Database migrations are tracked under [`supabase/migrations`](supabase/migrations). Edge Function source is tracked under [`supabase/functions`](supabase/functions).
 
-1. The `Newham` row exists in `public.boundaries`, has valid geometry and the map outside-boundary mask is visible.
-2. Map loads inside Newham bounds without a blocking loading state.
-3. Smart search opens suggestions and natural-language intent routes to the correct local experience.
-4. Business/street search works and an empty result fails gracefully.
-5. Full postcode search accepts spaced or compact Newham postcodes, validates Newham by the official district code/name and rejects non-Newham postcodes.
-6. Outward postcode search works only for postcode areas whose Postcodes.io district list includes Newham.
-7. Postcode requests time out cleanly instead of leaving the search box stuck.
-8. Location permission is requested only after a user action, works when allowed and leaves postcode/manual map use available when Safari/browser permission is denied.
-9. HiPulse opens on mobile, exposes its scoring factors and links from signals to the relevant product screen.
-10. The map still initialises if the Newham boundary RPC returns no feature, while business registration remains blocked server-side until the boundary is installed.
-11. Business owner receives a secure email login link and reaches the Business portal.
-12. Password-enabled admin account uses the same access page and reaches the Admin/Super Admin workspace.
-13. Existing unclaimed approved business can be found, ownership requested and linked by Super Admin without creating a duplicate.
-14. Attempting to register the same existing/pending business is rejected by the database guard.
-15. Physical new-business registration submits using either precise browser location or full Newham postcode.
-16. Service-area business registration verifies a Newham postcode but stores only an outward-postcode map point and no Directions action.
-17. Optional verification photos are private and visible only in the admin review workflow.
-18. Approval makes the new business publicly visible and removes verification evidence through the admin workflow.
-19. Approved business creates offer, job, free-meal and community posts.
-20. Public user can view live posts and apply to a job without creating an account.
-21. CV is mandatory, remains private, is cleaned up if application creation fails, and opens for the relevant business/admin through a temporary link.
-22. Physical-business directions open an external Google Maps directions URL with a readable destination.
-23. All six bottom navigation destinations remain on one row in mobile Chromium and WebKit.
-24. Direct `/map`, `/offers`, `/jobs`, `/community`, `/parking` and `/business` navigation renders through the SPA fallback.
-25. PWA manifest and service worker load successfully.
-26. Parking remains coming soon and no legacy parking data is publicly exposed.
+Service-role keys, AI provider keys, SMTP credentials and other privileged secrets must remain in secure deployment/server environments and must never be placed in browser code or committed to Git.
 
-## Product rules
+The official Newham boundary must exist and be valid before boundary-dependent business registration is considered operational. Business registration is designed to fail closed when the trusted borough boundary is unavailable.
 
-- Newham only
-- MapLibre only inside the product
-- Google Maps is used only as an external directions link
-- No Google Places data
-- No fake businesses, jobs, offers, meals or parking
-- No public display of unapproved businesses
-- No reviews in the current release
-- Parking data remains disabled until reliable local data is available
+## Production checklist
+
+Before a public release, verify at minimum:
+
+1. Map and direct `/map` route load correctly.
+2. Newham postcode search accepts valid Newham postcodes and rejects non-Newham postcodes.
+3. Optional location works when approved and the app remains usable when location is denied.
+4. Offers, Jobs and Community remain scrollable without visible scrollbar rails or bottom-navigation overlap.
+5. All six bottom navigation destinations stay on one row across mobile Chromium, mobile WebKit and desktop.
+6. Create account, email confirmation, password sign-in, forgot-password and recovery work with real production email delivery.
+7. Existing-account secure email-link sign-in works without silently creating a new account.
+8. Business claim and new-business registration correctly avoid duplicates.
+9. Verification evidence and CVs remain private.
+10. Admin/Super Admin access is role-protected after the same authentication page.
+11. Ask HiStreets returns grounded local behaviour in a real production request.
+12. Business Copilot returns an owner-reviewed draft and does not auto-publish.
+13. Opportunity Gap does not expose individual resident searches and remains hidden when privacy thresholds are not met.
+14. HiPulse displays its explainable factor breakdown.
+15. Parking remains Coming Soon until authoritative data is available.
+16. PWA manifest and service worker load successfully.
+
+## Security
+
+Please report suspected vulnerabilities privately rather than opening a public issue. See [SECURITY.md](SECURITY.md) for the responsible disclosure process.
+
+## Contributing
+
+HiStreets is open source and open to collaboration with developers, designers, local businesses, researchers, community organisations and people interested in civic technology, geospatial systems and responsible local AI.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing changes.
+
+## Concept & development
+
+**HiStreets was conceived and developed by Ahtashamul Haque.**
+
+The project is being developed as an open-source technology initiative focused on helping local businesses grow with technology while strengthening connections between businesses, residents, employment opportunities and community support.
+
+Contact: **ahaque@atomicmail.io**
+
+## Licence
+
+The repository currently includes the [CC0 1.0 Universal](LICENSE) dedication. Review the licence before reusing or redistributing project material.

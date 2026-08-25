@@ -46,4 +46,21 @@ test.describe('HiStreets desktop business shell', () => {
     expect(Math.max(...rects.map(r => r.top)) - Math.min(...rects.map(r => r.top))).toBeLessThanOrEqual(2)
     for (let i = 1; i < rects.length; i++) expect(rects[i].left).toBeGreaterThanOrEqual(rects[i - 1].right - 2)
   })
+
+  test('desktop business content has a real scroll container and safe space above tabs', async ({ page }) => {
+    const business = page.locator('.business-shell')
+    const tabs = page.locator('.bottom-tabs')
+    const navHeight = await tabs.evaluate(el => el.getBoundingClientRect().height)
+    const style = await business.evaluate(el => {
+      const css = getComputedStyle(el)
+      return {
+        overflowY: css.overflowY,
+        paddingBottom: Number.parseFloat(css.paddingBottom),
+        scrollPaddingBottom: Number.parseFloat(css.scrollPaddingBottom),
+      }
+    })
+    expect(style.overflowY).toBe('auto')
+    expect(style.paddingBottom).toBeGreaterThan(navHeight + 40)
+    expect(style.scrollPaddingBottom).toBeGreaterThan(navHeight + 40)
+  })
 })

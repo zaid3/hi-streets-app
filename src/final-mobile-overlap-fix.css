@@ -13,10 +13,11 @@
   .auth-screen .auth-brand-panel{
     position:relative!important;
     z-index:1!important;
-    display:flex!important;
-    align-items:center!important;
+    display:grid!important;
+    align-content:start!important;
+    align-items:start!important;
     width:100%!important;
-    min-height:76px!important;
+    min-height:92px!important;
     height:auto!important;
     margin:0!important;
     padding:16px 18px!important;
@@ -26,18 +27,30 @@
   .auth-screen .brand-wordmark{
     position:relative!important;
     z-index:2!important;
-    flex:0 0 auto!important;
+    width:max-content!important;
+    max-width:100%!important;
     margin:0!important;
   }
 
   /* The full editorial hero remains on desktop. On a phone the sign-in card
-     already explains the task, so the brand area becomes a clean compact bar. */
+     handles the task, so the brand area becomes a compact identity + access note. */
   .auth-screen .portal-mark,
   .auth-screen .auth-brand-panel h1,
   .auth-screen .auth-brand-panel .auth-hero-title,
-  .auth-screen .auth-brand-panel>p,
   .auth-screen .auth-feature-row{
     display:none!important;
+  }
+
+  .auth-screen .auth-brand-panel>p{
+    display:block!important;
+    position:relative!important;
+    z-index:2!important;
+    max-width:560px!important;
+    margin:10px 0 0!important;
+    color:rgba(255,253,248,.82)!important;
+    font-size:12px!important;
+    line-height:1.4!important;
+    font-weight:650!important;
   }
 
   .auth-screen .auth-card-final{
@@ -52,7 +65,7 @@
 
 @media(max-width:420px){
   .auth-screen .auth-brand-panel{
-    min-height:72px!important;
+    min-height:88px!important;
     padding:14px 16px!important;
   }
 }

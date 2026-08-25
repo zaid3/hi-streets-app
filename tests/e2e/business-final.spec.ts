@@ -18,7 +18,7 @@ test.describe('HiStreets final business access', () => {
     expect(viewport).not.toContain('maximum-scale=1')
 
     await page.getByRole('button', { name: /Password/ }).click()
-    const password = page.getByLabel('Password')
+    const password = page.getByLabel('Password', { exact: true })
     await expect(password).toBeVisible()
     expect(await password.evaluate(el => getComputedStyle(el).fontSize)).toBe('16px')
     await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible()
@@ -35,8 +35,8 @@ test.describe('HiStreets final business access', () => {
 
     await page.getByRole('button', { name: /Create account/ }).click()
     await expect(page.getByRole('heading', { name: 'Create your HiStreets account' })).toBeVisible()
-    await expect(page.getByLabel('Password')).toBeVisible()
-    await expect(page.getByLabel('Confirm password')).toBeVisible()
+    await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Confirm password', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /Create business account/ })).toBeVisible()
   })
 

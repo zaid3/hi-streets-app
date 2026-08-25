@@ -6,9 +6,8 @@ import type { PostType, Role } from '../types'
 import AdminOwnershipRequests from './AdminOwnershipRequests'
 import AdminPanel from './AdminPanel'
 import AdminUserManagement from './AdminUserManagement'
-import BusinessOwnershipRequest from './BusinessOwnershipRequest'
+import BusinessOnboarding from './BusinessOnboarding'
 import BusinessPostingDashboard from './BusinessPostingDashboard'
-import BusinessRegistration from './BusinessRegistration'
 import JobApplicationsPanel from './JobApplicationsPanel'
 import OwnerBusinessProfile from './OwnerBusinessProfile'
 
@@ -131,9 +130,7 @@ export default function Profile({ onPost }: Props) {
         <div><span className="eyebrow"><Building2 size={14} /> Business workspace</span><h1>Your HiStreets business</h1><p>Claim or register once, then manage your profile, AI-assisted posts and job applications here.</p></div>
         <button className="portal-signout" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button>
       </header>
-      <div className="portal-section-label"><span>1</span><div><strong>Connect your business</strong><small>Claim an existing listing or register a new one.</small></div></div>
-      <BusinessOwnershipRequest />
-      <BusinessRegistration />
+      <BusinessOnboarding />
       <div className="portal-section-label"><span>2</span><div><strong>Manage & grow</strong><small>Update your public profile and use local intelligence.</small></div></div>
       <OwnerBusinessProfile />
       <BusinessPostingDashboard onPost={onPost} />

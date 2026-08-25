@@ -1,8 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="HiStreets icon">
-  <rect width="512" height="512" rx="112" fill="#0A0A0A"/>
-  <rect x="142" y="126" width="44" height="258" rx="22" fill="#FF681F"/>
-  <path d="M164 276c0-55 31-92 78-92 43 0 72 30 72 78v122" fill="none" stroke="#FF681F" stroke-width="44" stroke-linecap="round"/>
-  <rect x="326" y="218" width="44" height="166" rx="22" fill="#FF681F"/>
-  <circle cx="348" cy="158" r="25" fill="#FF681F"/>
-  <path d="M126 420h260" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 64 64" role="img" aria-label="HiStreets icon">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EF6C34"/>
+      <stop offset="1" stop-color="#F4A24C"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#g)"/>
+  <text x="32" y="45" font-family="Georgia,serif" font-size="40" font-weight="700" fill="#fff" text-anchor="middle">H</text>
 </svg>

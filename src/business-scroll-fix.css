@@ -1,0 +1,26 @@
+/* Final launch scroll contract for Business/Admin.
+   The outer app shell is intentionally fixed-height/overflow-hidden for the map,
+   so Business must own its vertical scrolling and reserve space above the fixed nav. */
+.profile-screen.business-shell{
+  height:100dvh!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:calc(168px + env(safe-area-inset-bottom))!important;
+  scroll-padding-bottom:calc(168px + env(safe-area-inset-bottom));
+}
+.profile-screen.business-shell .portal-footer{margin-bottom:8px}
+@media(min-width:760px){
+  .profile-screen.business-shell{
+    padding-bottom:calc(172px + env(safe-area-inset-bottom))!important;
+    scroll-padding-bottom:calc(172px + env(safe-area-inset-bottom));
+  }
+}
+@media(max-width:420px){
+  .profile-screen.business-shell{
+    padding-bottom:calc(160px + env(safe-area-inset-bottom))!important;
+    scroll-padding-bottom:calc(160px + env(safe-area-inset-bottom));
+  }
+}

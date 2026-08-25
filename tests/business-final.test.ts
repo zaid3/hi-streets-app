@@ -6,13 +6,18 @@ async function read(path: string) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 }
 
-test('business access uses first-time email link and keeps password sign-in separate', async () => {
+test('business access supports email link, password, signup and password recovery', async () => {
   const profile = await read('src/components/Profile.tsx')
   assert.match(profile, /signInWithOtp/)
   assert.match(profile, /shouldCreateUser: true/)
   assert.match(profile, /emailRedirectTo: `\$\{window\.location\.origin\}\/business`/)
   assert.match(profile, /signInWithPassword/)
-  assert.match(profile, /No separate sign-up form is needed/)
+  assert.match(profile, /signUp/)
+  assert.match(profile, /resetPasswordForEmail/)
+  assert.match(profile, /PASSWORD_RECOVERY/)
+  assert.match(profile, /updateUser\(\{ password: newPassword \}\)/)
+  assert.match(profile, /Create account/)
+  assert.match(profile, /Forgot password\?/)
 })
 
 test('Super Admin management is server-side and blocks self-demotion', async () => {
@@ -90,4 +95,29 @@ test('Business owns vertical scrolling and keeps content clear of fixed navigati
   assert.match(css, /overflow-x:hidden!important/)
   assert.match(css, /padding-bottom:calc\(168px \+ env\(safe-area-inset-bottom\)\)!important/)
   assert.match(css, /scroll-padding-bottom:calc\(168px \+ env\(safe-area-inset-bottom\)\)/)
+})
+
+test('resident feeds and Business stay scrollable while visible scrollbars are hidden', async () => {
+  const css = await read('src/final-launch-polish.css')
+  const main = await read('src/main.tsx')
+  assert.match(main, /import '\.\/final-launch-polish\.css'/)
+  assert.match(css, /\.feed-screen[\s\S]*overflow-y:auto!important/)
+  assert.match(css, /scrollbar-width:none/)
+  assert.match(css, /::-webkit-scrollbar/)
+  assert.match(css, /display:none/)
+  assert.match(css, /safe-area-inset-bottom/)
+})
+
+test('resident and business AI stay connected to the deployed Edge Function contract', async () => {
+  const ai = await read('src/lib/ai.ts')
+  const search = await read('src/components/SmartMapSearch.tsx')
+  const composer = await read('src/components/PostComposer.tsx')
+  assert.match(ai, /functions\.invoke\('histreets-ai'/)
+  assert.match(ai, /mode: 'resident'/)
+  assert.match(ai, /mode: 'business_draft'/)
+  assert.match(search, /Ask HiStreets AI/)
+  assert.match(search, /askHiStreets/)
+  assert.match(composer, /QuickPost with Business Copilot/)
+  assert.match(composer, /draftBusinessPost/)
+  assert.match(composer, /You are still in control/)
 })

@@ -23,9 +23,9 @@ test('business access uses one simple account flow with explicit signup and pass
   assert.doesNotMatch(profile, /First-time users are created automatically/)
 })
 
-test('HiStreets public brand and open-source project are visible from secure access', async () => {
+test('secure access uses the exact public website design system and project links', async () => {
   const profile = await read('src/components/Profile.tsx')
-  const css = await read('src/final-brand-access.css')
+  const theme = await read('src/exact-website-theme.css')
   const main = await read('src/main.tsx')
   const html = await read('index.html')
   const manifest = await read('public/manifest.json')
@@ -33,11 +33,20 @@ test('HiStreets public brand and open-source project are visible from secure acc
   assert.match(profile, /https:\/\/histreets\.uk\//)
   assert.match(profile, /https:\/\/github\.com\/zaid3\/hi-streets-app/)
   assert.match(profile, /Helping local businesses grow with technology/)
-  assert.match(main, /import '\.\/final-brand-access\.css'/)
-  assert.match(css, /--brand-dark:#0a0a0a/)
-  assert.match(css, /--brand-orange:#ff681f/)
-  assert.match(html, /Helping Local Businesses Grow with Technology/)
-  assert.match(manifest, /helps local businesses grow with technology/)
+  assert.match(main, /import '\.\/exact-website-theme\.css'/)
+  assert.match(theme, /--ink:#062B2A/)
+  assert.match(theme, /--teal:#0F6E6B/)
+  assert.match(theme, /--teal-deep:#0A3B39/)
+  assert.match(theme, /--teal-bright:#28B9AF/)
+  assert.match(theme, /--amber:#F4A24C/)
+  assert.match(theme, /--orange:#EF6C34/)
+  assert.match(theme, /--cream:#FBF7EF/)
+  assert.match(theme, /--paper:#FFFDF8/)
+  assert.match(theme, /content:'H'/)
+  assert.match(theme, /content:'HiStreets'/)
+  assert.match(html, /Your whole high street, on one map/)
+  assert.match(html, /theme-color" content="#0A3B39"/)
+  assert.match(manifest, /"theme_color": "#0A3B39"/)
 })
 
 test('Super Admin management is server-side and blocks self-demotion', async () => {
@@ -119,6 +128,7 @@ test('Business owns vertical scrolling and keeps content clear of fixed navigati
 
 test('resident feeds and Business stay scrollable while visible scrollbars are hidden', async () => {
   const css = await read('src/final-launch-polish.css')
+  const theme = await read('src/exact-website-theme.css')
   const main = await read('src/main.tsx')
   assert.match(main, /import '\.\/final-launch-polish\.css'/)
   assert.match(css, /\.feed-screen[\s\S]*overflow-y:auto!important/)
@@ -126,6 +136,7 @@ test('resident feeds and Business stay scrollable while visible scrollbars are h
   assert.match(css, /::-webkit-scrollbar/)
   assert.match(css, /display:none/)
   assert.match(css, /safe-area-inset-bottom/)
+  assert.match(theme, /scrollbar-width:none!important/)
 })
 
 test('resident and business AI stay connected to the deployed Edge Function contract', async () => {

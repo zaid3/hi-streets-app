@@ -1,0 +1,61 @@
+/* Final brand/access layer. Keeps the existing light product workspace while matching the public HiStreets dark + orange brand at the secure entry point. */
+:root{--orange:#ff681f;--brand-dark:#0a0a0a;--brand-orange:#ff681f}
+
+.auth-screen .auth-brand-panel{
+  position:relative;
+  overflow:hidden;
+  padding:26px 24px!important;
+  border:1px solid #242424;
+  border-radius:26px;
+  background:
+    radial-gradient(circle at 88% 12%,rgba(255,104,31,.24),transparent 30%),
+    linear-gradient(145deg,#0a0a0a 0%,#111 66%,#17100d 100%);
+  color:#fff;
+  box-shadow:0 18px 52px rgba(0,0,0,.18);
+}
+.auth-screen .auth-brand-panel::after{
+  content:'';
+  position:absolute;
+  inset:auto -70px -90px auto;
+  width:220px;
+  height:220px;
+  border:1px solid rgba(255,104,31,.22);
+  border-radius:50%;
+  box-shadow:0 0 0 28px rgba(255,104,31,.05),0 0 0 58px rgba(255,104,31,.025);
+  pointer-events:none;
+}
+.brand-wordmark{position:relative;z-index:1;display:block;margin-bottom:22px;color:#fff;font-size:23px;font-weight:950;letter-spacing:-.045em}.brand-wordmark strong{color:var(--brand-orange)}
+.auth-screen .portal-mark{position:relative;z-index:1;color:#ff8a4d!important}
+.auth-screen .auth-brand-panel h1,.auth-screen .auth-brand-panel .auth-hero-title{position:relative;z-index:1;color:#fff!important}
+.auth-screen .auth-brand-panel>p{position:relative;z-index:1;color:#d2d2d2!important}
+.auth-screen .auth-feature-row{position:relative;z-index:1}
+.auth-screen .auth-feature-row span{border-color:#333!important;background:#181818!important;color:#e9e9e9!important}
+
+.auth-card-final{border-color:#e7e1da!important}
+.auth-card-title>span{background:#fff1e9!important;color:var(--brand-orange)!important}
+.auth-field input:focus{border-color:var(--brand-orange)!important;box-shadow:0 0 0 3px rgba(255,104,31,.14)!important}
+.auth-primary{background:var(--brand-orange)!important;box-shadow:0 10px 24px rgba(255,104,31,.25)!important}
+.auth-primary:hover{filter:brightness(.97)}
+.auth-text-action{display:block;width:max-content;min-height:38px;margin:5px auto 0;padding:0 5px;border:0;background:transparent;color:#8a4a27;font-size:12px;font-weight:900;text-decoration:underline;text-underline-offset:3px}
+.auth-email-link{display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;border-color:#ddd6cf!important;color:#302d2a!important}
+.auth-email-link:hover{background:#fff8f3!important;border-color:#f2c3a9!important}
+.auth-divider{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:10px 0 2px;color:#9a958e;font-size:11px;font-weight:850}.auth-divider::before,.auth-divider::after{content:'';height:1px;background:#ebe5df}.auth-divider span{padding:0 2px}
+.auth-simple-note{margin:8px 4px 0!important;color:#706b65!important;font-size:11px!important;line-height:1.42!important;font-weight:700!important;text-align:center}
+.password-tip{display:flex;align-items:flex-start;gap:7px;margin:3px 0 10px;padding:10px 11px;border-radius:12px;background:#fff7f1;color:#6d4b37;font-size:11px;font-weight:750;line-height:1.4}.password-tip svg{flex:0 0 auto;margin-top:1px;color:var(--brand-orange)}
+.auth-account-switch{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:13px;padding-top:12px;border-top:1px solid #eee9e3;color:#655f59;font-size:12px;font-weight:750}.auth-account-switch button{min-height:34px!important;padding:0!important;border:0!important;background:transparent!important;color:#9b481c!important;font-size:12px!important;font-weight:950!important;text-decoration:underline;text-underline-offset:3px;box-shadow:none!important}
+
+.project-links{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;margin:15px 0 0;color:#817a73;font-size:10px;font-weight:800;line-height:1.4}.project-links a{color:#5d5751;text-decoration:underline;text-underline-offset:3px}.project-links a[href*='github.com']{color:#9b481c;font-weight:950}.portal-footer>.project-links{margin:0}
+
+@media(min-width:760px){
+  .auth-screen .auth-brand-panel{min-height:510px;display:flex;flex-direction:column;justify-content:center;padding:34px 30px!important}
+  .brand-wordmark{font-size:27px;margin-bottom:28px}
+}
+@media(max-width:759px){
+  .auth-screen .auth-brand-panel{padding:22px 20px!important}
+  .brand-wordmark{margin-bottom:17px}
+}
+@media(max-width:420px){
+  .auth-screen .auth-brand-panel{border-radius:22px}
+  .auth-screen .auth-brand-panel h1{font-size:30px!important}
+  .project-links{gap:6px;font-size:10px}
+}

@@ -12,6 +12,7 @@ import './final-business.css'
 import './returning-business.css'
 import './business-scroll-fix.css'
 import './final-launch-polish.css'
+import './final-brand-access.css'
 import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

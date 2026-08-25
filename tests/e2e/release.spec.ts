@@ -168,7 +168,7 @@ test.describe('HiStreets final mobile release', () => {
       ['/jobs', 'Jobs in Newham'],
       ['/community', 'Community'],
       ['/parking', 'Local parking'],
-      ['/business', 'Business access'],
+      ['/business', 'Sign in to HiStreets'],
     ]
 
     for (const [path, heading] of routes) {

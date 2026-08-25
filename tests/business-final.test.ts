@@ -6,18 +6,38 @@ async function read(path: string) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 }
 
-test('business access supports email link, password, signup and password recovery', async () => {
+test('business access uses one simple account flow with explicit signup and password recovery', async () => {
   const profile = await read('src/components/Profile.tsx')
   assert.match(profile, /signInWithOtp/)
-  assert.match(profile, /shouldCreateUser: true/)
+  assert.match(profile, /shouldCreateUser: false/)
   assert.match(profile, /emailRedirectTo: `\$\{window\.location\.origin\}\/business`/)
   assert.match(profile, /signInWithPassword/)
   assert.match(profile, /signUp/)
   assert.match(profile, /resetPasswordForEmail/)
   assert.match(profile, /PASSWORD_RECOVERY/)
   assert.match(profile, /updateUser\(\{ password: newPassword \}\)/)
-  assert.match(profile, /Create account/)
+  assert.match(profile, /PASSWORD_MIN_LENGTH = 12/)
+  assert.match(profile, /Business owners and HiStreets admins use this same sign-in page/)
+  assert.match(profile, /New to HiStreets\?/)
   assert.match(profile, /Forgot password\?/)
+  assert.doesNotMatch(profile, /First-time users are created automatically/)
+})
+
+test('HiStreets public brand and open-source project are visible from secure access', async () => {
+  const profile = await read('src/components/Profile.tsx')
+  const css = await read('src/final-brand-access.css')
+  const main = await read('src/main.tsx')
+  const html = await read('index.html')
+  const manifest = await read('public/manifest.json')
+
+  assert.match(profile, /https:\/\/histreets\.uk\//)
+  assert.match(profile, /https:\/\/github\.com\/zaid3\/hi-streets-app/)
+  assert.match(profile, /Helping local businesses grow with technology/)
+  assert.match(main, /import '\.\/final-brand-access\.css'/)
+  assert.match(css, /--brand-dark:#0a0a0a/)
+  assert.match(css, /--brand-orange:#ff681f/)
+  assert.match(html, /Helping Local Businesses Grow with Technology/)
+  assert.match(manifest, /helps local businesses grow with technology/)
 })
 
 test('Super Admin management is server-side and blocks self-demotion', async () => {

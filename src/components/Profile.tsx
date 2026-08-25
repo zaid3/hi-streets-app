@@ -12,12 +12,30 @@ import JobApplicationsPanel from './JobApplicationsPanel'
 import OwnerBusinessProfile from './OwnerBusinessProfile'
 
 type Props = { onPost: (type: PostType) => void }
-type LoginMode = 'link' | 'password' | 'signup'
+type LoginMode = 'signin' | 'signup'
+
+const PASSWORD_MIN_LENGTH = 12
+const PROJECT_WEBSITE = 'https://histreets.uk/'
+const PROJECT_GITHUB = 'https://github.com/zaid3/hi-streets-app'
 
 function cleanBusinessUrl() {
   if (window.location.pathname === '/business' && window.location.search) {
     window.history.replaceState({}, '', '/business')
   }
+}
+
+function ProjectLinks() {
+  return (
+    <nav className="project-links" aria-label="HiStreets project links">
+      <a href={PROJECT_WEBSITE} target="_blank" rel="noreferrer">HiStreets website</a>
+      <span aria-hidden="true">·</span>
+      <a href={PROJECT_GITHUB} target="_blank" rel="noreferrer">Open source on GitHub</a>
+      <span aria-hidden="true">·</span>
+      <a href="/privacy.html">Privacy</a>
+      <span aria-hidden="true">·</span>
+      <a href="/terms.html">Terms</a>
+    </nav>
+  )
 }
 
 export default function Profile({ onPost }: Props) {
@@ -26,7 +44,7 @@ export default function Profile({ onPost }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
-  const [mode, setMode] = useState<LoginMode>('link')
+  const [mode, setMode] = useState<LoginMode>('signin')
   const [signedIn, setSignedIn] = useState(false)
   const [role, setRole] = useState<Role | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -64,57 +82,61 @@ export default function Profile({ onPost }: Props) {
   }
 
   async function sendMagicLink() {
-    if (!supabaseConfigured || !supabase) return setMessage('HiStreets secure access is not configured.')
+    if (!supabaseConfigured || !supabase) return setMessage('Secure sign-in is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail) return setMessage('Enter your email address first.')
     try {
       setWorking(true)
-      setMessage('Sending your secure access link…')
+      setMessage('Sending your secure sign-in link…')
       const { error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
-        options: { emailRedirectTo: `${window.location.origin}/business`, shouldCreateUser: true },
+        options: { emailRedirectTo: `${window.location.origin}/business`, shouldCreateUser: false },
       })
-      setMessage(error ? error.message : 'Check your email. Open the HiStreets link on this device to finish signing in. First-time users are created automatically.')
+      setMessage(error
+        ? 'We could not send the sign-in link right now. Check the email or try your password.'
+        : 'If this email has a HiStreets account, a secure one-time sign-in link is on its way.')
     } finally { setWorking(false) }
   }
 
   async function passwordLogin() {
-    if (!supabaseConfigured || !supabase) return setMessage('HiStreets secure access is not configured.')
+    if (!supabaseConfigured || !supabase) return setMessage('Secure sign-in is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
-    if (!cleanEmail || !password) return setMessage('Enter both email and password.')
+    if (!cleanEmail || !password) return setMessage('Enter your email and password.')
     try {
       setWorking(true)
-      setMessage('Signing in securely…')
+      setMessage('Signing in…')
       const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
-      if (error) return setMessage(error.message === 'Invalid login credentials' ? 'Email or password is incorrect. If this is your first visit, create an account or use the secure email link.' : error.message)
+      if (error) return setMessage('Email or password is incorrect. Try again, use Forgot password, or use the secure email link.')
       setPassword('')
       setMessage('Signed in.')
     } finally { setWorking(false) }
   }
 
   async function createAccount() {
-    if (!supabaseConfigured || !supabase) return setMessage('HiStreets secure access is not configured.')
+    if (!supabaseConfigured || !supabase) return setMessage('Secure sign-up is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail) return setMessage('Enter your email address.')
-    if (password.length < 8) return setMessage('Choose a password with at least 8 characters.')
+    if (password.length < PASSWORD_MIN_LENGTH) return setMessage(`Use at least ${PASSWORD_MIN_LENGTH} characters for your password.`)
     if (password !== confirmPassword) return setMessage('The passwords do not match.')
     try {
       setWorking(true)
-      setMessage('Creating your secure HiStreets account…')
+      setMessage('Creating your HiStreets account…')
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: { emailRedirectTo: `${window.location.origin}/business` },
       })
-      if (error) return setMessage(error.message)
+      if (error) return setMessage('We could not create the account. If you already have one, go back to Sign in or use Forgot password.')
       setPassword('')
       setConfirmPassword('')
-      setMessage(data.session ? 'Account created. You are signed in.' : 'Account created. Check your email to confirm your address, then return to HiStreets.')
+      setMessage(data.session
+        ? 'Account created. You are signed in.'
+        : 'Account created. Check your email and confirm your address, then sign in.')
     } finally { setWorking(false) }
   }
 
   async function sendPasswordReset() {
-    if (!supabaseConfigured || !supabase) return setMessage('HiStreets secure access is not configured.')
+    if (!supabaseConfigured || !supabase) return setMessage('Password reset is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail) return setMessage('Enter your email address first, then choose Forgot password.')
     try {
@@ -123,24 +145,26 @@ export default function Profile({ onPost }: Props) {
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: `${window.location.origin}/business?mode=recovery`,
       })
-      setMessage(error ? error.message : 'If an account exists for that email, a password reset link has been sent. Open it on this device.')
+      setMessage(error
+        ? 'We could not send the reset email right now. Please wait a moment and try again.'
+        : 'If an account exists for that email, a password reset link has been sent.')
     } finally { setWorking(false) }
   }
 
   async function updateRecoveredPassword() {
-    if (!supabaseConfigured || !supabase) return setMessage('HiStreets secure access is not configured.')
-    if (newPassword.length < 8) return setMessage('Choose a new password with at least 8 characters.')
+    if (!supabaseConfigured || !supabase) return setMessage('Password recovery is not available right now.')
+    if (newPassword.length < PASSWORD_MIN_LENGTH) return setMessage(`Use at least ${PASSWORD_MIN_LENGTH} characters for your new password.`)
     if (newPassword !== confirmNewPassword) return setMessage('The new passwords do not match.')
     try {
       setWorking(true)
       setMessage('Updating your password…')
       const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) return setMessage(error.message)
+      if (error) return setMessage('We could not update the password. Please request a new reset link and try again.')
       setNewPassword('')
       setConfirmNewPassword('')
       setRecoveryMode(false)
       cleanBusinessUrl()
-      setMessage('Password updated successfully. Your business workspace is ready.')
+      setMessage('Password updated. Your workspace is ready.')
     } finally { setWorking(false) }
   }
 
@@ -161,23 +185,25 @@ export default function Profile({ onPost }: Props) {
     setSignedIn(false); setRole(null); setPassword(''); setMessage('Signed out.')
   }
 
-  if (authLoading) return <section className="profile-screen business-shell"><div className="auth-loading-card"><ShieldCheck size={30} /><strong>Securing your HiStreets workspace…</strong></div></section>
+  if (authLoading) return <section className="profile-screen business-shell"><div className="auth-loading-card"><ShieldCheck size={30} /><strong>Opening your secure HiStreets workspace…</strong></div></section>
 
   if (recoveryMode) return (
     <section className="profile-screen business-shell auth-screen auth-recovery-screen">
       <div className="auth-brand-panel">
-        <span className="portal-mark"><Building2 size={20} /> HiStreets for Business</span>
-        <h1>Reset password</h1>
-        <h2 className="auth-hero-title">Choose a new secure password.</h2>
-        <p>This recovery session is temporary. Set your new password and continue directly to your business workspace.</p>
+        <span className="brand-wordmark"><strong>hi</strong>streets</span>
+        <span className="portal-mark"><ShieldCheck size={18} /> Secure account recovery</span>
+        <h1>Reset your password</h1>
+        <h2 className="auth-hero-title">Choose a new password and continue.</h2>
+        <p>Use 12 or more characters. A short phrase is usually easier to remember than a complicated password.</p>
       </div>
       <div className="auth-card auth-card-final">
         <div className="auth-card-title"><span><KeyRound size={22} /></span><div><small>Secure recovery</small><h2>Set new password</h2></div></div>
-        <label className="auth-field"><span>New password</span><input type="password" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="At least 8 characters" /></label>
-        <label className="auth-field"><span>Confirm new password</span><input type="password" autoComplete="new-password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} placeholder="Repeat your new password" onKeyDown={e => { if (e.key === 'Enter') void updateRecoveredPassword() }} /></label>
+        <label className="auth-field"><span>New password</span><input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="12 or more characters" /></label>
+        <label className="auth-field"><span>Confirm new password</span><input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} placeholder="Type it again" onKeyDown={e => { if (e.key === 'Enter') void updateRecoveredPassword() }} /></label>
         <button className="auth-primary" type="button" onClick={() => void updateRecoveredPassword()} disabled={working}><span>{working ? 'Updating…' : 'Update password'}</span><ArrowRight size={18} /></button>
         <button className="auth-secondary-link" type="button" onClick={() => void cancelRecovery()}>Back to sign in</button>
         {message && <p className="form-status auth-status" role="status" aria-live="polite">{message}</p>}
+        <ProjectLinks />
       </div>
     </section>
   )
@@ -185,36 +211,42 @@ export default function Profile({ onPost }: Props) {
   if (!signedIn) return (
     <section className="profile-screen business-shell auth-screen">
       <div className="auth-brand-panel">
-        <span className="portal-mark"><Building2 size={20} /> HiStreets for Business</span>
-        <h1>Business access</h1>
-        <h2 className="auth-hero-title">One secure place to run your local presence.</h2>
-        <p>Claim or register your business, publish local offers and jobs, use Business Copilot, and respond to real local demand signals.</p>
-        <div className="auth-feature-row"><span><Sparkles size={16} /> AI-assisted posting</span><span><ShieldCheck size={16} /> Verified businesses</span><span><LockKeyhole size={16} /> Private admin controls</span></div>
+        <span className="brand-wordmark"><strong>hi</strong>streets</span>
+        <span className="portal-mark"><Building2 size={18} /> Business & Admin</span>
+        <h1>Helping local businesses grow with technology.</h1>
+        <h2 className="auth-hero-title">One simple, secure account for HiStreets.</h2>
+        <p>Business owners and HiStreets admins use this same sign-in page. Residents do not need an account to browse.</p>
+        <div className="auth-feature-row"><span><Sparkles size={16} /> AI-assisted posting</span><span><ShieldCheck size={16} /> Verified access</span><span><LockKeyhole size={16} /> Role-protected admin</span></div>
       </div>
 
       <div className="auth-card auth-card-final">
-        <div className="auth-card-title"><span>{mode === 'signup' ? <UserPlus size={22} /> : <ShieldCheck size={22} />}</span><div><small>Secure business portal</small><h2>{mode === 'signup' ? 'Create your HiStreets account' : 'Sign in to HiStreets'}</h2></div></div>
-        <p className="auth-intro">Business owners and HiStreets admins use this page. Residents never need an account to browse the public app.</p>
+        <div className="auth-card-title"><span>{mode === 'signup' ? <UserPlus size={22} /> : <ShieldCheck size={22} />}</span><div><small>HiStreets secure access</small><h2>{mode === 'signup' ? 'Create your account' : 'Sign in to HiStreets'}</h2></div></div>
+        <p className="auth-intro">{mode === 'signup' ? 'New to HiStreets? Enter your email and choose a password. That is all you need to start.' : 'Use your email and password. Admins and business owners sign in here.'}</p>
 
-        <div className="login-mode-switch login-mode-switch-three" role="tablist" aria-label="Choose account access method">
-          <button className={mode === 'link' ? 'active' : ''} onClick={() => switchMode('link')} type="button"><Link2 size={16} /> Email link</button>
-          <button className={mode === 'password' ? 'active' : ''} onClick={() => switchMode('password')} type="button"><KeyRound size={16} /> Password</button>
-          <button className={mode === 'signup' ? 'active' : ''} onClick={() => switchMode('signup')} type="button"><UserPlus size={16} /> Create account</button>
-        </div>
+        <label className="auth-field"><span>Email address</span><input type="email" inputMode="email" autoCapitalize="none" autoComplete="email" spellCheck={false} placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} /></label>
+        <label className="auth-field"><span>Password</span><input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} minLength={mode === 'signup' ? PASSWORD_MIN_LENGTH : undefined} placeholder={mode === 'signup' ? '12 or more characters' : 'Your password'} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && mode === 'signin') void passwordLogin() }} /></label>
 
-        <label className="auth-field"><span>Email address</span><input type="email" inputMode="email" autoCapitalize="none" autoComplete="email" placeholder="name@business.co.uk" value={email} onChange={e => setEmail(e.target.value)} /></label>
+        {mode === 'signup' && <>
+          <label className="auth-field"><span>Confirm password</span><input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} placeholder="Type it again" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void createAccount() }} /></label>
+          <p className="password-tip"><ShieldCheck size={15} /> Use 12 or more characters. A short memorable phrase works well.</p>
+        </>}
 
-        {(mode === 'password' || mode === 'signup') && <label className="auth-field"><span>Password</span><input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} placeholder={mode === 'signup' ? 'At least 8 characters' : 'Enter your password'} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && mode === 'password') void passwordLogin() }} /></label>}
-        {mode === 'signup' && <label className="auth-field"><span>Confirm password</span><input type="password" autoComplete="new-password" placeholder="Repeat your password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void createAccount() }} /></label>}
+        {mode === 'signin' ? <>
+          <button className="auth-primary" type="button" onClick={() => void passwordLogin()} disabled={working}><span>{working ? 'Signing in…' : 'Sign in'}</span><ArrowRight size={18} /></button>
+          <button className="auth-text-action forgot-password-link" type="button" onClick={() => void sendPasswordReset()} disabled={working}>Forgot password?</button>
 
-        {mode === 'link' && <button className="auth-primary" type="button" onClick={() => void sendMagicLink()} disabled={working}><span>{working ? 'Sending…' : 'Send secure login link'}</span><ArrowRight size={18} /></button>}
-        {mode === 'password' && <button className="auth-primary" type="button" onClick={() => void passwordLogin()} disabled={working}><span>{working ? 'Signing in…' : 'Sign in with password'}</span><ArrowRight size={18} /></button>}
-        {mode === 'signup' && <button className="auth-primary" type="button" onClick={() => void createAccount()} disabled={working}><span>{working ? 'Creating…' : 'Create business account'}</span><ArrowRight size={18} /></button>}
+          <div className="auth-divider" aria-hidden="true"><span>or</span></div>
+          <button className="auth-secondary-link auth-email-link" type="button" onClick={() => void sendMagicLink()} disabled={working}><Link2 size={16} /> {working ? 'Sending…' : 'Email me a secure sign-in link'}</button>
+          <p className="auth-simple-note">No password needed for this option. It signs in an existing HiStreets account with a one-time email link.</p>
 
-        {mode === 'password' && <button className="auth-secondary-link forgot-password-link" type="button" onClick={() => void sendPasswordReset()} disabled={working}>Forgot password?</button>}
-        <div className="auth-help"><strong>{mode === 'link' ? 'Fastest first-time access' : mode === 'password' ? 'Prefer passwordless access?' : 'Creating an account?'}</strong><span>{mode === 'link' ? 'The secure email link can create your account automatically. No password is required.' : mode === 'password' ? 'Switch to Email link at any time. You can also reset a forgotten password above.' : 'Use your business email where possible. You may be asked to confirm the email before signing in.'}</span></div>
+          <div className="auth-account-switch"><span>New to HiStreets?</span><button type="button" onClick={() => switchMode('signup')}>Create account</button></div>
+        </> : <>
+          <button className="auth-primary" type="button" onClick={() => void createAccount()} disabled={working}><span>{working ? 'Creating…' : 'Create account'}</span><ArrowRight size={18} /></button>
+          <div className="auth-account-switch"><span>Already have an account?</span><button type="button" onClick={() => switchMode('signin')}>Back to sign in</button></div>
+        </>}
+
         {message && <p className="form-status auth-status" role="status" aria-live="polite">{message}</p>}
-        <p className="tiny-links"><a href="/privacy.html">Privacy</a><span>·</span><a href="/terms.html">Terms</a></p>
+        <ProjectLinks />
       </div>
     </section>
   )
@@ -230,6 +262,7 @@ export default function Profile({ onPost }: Props) {
       <AdminPanel />
       <JobApplicationsPanel />
       {message && <p className="form-status">{message}</p>}
+      <footer className="portal-footer"><ProjectLinks /></footer>
     </section>
   )
 
@@ -245,7 +278,7 @@ export default function Profile({ onPost }: Props) {
       <BusinessPostingDashboard onPost={onPost} />
       <JobApplicationsPanel />
       {message && <p className="form-status">{message}</p>}
-      <footer className="portal-footer"><a href="/privacy.html">Privacy policy</a><span>·</span><a href="/terms.html">Terms</a></footer>
+      <footer className="portal-footer"><ProjectLinks /></footer>
     </section>
   )
 }

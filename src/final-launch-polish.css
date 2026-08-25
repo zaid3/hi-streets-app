@@ -1,0 +1,58 @@
+/* Final launch UX: scrolling stays available without a visible rail, and business auth has a complete account lifecycle. */
+.feed-screen,
+.profile-screen.business-shell,
+.bottom-sheet{
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.feed-screen::-webkit-scrollbar,
+.profile-screen.business-shell::-webkit-scrollbar,
+.bottom-sheet::-webkit-scrollbar{
+  width:0;
+  height:0;
+  display:none;
+}
+.feed-screen{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:calc(132px + env(safe-area-inset-bottom))!important;
+  scroll-padding-bottom:calc(132px + env(safe-area-inset-bottom));
+}
+.login-mode-switch-three{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+.login-mode-switch-three button{
+  min-width:0!important;
+  padding:0 7px!important;
+  font-size:11px!important;
+  white-space:nowrap;
+}
+.auth-secondary-link{
+  width:100%!important;
+  min-height:42px!important;
+  margin:9px 0 0!important;
+  padding:0 12px!important;
+  border:1px solid #dce5e2!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  color:#31524a!important;
+  box-shadow:none!important;
+  font-size:12px!important;
+  font-weight:900!important;
+}
+.auth-secondary-link:hover{background:#f7faf9!important;border-color:#bfd6cf!important}
+.forgot-password-link{border:0!important;background:transparent!important;color:#0f6e6b!important;text-decoration:underline;text-underline-offset:3px}
+.auth-recovery-screen .auth-card-final{align-self:center}
+@media(min-width:760px){
+  .feed-screen{
+    padding-bottom:calc(148px + env(safe-area-inset-bottom))!important;
+    scroll-padding-bottom:calc(148px + env(safe-area-inset-bottom));
+  }
+}
+@media(max-width:430px){
+  .login-mode-switch-three{grid-template-columns:1fr 1fr!important}
+  .login-mode-switch-three button:nth-child(3){grid-column:1/-1}
+  .login-mode-switch-three button{font-size:12px!important}
+}

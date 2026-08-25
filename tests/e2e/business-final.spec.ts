@@ -1,43 +1,49 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('HiStreets final business access', () => {
-  test('business sign in is structured, mobile safe and does not force page zoom', async ({ page }) => {
+  test('one simple sign-in page serves business owners and admins without forcing page zoom', async ({ page }) => {
     await page.goto('/business')
     await expect(page.getByRole('heading', { name: 'Sign in to HiStreets', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Email link/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Password/ })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Create account/ })).toBeVisible()
+    await expect(page.getByText('Business owners and HiStreets admins use this same sign-in page.')).toBeVisible()
 
     const email = page.getByLabel('Email address')
+    const password = page.getByLabel('Password', { exact: true })
     await expect(email).toBeVisible()
+    await expect(password).toBeVisible()
     expect(await email.evaluate(el => getComputedStyle(el).fontSize)).toBe('16px')
+    expect(await password.evaluate(el => getComputedStyle(el).fontSize)).toBe('16px')
+
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Email me a secure sign-in link/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Create account', exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Open source on GitHub' })).toHaveAttribute('href', 'https://github.com/zaid3/hi-streets-app')
+    await expect(page.getByRole('link', { name: 'HiStreets website' })).toHaveAttribute('href', 'https://histreets.uk/')
 
     const viewport = await page.locator('meta[name="viewport"]').getAttribute('content')
     expect(viewport).toContain('width=device-width')
     expect(viewport).not.toContain('user-scalable=no')
     expect(viewport).not.toContain('maximum-scale=1')
 
-    await page.getByRole('button', { name: /Password/ }).click()
-    const password = page.getByLabel('Password', { exact: true })
-    await expect(password).toBeVisible()
-    expect(await password.evaluate(el => getComputedStyle(el).fontSize)).toBe('16px')
-    await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible()
-
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     expect(overflow).toBeLessThanOrEqual(1)
   })
 
-  test('first-time users have both passwordless and explicit account creation paths', async ({ page }) => {
+  test('new users choose a password during account creation and can return to sign in', async ({ page }) => {
     await page.goto('/business')
-    await expect(page.getByText('Fastest first-time access')).toBeVisible()
-    await expect(page.getByText(/No password is required/)).toBeVisible()
-    await expect(page.getByRole('button', { name: /Send secure login link/ })).toBeVisible()
+    await page.getByRole('button', { name: 'Create account', exact: true }).click()
 
-    await page.getByRole('button', { name: /Create account/ }).click()
-    await expect(page.getByRole('heading', { name: 'Create your HiStreets account' })).toBeVisible()
-    await expect(page.getByLabel('Password', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Create your account' })).toBeVisible()
+    await expect(page.getByText('New to HiStreets? Enter your email and choose a password.')).toBeVisible()
+    await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('placeholder', '12 or more characters')
     await expect(page.getByLabel('Confirm password', { exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Create business account/ })).toBeVisible()
+    await expect(page.getByText(/Use 12 or more characters/)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Create account', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Back to sign in' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Back to sign in' }).click()
+    await expect(page.getByRole('heading', { name: 'Sign in to HiStreets', exact: true })).toBeVisible()
+    await expect(page.getByText(/one-time email link/)).toBeVisible()
   })
 
   test('business shell scrolls fully above the fixed navigation without a visible scrollbar rail', async ({ page }) => {

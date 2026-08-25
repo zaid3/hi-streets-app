@@ -5,7 +5,7 @@ test.describe('advertised resident feature surfaces', () => {
     const routes = [
       ['/map', /Use your location\?|Search/],
       ['/offers', /Offers near you/],
-      ['/jobs', /Jobs near you/],
+      ['/jobs', /Jobs in Newham/],
       ['/community', /Community/],
       ['/parking', /Coming Soon|Parking/],
       ['/business', /Sign in to HiStreets/],

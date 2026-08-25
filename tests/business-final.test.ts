@@ -80,3 +80,14 @@ test('final business CSS preserves user zoom and mobile-safe input sizing', asyn
   assert.doesNotMatch(html, /user-scalable=no/)
   assert.doesNotMatch(html, /maximum-scale=1/)
 })
+
+test('Business owns vertical scrolling and keeps content clear of fixed navigation', async () => {
+  const css = await read('src/business-scroll-fix.css')
+  const main = await read('src/main.tsx')
+  assert.match(main, /import '\.\/business-scroll-fix\.css'/)
+  assert.match(css, /profile-screen\.business-shell/)
+  assert.match(css, /overflow-y:auto!important/)
+  assert.match(css, /overflow-x:hidden!important/)
+  assert.match(css, /padding-bottom:calc\(168px \+ env\(safe-area-inset-bottom\)\)!important/)
+  assert.match(css, /scroll-padding-bottom:calc\(168px \+ env\(safe-area-inset-bottom\)\)/)
+})

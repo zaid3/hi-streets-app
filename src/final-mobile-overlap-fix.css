@@ -1,6 +1,6 @@
 /* Final mobile auth contract.
-   On phones, authentication is a focused flow: a compact HiStreets identity bar,
-   the full sign-in card, and no fixed app navigation covering form content. */
+   Phones use a compact HiStreets identity bar and a protected scroll area so
+   the fixed six-tab navigation never prevents access to auth actions. */
 @media(max-width:759px){
   .profile-screen.business-shell.auth-screen{
     display:grid!important;
@@ -11,8 +11,8 @@
     padding-top:18px!important;
     padding-left:14px!important;
     padding-right:14px!important;
-    padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
-    scroll-padding-bottom:calc(48px + env(safe-area-inset-bottom))!important;
+    padding-bottom:calc(220px + env(safe-area-inset-bottom))!important;
+    scroll-padding-bottom:calc(220px + env(safe-area-inset-bottom))!important;
   }
 
   .auth-screen .auth-brand-panel{
@@ -41,8 +41,8 @@
     white-space:nowrap!important;
   }
 
-  /* Desktop carries the full editorial hero. Mobile keeps only the brand identity;
-     all explanatory copy lives in the white authentication card where it cannot clip. */
+  /* Desktop carries the full editorial hero. Mobile keeps only the identity;
+     explanatory copy stays inside the white card where it cannot clip. */
   .auth-screen .portal-mark,
   .auth-screen .auth-brand-panel h1,
   .auth-screen .auth-brand-panel .auth-hero-title,
@@ -59,12 +59,6 @@
     transform:none!important;
     inset:auto!important;
   }
-
-  /* Authentication is a focused mobile task. Hiding the fixed six-tab navigation
-     prevents it from covering Create account, recovery actions or legal links. */
-  .app-shell:has(.auth-screen) .bottom-tabs{
-    display:none!important;
-  }
 }
 
 @media(max-width:420px){
@@ -72,6 +66,8 @@
     padding-top:14px!important;
     padding-left:12px!important;
     padding-right:12px!important;
+    padding-bottom:calc(210px + env(safe-area-inset-bottom))!important;
+    scroll-padding-bottom:calc(210px + env(safe-area-inset-bottom))!important;
   }
   .auth-screen .auth-brand-panel{
     min-height:76px!important;

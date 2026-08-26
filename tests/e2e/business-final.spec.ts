@@ -46,13 +46,15 @@ test.describe('HiStreets final business access', () => {
     await expect(page.getByText(/one-time email link/)).toBeVisible()
   })
 
-  test('business shell scrolls safely and fixed navigation never covers auth content', async ({ page }) => {
+  test('business auth can scroll fully clear of the fixed navigation', async ({ page }) => {
     await page.goto('/business')
     const shell = page.locator('.business-shell')
     const tabs = page.locator('.bottom-tabs')
+    const links = page.locator('.project-links')
     await expect(shell).toBeVisible()
+    await expect(tabs).toBeVisible()
 
-    const viewport = page.viewportSize()
+    const navHeight = await tabs.evaluate(el => el.getBoundingClientRect().height)
     const style = await shell.evaluate(el => {
       const css = getComputedStyle(el)
       return {
@@ -63,35 +65,16 @@ test.describe('HiStreets final business access', () => {
       }
     })
     expect(style.overflowY).toBe('auto')
+    expect(style.paddingBottom).toBeGreaterThan(navHeight + 70)
+    expect(style.scrollPaddingBottom).toBeGreaterThan(navHeight + 70)
     expect(style.scrollbarWidth).toBe('none')
 
-    if ((viewport?.width || 0) <= 759) {
-      await expect(tabs).toBeHidden()
-      await shell.evaluate(el => { (el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight })
-      const links = page.locator('.project-links')
-      await expect(links).toBeVisible()
-      const linksBox = await links.boundingBox()
-      expect(linksBox).not.toBeNull()
-      expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual((viewport?.height || 0) + 1)
-      return
-    }
-
-    await expect(tabs).toBeVisible()
-    const navHeight = await tabs.evaluate(el => el.getBoundingClientRect().height)
-    expect(style.paddingBottom).toBeGreaterThan(navHeight + 40)
-    expect(style.scrollPaddingBottom).toBeGreaterThan(navHeight + 40)
-
-    await shell.evaluate(el => {
-      const probe = document.createElement('div')
-      probe.setAttribute('data-scroll-probe', 'true')
-      probe.style.height = '900px'
-      probe.style.minHeight = '900px'
-      ;(el as HTMLElement).appendChild(probe)
-      ;(el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight
-    })
-
-    const probeBottom = await page.locator('[data-scroll-probe="true"]').evaluate(el => el.getBoundingClientRect().bottom)
-    const navTop = await tabs.evaluate(el => el.getBoundingClientRect().top)
-    expect(probeBottom).toBeLessThan(navTop - 24)
+    await shell.evaluate(el => { (el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight })
+    await page.waitForTimeout(80)
+    const linksBox = await links.boundingBox()
+    const navBox = await tabs.boundingBox()
+    expect(linksBox).not.toBeNull()
+    expect(navBox).not.toBeNull()
+    expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual(navBox!.y - 16)
   })
 })

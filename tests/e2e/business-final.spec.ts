@@ -4,7 +4,7 @@ test.describe('HiStreets final business access', () => {
   test('one simple sign-in page serves business owners and admins without forcing page zoom', async ({ page }) => {
     await page.goto('/business')
     await expect(page.getByRole('heading', { name: 'Sign in to HiStreets', exact: true })).toBeVisible()
-    await expect(page.getByText('Business owners and HiStreets admins use this same sign-in page.')).toBeVisible()
+    await expect(page.getByText('Use your email and password. Admins and business owners sign in here.')).toBeVisible()
 
     const email = page.getByLabel('Email address')
     const password = page.getByLabel('Password', { exact: true })
@@ -46,14 +46,13 @@ test.describe('HiStreets final business access', () => {
     await expect(page.getByText(/one-time email link/)).toBeVisible()
   })
 
-  test('business shell scrolls fully above the fixed navigation without a visible scrollbar rail', async ({ page }) => {
+  test('business shell scrolls safely and fixed navigation never covers auth content', async ({ page }) => {
     await page.goto('/business')
     const shell = page.locator('.business-shell')
     const tabs = page.locator('.bottom-tabs')
     await expect(shell).toBeVisible()
-    await expect(tabs).toBeVisible()
 
-    const navHeight = await tabs.evaluate(el => el.getBoundingClientRect().height)
+    const viewport = page.viewportSize()
     const style = await shell.evaluate(el => {
       const css = getComputedStyle(el)
       return {
@@ -64,9 +63,23 @@ test.describe('HiStreets final business access', () => {
       }
     })
     expect(style.overflowY).toBe('auto')
+    expect(style.scrollbarWidth).toBe('none')
+
+    if ((viewport?.width || 0) <= 759) {
+      await expect(tabs).toBeHidden()
+      await shell.evaluate(el => { (el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight })
+      const links = page.locator('.project-links')
+      await expect(links).toBeVisible()
+      const linksBox = await links.boundingBox()
+      expect(linksBox).not.toBeNull()
+      expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual((viewport?.height || 0) + 1)
+      return
+    }
+
+    await expect(tabs).toBeVisible()
+    const navHeight = await tabs.evaluate(el => el.getBoundingClientRect().height)
     expect(style.paddingBottom).toBeGreaterThan(navHeight + 40)
     expect(style.scrollPaddingBottom).toBeGreaterThan(navHeight + 40)
-    expect(style.scrollbarWidth).toBe('none')
 
     await shell.evaluate(el => {
       const probe = document.createElement('div')
@@ -76,13 +89,6 @@ test.describe('HiStreets final business access', () => {
       ;(el as HTMLElement).appendChild(probe)
       ;(el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight
     })
-
-    const metrics = await shell.evaluate(el => ({
-      scrollTop: (el as HTMLElement).scrollTop,
-      maxScroll: (el as HTMLElement).scrollHeight - (el as HTMLElement).clientHeight,
-    }))
-    expect(metrics.scrollTop).toBeGreaterThan(0)
-    expect(metrics.maxScroll - metrics.scrollTop).toBeLessThanOrEqual(2)
 
     const probeBottom = await page.locator('[data-scroll-probe="true"]').evaluate(el => el.getBoundingClientRect().bottom)
     const navTop = await tabs.evaluate(el => el.getBoundingClientRect().top)

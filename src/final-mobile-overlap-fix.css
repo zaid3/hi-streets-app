@@ -1,6 +1,6 @@
-/* Last-mile mobile layout guard for Business/Admin auth.
-   Keeps the website brand banner compact on phones and guarantees that the
-   authentication card never overlaps it, regardless of older cascade layers. */
+/* Final mobile auth contract.
+   Phones use a compact HiStreets identity bar and a protected scroll area so
+   the fixed six-tab navigation never prevents access to auth actions. */
 @media(max-width:759px){
   .profile-screen.business-shell.auth-screen{
     display:grid!important;
@@ -8,49 +8,47 @@
     align-content:start!important;
     align-items:stretch!important;
     gap:16px!important;
+    padding-top:18px!important;
+    padding-left:14px!important;
+    padding-right:14px!important;
+    padding-bottom:calc(220px + env(safe-area-inset-bottom))!important;
+    scroll-padding-bottom:calc(220px + env(safe-area-inset-bottom))!important;
   }
 
   .auth-screen .auth-brand-panel{
     position:relative!important;
     z-index:1!important;
-    display:grid!important;
-    align-content:start!important;
-    align-items:start!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
     width:100%!important;
-    min-height:92px!important;
-    height:auto!important;
+    min-height:82px!important;
+    height:82px!important;
     margin:0!important;
-    padding:16px 18px!important;
+    padding:14px 18px!important;
     overflow:hidden!important;
+    border-radius:24px!important;
   }
 
   .auth-screen .brand-wordmark{
     position:relative!important;
     z-index:2!important;
+    display:flex!important;
+    align-items:center!important;
     width:max-content!important;
     max-width:100%!important;
     margin:0!important;
+    white-space:nowrap!important;
   }
 
-  /* The full editorial hero remains on desktop. On a phone the sign-in card
-     handles the task, so the brand area becomes a compact identity + access note. */
+  /* Desktop carries the full editorial hero. Mobile keeps only the identity;
+     explanatory copy stays inside the white card where it cannot clip. */
   .auth-screen .portal-mark,
   .auth-screen .auth-brand-panel h1,
   .auth-screen .auth-brand-panel .auth-hero-title,
+  .auth-screen .auth-brand-panel>p,
   .auth-screen .auth-feature-row{
     display:none!important;
-  }
-
-  .auth-screen .auth-brand-panel>p{
-    display:block!important;
-    position:relative!important;
-    z-index:2!important;
-    max-width:560px!important;
-    margin:10px 0 0!important;
-    color:rgba(255,253,248,.82)!important;
-    font-size:12px!important;
-    line-height:1.4!important;
-    font-weight:650!important;
   }
 
   .auth-screen .auth-card-final{
@@ -64,8 +62,17 @@
 }
 
 @media(max-width:420px){
+  .profile-screen.business-shell.auth-screen{
+    padding-top:14px!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+    padding-bottom:calc(210px + env(safe-area-inset-bottom))!important;
+    scroll-padding-bottom:calc(210px + env(safe-area-inset-bottom))!important;
+  }
   .auth-screen .auth-brand-panel{
-    min-height:88px!important;
-    padding:14px 16px!important;
+    min-height:76px!important;
+    height:76px!important;
+    padding:12px 16px!important;
+    border-radius:22px!important;
   }
 }

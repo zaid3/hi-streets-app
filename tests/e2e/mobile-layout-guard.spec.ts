@@ -38,12 +38,13 @@ test.describe('mobile launch layout guard', () => {
     expect(cardBox!.y).toBeGreaterThanOrEqual(panelBox!.y + panelBox!.height + 12)
   })
 
-  test('the bottom of the business access page can scroll fully clear of fixed navigation', async ({ page }) => {
+  test('the bottom of mobile auth scrolls fully clear of fixed navigation', async ({ page }) => {
     await page.goto('/business')
     const shell = page.locator('.profile-screen.business-shell')
     const links = page.locator('.project-links')
     const nav = page.locator('.bottom-tabs')
 
+    await expect(nav).toBeVisible()
     await shell.evaluate(el => { (el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight })
     await page.waitForTimeout(80)
 
@@ -51,6 +52,6 @@ test.describe('mobile launch layout guard', () => {
     const navBox = await nav.boundingBox()
     expect(linksBox).not.toBeNull()
     expect(navBox).not.toBeNull()
-    expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual(navBox!.y - 12)
+    expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual(navBox!.y - 16)
   })
 })

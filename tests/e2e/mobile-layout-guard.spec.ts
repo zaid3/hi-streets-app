@@ -38,30 +38,20 @@ test.describe('mobile launch layout guard', () => {
     expect(cardBox!.y).toBeGreaterThanOrEqual(panelBox!.y + panelBox!.height + 12)
   })
 
-  test('mobile auth can scroll to every final action without fixed navigation covering it', async ({ page }) => {
+  test('the bottom of mobile auth scrolls fully clear of fixed navigation', async ({ page }) => {
     await page.goto('/business')
-    const viewport = page.viewportSize()
     const shell = page.locator('.profile-screen.business-shell')
     const links = page.locator('.project-links')
     const nav = page.locator('.bottom-tabs')
 
-    if ((viewport?.width || 0) <= 759) {
-      await expect(nav).toBeHidden()
-      await shell.evaluate(el => { (el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight })
-      await page.waitForTimeout(80)
-      const linksBox = await links.boundingBox()
-      expect(linksBox).not.toBeNull()
-      expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual((viewport?.height || 0) + 1)
-      return
-    }
-
     await expect(nav).toBeVisible()
     await shell.evaluate(el => { (el as HTMLElement).scrollTop = (el as HTMLElement).scrollHeight })
     await page.waitForTimeout(80)
+
     const linksBox = await links.boundingBox()
     const navBox = await nav.boundingBox()
     expect(linksBox).not.toBeNull()
     expect(navBox).not.toBeNull()
-    expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual(navBox!.y - 12)
+    expect(linksBox!.y + linksBox!.height).toBeLessThanOrEqual(navBox!.y - 16)
   })
 })

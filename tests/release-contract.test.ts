@@ -117,10 +117,12 @@ test('six navigation destinations remain on one mobile tab row', async () => {
   assert.match(polish, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/)
 })
 
-test('business portal returns magic links to the business route', async () => {
+test('business portal supports email OTP sign-in and keeps signup confirmation on the business route', async () => {
   const profile = await read('src/components/Profile.tsx')
   assert.match(profile, /emailRedirectTo:\s*`\$\{window\.location\.origin\}\/business`/)
   assert.match(profile, /signInWithOtp/)
+  assert.match(profile, /verifyOtp/)
+  assert.match(profile, /type:\s*'email'/)
   assert.match(profile, /signInWithPassword/)
 })
 

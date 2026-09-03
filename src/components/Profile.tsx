@@ -91,7 +91,7 @@ export default function Profile({ onPost }: Props) {
     if (!cleanEmail) return setMessage('Enter your email address first.')
     try {
       setWorking(true)
-      setMessage('Sending your six-digit sign-in code…')
+      setMessage('Sending your email sign-in code…')
       const { error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
         options: { shouldCreateUser: false },
@@ -99,7 +99,7 @@ export default function Profile({ onPost }: Props) {
       if (error) return setMessage('We could not send the sign-in code right now. Check the email or try your password.')
       setOtp('')
       setOtpRequested(true)
-      setMessage('If this email has a HiStreets account, a six-digit sign-in code is on its way.')
+      setMessage('If this email has a HiStreets account, a sign-in code is on its way.')
     } finally { setWorking(false) }
   }
 
@@ -108,7 +108,7 @@ export default function Profile({ onPost }: Props) {
     const cleanEmail = email.trim().toLowerCase()
     const cleanOtp = otp.trim()
     if (!cleanEmail) return setMessage('Enter your email address first.')
-    if (!/^\d{6}$/.test(cleanOtp)) return setMessage('Enter the six-digit code from your email.')
+    if (!/^\d{6,10}$/.test(cleanOtp)) return setMessage('Enter the numeric code from your email (6 to 10 digits).')
     try {
       setWorking(true)
       setMessage('Checking your sign-in code…')
@@ -259,10 +259,10 @@ export default function Profile({ onPost }: Props) {
 
           <div className="auth-divider" aria-hidden="true"><span>or</span></div>
           <button className="auth-secondary-link auth-email-link" type="button" onClick={() => void sendEmailCode()} disabled={working}><KeyRound size={16} /> {working ? 'Sending…' : otpRequested ? 'Send a new sign-in code' : 'Email me a sign-in code'}</button>
-          <p className="auth-simple-note">No password needed. We email a six-digit code to an existing HiStreets account.</p>
+          <p className="auth-simple-note">No password needed. We email a secure numeric code to an existing HiStreets account.</p>
 
           {otpRequested && <>
-            <label className="auth-field"><span>Six-digit sign-in code</span><input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="123456" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} onKeyDown={e => { if (e.key === 'Enter') void verifyEmailCode() }} /></label>
+            <label className="auth-field"><span>Email sign-in code</span><input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" maxLength={10} placeholder="Enter code" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 10))} onKeyDown={e => { if (e.key === 'Enter') void verifyEmailCode() }} /></label>
             <button className="auth-primary" type="button" onClick={() => void verifyEmailCode()} disabled={working}><span>{working ? 'Checking…' : 'Verify code and sign in'}</span><ArrowRight size={18} /></button>
           </>}
 

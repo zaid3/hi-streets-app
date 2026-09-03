@@ -43,7 +43,7 @@ test.describe('HiStreets final business access', () => {
 
     await page.getByRole('button', { name: 'Back to sign in' }).click()
     await expect(page.getByRole('heading', { name: 'Sign in to HiStreets', exact: true })).toBeVisible()
-    await expect(page.getByText(/six-digit code/)).toBeVisible()
+    await expect(page.getByText(/secure numeric code/)).toBeVisible()
   })
 
   test('business auth can scroll fully clear of the fixed navigation', async ({ page }) => {

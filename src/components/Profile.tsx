@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Building2, KeyRound, Link2, LockKeyhole, LogOut, ShieldCheck, Sparkles, UserPlus } from 'lucide-react'
+import { ArrowRight, Building2, KeyRound, LockKeyhole, LogOut, ShieldCheck, Sparkles, UserPlus } from 'lucide-react'
 import { getCurrentRole } from '../lib/data'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 import type { PostType, Role } from '../types'
@@ -41,6 +41,8 @@ function ProjectLinks() {
 export default function Profile({ onPost }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpRequested, setOtpRequested] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmNewPassword, setConfirmNewPassword] = useState('')
@@ -77,24 +79,44 @@ export default function Profile({ onPost }: Props) {
   function switchMode(next: LoginMode) {
     setMode(next)
     setPassword('')
+    setOtp('')
+    setOtpRequested(false)
     setConfirmPassword('')
     setMessage('')
   }
 
-  async function sendMagicLink() {
+  async function sendEmailCode() {
     if (!supabaseConfigured || !supabase) return setMessage('Secure sign-in is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail) return setMessage('Enter your email address first.')
     try {
       setWorking(true)
-      setMessage('Sending your secure sign-in link…')
+      setMessage('Sending your six-digit sign-in code…')
       const { error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
-        options: { emailRedirectTo: `${window.location.origin}/business`, shouldCreateUser: false },
+        options: { shouldCreateUser: false },
       })
-      setMessage(error
-        ? 'We could not send the sign-in link right now. Check the email or try your password.'
-        : 'If this email has a HiStreets account, a secure one-time sign-in link is on its way.')
+      if (error) return setMessage('We could not send the sign-in code right now. Check the email or try your password.')
+      setOtp('')
+      setOtpRequested(true)
+      setMessage('If this email has a HiStreets account, a six-digit sign-in code is on its way.')
+    } finally { setWorking(false) }
+  }
+
+  async function verifyEmailCode() {
+    if (!supabaseConfigured || !supabase) return setMessage('Secure sign-in is not available right now.')
+    const cleanEmail = email.trim().toLowerCase()
+    const cleanOtp = otp.trim()
+    if (!cleanEmail) return setMessage('Enter your email address first.')
+    if (!/^\d{6}$/.test(cleanOtp)) return setMessage('Enter the six-digit code from your email.')
+    try {
+      setWorking(true)
+      setMessage('Checking your sign-in code…')
+      const { error } = await supabase.auth.verifyOtp({ email: cleanEmail, token: cleanOtp, type: 'email' })
+      if (error) return setMessage('That code is incorrect or has expired. Request a new code and try again.')
+      setOtp('')
+      setOtpRequested(false)
+      setMessage('Signed in.')
     } finally { setWorking(false) }
   }
 
@@ -106,7 +128,7 @@ export default function Profile({ onPost }: Props) {
       setWorking(true)
       setMessage('Signing in…')
       const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
-      if (error) return setMessage('Email or password is incorrect. Try again, use Forgot password, or use the secure email link.')
+      if (error) return setMessage('Email or password is incorrect. Try again, use Forgot password, or use an email sign-in code.')
       setPassword('')
       setMessage('Signed in.')
     } finally { setWorking(false) }
@@ -236,8 +258,13 @@ export default function Profile({ onPost }: Props) {
           <button className="auth-text-action forgot-password-link" type="button" onClick={() => void sendPasswordReset()} disabled={working}>Forgot password?</button>
 
           <div className="auth-divider" aria-hidden="true"><span>or</span></div>
-          <button className="auth-secondary-link auth-email-link" type="button" onClick={() => void sendMagicLink()} disabled={working}><Link2 size={16} /> {working ? 'Sending…' : 'Email me a secure sign-in link'}</button>
-          <p className="auth-simple-note">No password needed for this option. It signs in an existing HiStreets account with a one-time email link.</p>
+          <button className="auth-secondary-link auth-email-link" type="button" onClick={() => void sendEmailCode()} disabled={working}><KeyRound size={16} /> {working ? 'Sending…' : otpRequested ? 'Send a new sign-in code' : 'Email me a sign-in code'}</button>
+          <p className="auth-simple-note">No password needed. We email a six-digit code to an existing HiStreets account.</p>
+
+          {otpRequested && <>
+            <label className="auth-field"><span>Six-digit sign-in code</span><input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="123456" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} onKeyDown={e => { if (e.key === 'Enter') void verifyEmailCode() }} /></label>
+            <button className="auth-primary" type="button" onClick={() => void verifyEmailCode()} disabled={working}><span>{working ? 'Checking…' : 'Verify code and sign in'}</span><ArrowRight size={18} /></button>
+          </>}
 
           <div className="auth-account-switch"><span>New to HiStreets?</span><button type="button" onClick={() => switchMode('signup')}>Create account</button></div>
         </> : <>

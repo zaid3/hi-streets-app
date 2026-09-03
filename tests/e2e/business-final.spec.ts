@@ -15,7 +15,7 @@ test.describe('HiStreets final business access', () => {
 
     await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Forgot password?' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Email me a secure sign-in link/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /Email me a sign-in code/ })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Create account', exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Open source on GitHub' })).toHaveAttribute('href', 'https://github.com/zaid3/hi-streets-app')
     await expect(page.getByRole('link', { name: 'HiStreets website' })).toHaveAttribute('href', 'https://histreets.uk/')
@@ -43,7 +43,7 @@ test.describe('HiStreets final business access', () => {
 
     await page.getByRole('button', { name: 'Back to sign in' }).click()
     await expect(page.getByRole('heading', { name: 'Sign in to HiStreets', exact: true })).toBeVisible()
-    await expect(page.getByText(/one-time email link/)).toBeVisible()
+    await expect(page.getByText(/six-digit code/)).toBeVisible()
   })
 
   test('business auth can scroll fully clear of the fixed navigation', async ({ page }) => {

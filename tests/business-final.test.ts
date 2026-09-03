@@ -6,9 +6,11 @@ async function read(path: string) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 }
 
-test('business access uses one simple account flow with explicit signup and password recovery', async () => {
+test('business access uses one simple account flow with email OTP, explicit signup and password recovery', async () => {
   const profile = await read('src/components/Profile.tsx')
   assert.match(profile, /signInWithOtp/)
+  assert.match(profile, /verifyOtp/)
+  assert.match(profile, /Six-digit sign-in code/)
   assert.match(profile, /shouldCreateUser: false/)
   assert.match(profile, /emailRedirectTo: `\$\{window\.location\.origin\}\/business`/)
   assert.match(profile, /signInWithPassword/)

@@ -113,7 +113,7 @@ HiStreets keeps the account experience intentionally simple:
 - **New user:** Create account → email + password → confirm email when required.
 - **Returning user:** Sign in → email + password.
 - **Forgot password:** request a secure reset email and choose a new password.
-- **Optional passwordless sign-in:** an existing account can request a one-time secure email link.
+- **Optional passwordless sign-in:** an existing account can request and enter a six-digit email code.
 - **Admins:** use the same sign-in page; the authorised role determines the admin workspace after authentication.
 
 The frontend currently requires **12 or more characters** when creating or resetting a password. Supabase Auth handles password authentication and sessions.

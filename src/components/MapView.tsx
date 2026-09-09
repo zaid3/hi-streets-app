@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import type { Map as MapLibre } from 'maplibre-gl'
+import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { CircleAlert, LocateFixed, Search, Store } from 'lucide-react'
 import { fetchBusinessById, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson } from '../lib/data'
 import { getReliableUserPosition, locationErrorMessage } from '../lib/geolocation'
@@ -21,6 +22,8 @@ type LayerFilter = 'all' | 'food' | 'grocery' | 'shops' | 'beauty' | 'health' | 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 type BusinessPostKinds = Record<string, { offer: boolean; job: boolean; community: boolean }>
 type CategoryInfo = { group: string; marker: string; label: string; icon: string; aliases: string }
+
+maplibregl.setWorkerUrl(mapWorkerUrl)
 
 type RawMapImage = { width: number; height: number; data: Uint8ClampedArray }
 
@@ -483,6 +486,11 @@ export default function MapView({ posts }: { posts: Post[] }) {
     if (!nodeRef.current || mapRef.current) return
     let map: MapLibre
     try {
+      // MapLibre 6 reports missing WebGL through an event during construction,
+      // before listeners can attach. Detect it before constructing a partial map.
+      const probe = document.createElement('canvas').getContext('webgl2')
+      if (!probe) throw new Error('WebGL2 is unavailable')
+      probe.getExtension('WEBGL_lose_context')?.loseContext()
       map = new maplibregl.Map({
         container: nodeRef.current,
         style: MAP_STYLE_URL,

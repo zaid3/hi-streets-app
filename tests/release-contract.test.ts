@@ -110,11 +110,12 @@ test('database boundary support is service-role controlled and registration fail
   assert.match(readme, /npm run seed:boundary/)
 })
 
-test('six navigation destinations remain on one mobile tab row', async () => {
+test('five primary navigation destinations remain on one mobile tab row', async () => {
   const tabs = await read('src/components/BottomTabs.tsx')
-  const polish = await read('src/release-polish.css')
-  assert.equal((tabs.match(/key:\s*'/g) || []).length, 6)
-  assert.match(polish, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/)
+  const upgrades = await read('src/reliability-upgrades.css')
+  assert.equal((tabs.match(/key:\s*'/g) || []).length, 5)
+  assert.doesNotMatch(tabs, /key:\s*'parking'/)
+  assert.match(upgrades, /grid-template-columns:\s*repeat\(5,minmax\(0,1fr\)\)/)
 })
 
 test('business portal supports email OTP sign-in and keeps signup confirmation on the business route', async () => {
@@ -126,15 +127,18 @@ test('business portal supports email OTP sign-in and keeps signup confirmation o
   assert.match(profile, /signInWithPassword/)
 })
 
-test('job applications require private CV flow and clean up failed uploads', async () => {
+test('job applications keep CVs private, allow owner-configured optional CVs and clean up failed uploads', async () => {
   const data = await read('src/lib/data.ts')
   const feeds = await read('src/components/Feeds.tsx')
+  const migration = await read('supabase/migrations/20260908194533_add_structured_posts_and_business_assets.sql')
   assert.match(data, /storage\.from\('job-cvs'\)\.createSignedUrl/)
-  assert.match(data, /CV is required/)
   assert.match(data, /10 \* 1024 \* 1024/)
   assert.match(data, /storage\.from\('job-cvs'\)\.remove\(\[path\]\)/)
-  assert.match(feeds, /CV is mandatory/)
+  assert.match(feeds, /post\.details\?\.cv_required !== false/)
+  assert.match(feeds, /CV required/)
+  assert.match(feeds, /CV optional/)
   assert.match(feeds, /\.pdf.*\.doc.*\.docx/)
+  assert.match(migration, /coalesce\(\(v_post\.details->>'cv_required'\)::boolean,true\)/)
 })
 
 test('service worker has a navigation-safe offline fallback and caches install icons', async () => {

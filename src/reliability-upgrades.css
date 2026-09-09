@@ -1,0 +1,23 @@
+.bottom-tabs{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+.global-error{position:fixed;z-index:950;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(440px,calc(100% - 24px));background:#fff2ee;color:#8d2e1e;border:1px solid #efb8ad;border-radius:14px;padding:11px 14px;font-weight:800;box-shadow:0 10px 30px #0002}
+.status-pill.unclaimed{background:#fff7e7;color:#7b5612;border-color:#efd79b}
+.business-description{display:block!important;background:#f7fbfa;border:1px solid #d8e7e5!important;border-radius:14px;padding:12px!important;color:#344b48;font-weight:700!important}
+.claim-listing-action{display:grid;gap:5px;margin:14px 0;padding:14px;border:1px solid #efd79b;border-radius:16px;background:#fff8e8}
+.claim-listing-action span{font-size:13px;color:#5d574e;font-weight:750}
+.claim-listing-action a{justify-content:center;margin-top:5px}
+.map-fallback{position:absolute;z-index:15;inset:0;padding:148px 14px 105px;background:var(--bg);overflow:auto}
+.map-fallback>header{display:flex;gap:10px;align-items:flex-start;background:#fff8e8;border:1px solid #efd79b;border-radius:18px;padding:14px}
+.map-fallback h1{font-size:20px;margin:0 0 4px}
+.map-fallback p{margin:0;color:#5d574e;font-size:13px;font-weight:750;line-height:1.4}
+.map-fallback-list{display:grid;gap:8px;margin-top:10px}
+.map-fallback-list>button{display:flex;align-items:center;text-align:left;gap:10px;width:100%;min-height:58px;background:#fff;border:1px solid var(--line);padding:10px 12px}
+.map-fallback-list>button>svg{color:var(--teal);flex:0 0 auto}
+.map-fallback-list span{display:grid;gap:3px;min-width:0}
+.map-fallback-list strong,.map-fallback-list small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-fallback-list small{color:#69635a}
+.map-fallback-empty{display:grid;gap:4px;padding:18px;border:1px dashed var(--line);border-radius:16px;background:#fff}
+.structured-fields{border:1px solid #d8e7e5;border-radius:18px;background:#f7fbfa;padding:12px 14px;margin:14px 0}
+.structured-fields h3{margin:0;color:var(--teal)}
+.post-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.post-actions button,.post-actions a{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;border-radius:13px;padding:9px 12px;background:#eef5f4;color:var(--teal);font-weight:900;text-decoration:none}
+.post-actions button{margin:0!important}

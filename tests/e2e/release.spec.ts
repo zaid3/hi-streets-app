@@ -75,7 +75,7 @@ test.describe('HiStreets final mobile release', () => {
     expect(box).not.toBeNull()
     expect(box!.x).toBeGreaterThanOrEqual(0)
     expect(box!.width).toBeLessThanOrEqual((await page.viewportSize())!.width + 1)
-    await expect(dialog).toContainText(/AI unavailable|Understanding your need|verified HiStreets/i)
+    await expect(dialog).toContainText(/Understanding your need|real HiStreets|couldn't find/i)
   })
 
   test('natural language jobs search opens the jobs feed', async ({ page }) => {
@@ -154,10 +154,10 @@ test.describe('HiStreets final mobile release', () => {
     await expect(page.getByRole('status')).toContainText('No matching business found yet')
   })
 
-  test('all six bottom navigation destinations stay on one row', async ({ page }) => {
+  test('all five primary navigation destinations stay on one row', async ({ page }) => {
     await page.goto('/map')
     const buttons = page.locator('.bottom-tabs button')
-    await expect(buttons).toHaveCount(6)
+    await expect(buttons).toHaveCount(5)
     const tops = await buttons.evaluateAll(nodes => nodes.map(node => Math.round(node.getBoundingClientRect().top)))
     expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(2)
   })

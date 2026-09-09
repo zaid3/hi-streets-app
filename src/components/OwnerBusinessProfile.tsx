@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Save, Store } from 'lucide-react'
-import { loadMyVerifiedBusinesses, saveMyBusinessProfile } from '../lib/data'
+import { Camera, Save, Store } from 'lucide-react'
+import { loadMyVerifiedBusinesses, saveMyBusinessProfile, uploadBusinessProfilePhoto } from '../lib/data'
+import { businessCategoryOptions } from '../lib/businessCategories'
 import type { Business } from '../types'
 
 function text(value?: string | null) {
@@ -24,6 +25,7 @@ export default function OwnerBusinessProfile() {
   const [businessId, setBusinessId] = useState('')
   const [status, setStatus] = useState('Loading verified businesses…')
   const [saving, setSaving] = useState(false)
+  const [photo, setPhoto] = useState<File | null>(null)
   const [form, setForm] = useState({
     name: '',
     category: '',
@@ -85,9 +87,11 @@ export default function OwnerBusinessProfile() {
     try {
       setSaving(true)
       setStatus('Saving business profile…')
-      const updated = await saveMyBusinessProfile({ business_id: businessId, ...form })
+      const photoUrl = photo ? await uploadBusinessProfilePhoto(businessId, photo) : form.photo_url
+      const updated = await saveMyBusinessProfile({ business_id: businessId, ...form, photo_url: photoUrl })
       setBusinesses(prev => prev.map(b => b.id === updated.id ? { ...b, ...updated } : b))
       fillForm(updated)
+      setPhoto(null)
       setStatus('Business profile saved.')
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Could not save business profile')
@@ -120,7 +124,9 @@ export default function OwnerBusinessProfile() {
         </label>
 
         <label>Category
-          <input value={form.category} onChange={e => update('category', e.target.value)} placeholder="restaurant, grocery, salon, repair, charity…" maxLength={80} />
+          <select value={form.category} onChange={e => update('category', e.target.value)}>
+            {businessCategoryOptions(form.category).map(category => <option key={category} value={category}>{category}</option>)}
+          </select>
         </label>
 
         <label>Description
@@ -140,7 +146,7 @@ export default function OwnerBusinessProfile() {
         </label>
 
         <label>WhatsApp
-          <input value={form.whatsapp} onChange={e => update('whatsapp', e.target.value)} placeholder="WhatsApp number or wa.me link" maxLength={120} />
+          <input value={form.whatsapp} onChange={e => update('whatsapp', e.target.value)} placeholder="Business WhatsApp number" maxLength={50} inputMode="tel" autoComplete="tel" />
         </label>
 
         <label>Email
@@ -148,11 +154,12 @@ export default function OwnerBusinessProfile() {
         </label>
 
         <label>Opening hours
-          <input value={form.opening_hours} onChange={e => update('opening_hours', e.target.value)} placeholder="Mon–Sat 9am–6pm" maxLength={160} />
+          <textarea value={form.opening_hours} onChange={e => update('opening_hours', e.target.value)} placeholder={'Mon–Fri 9am–6pm\nSat 10am–4pm\nSun closed'} maxLength={240} />
         </label>
 
-        <label>Photo or logo URL
-          <input value={form.photo_url} onChange={e => update('photo_url', e.target.value)} placeholder="https://…" maxLength={500} />
+        <label><span><Camera size={16} /> Business photo or logo</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" onChange={e => setPhoto(e.target.files?.[0] || null)} />
+          <small>JPG, PNG or WEBP, maximum 5MB. This image will be public.</small>
         </label>
 
         <button onClick={save} disabled={saving}><Save size={17} /> {saving ? 'Saving…' : 'Save business profile'}</button>

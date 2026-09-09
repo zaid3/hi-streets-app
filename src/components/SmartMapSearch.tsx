@@ -213,11 +213,11 @@ export default function SmartMapSearch({ onNavigate }: Props) {
 
       {open && (
         <div className="smart-search-panel" id="smart-search-list" role="listbox" aria-label={query.trim() ? 'Smart search suggestions' : 'Popular searches'}>
-          <div className="smart-search-panel-head"><Sparkles size={14} /><span>{query.trim() ? 'Smart suggestions' : 'Explore Newham'}</span><small>Verified local data</small></div>
+          <div className="smart-search-panel-head"><Sparkles size={14} /><span>{query.trim() ? 'Smart suggestions' : 'Explore Newham'}</span><small>Real local data</small></div>
           {query.trim().length >= 3 && (
             <button type="button" className="ask-histreets-option" onMouseDown={event => event.preventDefault()} onClick={() => void runAi()}>
               <span className="smart-search-option-icon ai"><Bot size={19} /></span>
-              <span className="smart-search-option-copy"><strong>Ask HiStreets AI</strong><small>Understand my need and find verified local actions</small></span>
+              <span className="smart-search-option-copy"><strong>Ask HiStreets AI</strong><small>Understand my need and find real local actions</small></span>
             </button>
           )}
           <div className="smart-search-options">
@@ -248,17 +248,17 @@ export default function SmartMapSearch({ onNavigate }: Props) {
             <div className="ask-ai-handle" />
             <header className="ask-ai-header">
               <span className="ask-ai-mark"><Bot size={20} /></span>
-              <div><small>Verified local intelligence</small><h2 id="ask-ai-title">Ask HiStreets</h2></div>
+              <div><small>Local intelligence</small><h2 id="ask-ai-title">Ask HiStreets</h2></div>
               <button type="button" aria-label="Close Ask HiStreets" onClick={() => setAiOpen(false)}><X size={20} /></button>
             </header>
             <div className="ask-ai-question">“{query.trim()}”</div>
-            {aiLoading && <div className="ask-ai-loading"><Sparkles size={20} /><strong>Understanding your need…</strong><span>Checking verified HiStreets businesses and live local posts.</span></div>}
+            {aiLoading && <div className="ask-ai-loading"><Sparkles size={20} /><strong>Understanding your need…</strong><span>Checking HiStreets business listings and live local posts.</span></div>}
             {aiError && <div className="ask-ai-error" role="status"><strong>AI unavailable</strong><span>{aiError}</span><button type="button" onClick={() => void runAi()}>Try again</button></div>}
             {aiResult && <>
               <div className="ask-ai-answer"><Sparkles size={18} /><p>{aiResult.answer}</p></div>
               {aiResult.posts.length > 0 && <div className="ask-ai-results"><h3>Live local actions</h3>{aiResult.posts.slice(0, 5).map(post => <button key={post.id} type="button" onClick={() => { setAiOpen(false); onNavigate(tabForPostType(post.type)) }}><span>{post.type === 'job' ? <BriefcaseBusiness size={18} /> : post.type === 'offer' ? <Tag size={18} /> : <Sparkles size={18} />}</span><div><strong>{post.title}</strong><small>{post.business?.name || post.category || 'HiStreets'}</small></div></button>)}</div>}
-              {aiResult.businesses.length > 0 && <div className="ask-ai-results"><h3>Approved businesses</h3>{aiResult.businesses.slice(0, 4).map(business => <button key={business.id} type="button" onClick={() => { setAiOpen(false); setQuery(business.name); runMapQuery(business.name) }}><span><Store size={18} /></span><div><strong>{business.name}</strong><small>{business.category || business.address || 'Newham business'}</small></div></button>)}</div>}
-              <p className="ask-ai-trust">AI interprets your request. Results come from verified HiStreets data; it does not invent local listings.</p>
+              {aiResult.businesses.length > 0 && <div className="ask-ai-results"><h3>Local business listings</h3>{aiResult.businesses.slice(0, 4).map(business => <button key={business.id} type="button" onClick={() => { setAiOpen(false); setQuery(business.name); runMapQuery(business.name) }}><span><Store size={18} /></span><div><strong>{business.name}</strong><small>{business.verification_status === 'verified' ? 'Verified business' : business.category || business.address || 'Unclaimed listing'}</small></div></button>)}</div>}
+              <p className="ask-ai-trust">AI interprets your request. Results come only from HiStreets data, and verification status is shown separately. It does not invent local listings.</p>
             </>}
           </section>
         </div>

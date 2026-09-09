@@ -25,10 +25,12 @@ test('Gemini secret stays server-side and frontend uses only the HiStreets funct
 test('resident AI can only return database-backed local results and has a no-invention fallback', async () => {
   const edge = await read('supabase/functions/histreets-ai/index.ts')
   const search = await read('src/components/SmartMapSearch.tsx')
-  assert.match(edge, /from\("businesses_public"\)/)
-  assert.match(edge, /from\("posts_public"\)/)
+  assert.match(edge, /from\("businesses"\)/)
+  assert.match(edge, /in\("verification_status",\["unclaimed","verified"\]\)/)
+  assert.match(edge, /from\("posts"\)/)
+  assert.match(edge, /eq\("status","live"\)/)
   assert.match(edge, /I won't invent a local listing/)
-  assert.match(search, /Results come from verified HiStreets data/)
+  assert.match(search, /Results come only from HiStreets data/)
   assert.match(search, /Ask HiStreets AI/)
 })
 

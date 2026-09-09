@@ -35,16 +35,15 @@ test.describe('resident tabs launch behaviour', () => {
     })
   }
 
-  test('all six primary tabs navigate without a page reload contract break', async ({ page }) => {
+  test('all five primary tabs navigate without a page reload contract break', async ({ page }) => {
     await page.goto('/map')
     const tabs = page.locator('.bottom-tabs')
-    await expect(tabs.locator('button')).toHaveCount(6)
+    await expect(tabs.locator('button')).toHaveCount(5)
 
     const routes = [
       ['Offers', '/offers'],
       ['Jobs', '/jobs'],
       ['Community', '/community'],
-      ['Parking', '/parking'],
       ['Business', '/business'],
       ['Map', '/map'],
     ] as const

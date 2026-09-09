@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build",
     "test": "npm run test:unit",
-    "test:unit": "tsx --test tests/*.test.ts",
+    "test:unit": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
     "check": "npm run test:unit && npm run build",
     "start": "vite preview --host 0.0.0.0 --port ${PORT:-3000}",

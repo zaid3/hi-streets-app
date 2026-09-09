@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibre } from 'maplibre-gl'
-import { LocateFixed, Search } from 'lucide-react'
+import { CircleAlert, LocateFixed, Search, Store } from 'lucide-react'
 import { fetchBusinessById, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson } from '../lib/data'
 import { getReliableUserPosition, locationErrorMessage } from '../lib/geolocation'
 import { MAP_STYLE_URL, NEWHAM_BOUNDS, NEWHAM_CENTER } from '../lib/newham'
@@ -297,6 +297,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [appliedSearch, setAppliedSearch] = useState('')
   const [mapReady, setMapReady] = useState(false)
+  const [mapUnavailable, setMapUnavailable] = useState(false)
   const [userPoint, setUserPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [locationStatus, setLocationStatus] = useState('')
   const [locationPromptOpen, setLocationPromptOpen] = useState(() => !locationPromptWasSeen())
@@ -329,14 +330,23 @@ export default function MapView({ posts }: { posts: Post[] }) {
     event.preventDefault()
     const map = mapRef.current
     const query = searchTerm.trim()
-    if (!map || searching) return
+    if (searching) return
 
     if (!query) {
       setAppliedSearch('')
       const reset = filteredBusinessGeoJson(enrichedBusinesses, filter, '')
       applyMapData(reset, userPoint)
-      setLocationStatus('Showing Newham map.')
-      map.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 12, duration: 400 })
+      setLocationStatus(map ? 'Showing Newham map.' : 'Showing all available Newham listings.')
+      map?.fitBounds([[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]], { padding: 12, duration: 400 })
+      return
+    }
+
+    if (!map) {
+      const matches = filteredBusinessGeoJson(enrichedBusinesses, filter, query)
+      setAppliedSearch(query)
+      setLocationStatus(matches.features.length
+        ? `${matches.features.length} listing${matches.features.length === 1 ? '' : 's'} found.`
+        : 'No matching business found yet. Try a business name, category, street or postcode.')
       return
     }
 
@@ -470,16 +480,25 @@ export default function MapView({ posts }: { posts: Post[] }) {
 
   useEffect(() => {
     if (!nodeRef.current || mapRef.current) return
-    const map = new maplibregl.Map({
-      container: nodeRef.current,
-      style: MAP_STYLE_URL,
-      center: [NEWHAM_CENTER.lng, NEWHAM_CENTER.lat],
-      zoom: 12.7,
-      minZoom: 12.1,
-      maxZoom: 19,
-      maxBounds: [[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]],
-      attributionControl: { compact: true },
-    })
+    let map: MapLibre
+    try {
+      map = new maplibregl.Map({
+        container: nodeRef.current,
+        style: MAP_STYLE_URL,
+        center: [NEWHAM_CENTER.lng, NEWHAM_CENTER.lat],
+        zoom: 12.7,
+        minZoom: 12.1,
+        maxZoom: 19,
+        maxBounds: [[NEWHAM_BOUNDS.west, NEWHAM_BOUNDS.south], [NEWHAM_BOUNDS.east, NEWHAM_BOUNDS.north]],
+        attributionControl: { compact: true },
+      })
+    } catch (error) {
+      console.warn('HiStreets map is unavailable; using the directory fallback.', error)
+      setMapUnavailable(true)
+      setLocationPromptOpen(false)
+      setLocationStatus('Interactive map unavailable on this device. Showing the business directory instead.')
+      return
+    }
     mapRef.current = map
 
     map.on('load', async () => {
@@ -535,7 +554,9 @@ export default function MapView({ posts }: { posts: Post[] }) {
         })
       } catch (error) {
         console.error('HiStreets map initialisation failed', error)
-        setLocationStatus('The map could not finish loading. Refresh the page or check your connection.')
+        setMapUnavailable(true)
+        setLocationPromptOpen(false)
+        setLocationStatus('The map could not finish loading. Showing the business directory instead.')
       }
     })
 
@@ -563,11 +584,22 @@ export default function MapView({ posts }: { posts: Post[] }) {
         </select>
         <button type="button" className={filter === 'community' ? 'quick-filter active' : 'quick-filter'} onClick={() => setFilter(filter === 'community' ? 'all' : 'community')}>Free meals</button>
       </div>
-      <button type="button" className="locate-button" onClick={requestUserLocation} aria-label="Use my location" disabled={locating}><LocateFixed size={17} /> {locating ? 'Finding…' : 'Near me'}</button>
+      {!mapUnavailable && <button type="button" className="locate-button" onClick={requestUserLocation} aria-label="Use my location" disabled={locating}><LocateFixed size={17} /> {locating ? 'Finding…' : 'Near me'}</button>}
       {locationStatus && <div className="location-status" role="status" aria-live="polite">{locationStatus}</div>}
-      <div ref={nodeRef} className="map-canvas" />
-      {locationPromptOpen && !userPoint && <div className="location-gate" role="dialog" aria-modal="true" aria-labelledby="location-gate-title"><div><h2 id="location-gate-title">Use your location?</h2><p>HiStreets works best when you share location, so we can show nearby offers, jobs, free meals and local businesses in Newham.</p><button type="button" onClick={requestUserLocation} disabled={locating}><LocateFixed size={17} /> {locating ? 'Finding your location…' : 'Show what is near me'}</button><button type="button" className="secondary" onClick={dismissLocationPrompt}>Use Newham map for now</button></div></div>}
-      {selected && <div className="bottom-sheet"><button type="button" className="sheet-close" onClick={() => setSelected(null)} aria-label="Close business details">×</button><BusinessDetailSheet business={selected} posts={posts.filter(p => p.business_id === selected.id)} /></div>}
+      <div ref={nodeRef} className="map-canvas" aria-hidden={mapUnavailable} />
+      {mapUnavailable && <section className="map-fallback" aria-labelledby="map-fallback-title">
+        <header><CircleAlert size={22} /><div><h1 id="map-fallback-title">Explore Newham businesses</h1><p>The interactive map is not supported on this device, but every available listing remains searchable.</p></div></header>
+        <div className="map-fallback-list">
+          {visibleBusinesses.features.slice(0, 80).map((feature: any) => {
+            const props = feature.properties || {}
+            const id = String(props.id || feature.id || '')
+            return <button type="button" key={id} onClick={() => void openBusinessById(id, featureCoords(feature))}><Store size={18} /><span><strong>{String(props.name || 'Newham business')}</strong><small>{String(props.category_label || props.category || props.address || 'Local business')}</small></span></button>
+          })}
+          {visibleBusinesses.features.length === 0 && <div className="map-fallback-empty"><strong>No matching listings</strong><span>Try a broader business name, category, street or postcode.</span></div>}
+        </div>
+      </section>}
+      {locationPromptOpen && !userPoint && !mapUnavailable && <div className="location-gate" role="dialog" aria-modal="true" aria-labelledby="location-gate-title"><div><h2 id="location-gate-title">Use your location?</h2><p>HiStreets works best when you share location, so we can show nearby offers, jobs, free meals and local businesses in Newham.</p><button type="button" onClick={requestUserLocation} disabled={locating}><LocateFixed size={17} /> {locating ? 'Finding your location…' : 'Show what is near me'}</button><button type="button" className="secondary" onClick={dismissLocationPrompt}>Use Newham map for now</button></div></div>}
+      {selected && <div className="bottom-sheet" role="dialog" aria-modal="true" aria-label={`${selected.name} business details`}><button type="button" className="sheet-close" onClick={() => setSelected(null)} aria-label="Close business details">×</button><BusinessDetailSheet business={selected} posts={posts.filter(p => p.business_id === selected.id)} /></div>}
     </section>
   )
 }

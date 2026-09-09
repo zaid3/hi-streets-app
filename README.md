@@ -63,7 +63,7 @@ A business can:
 - search for and claim an existing approved listing
 - register a new business when it is not already listed
 - submit private verification evidence
-- manage an approved business profile
+- manage a verified business profile
 - publish offers, jobs, free meals and community-support posts
 - use Business Copilot
 - view relevant job applications
@@ -161,7 +161,7 @@ Changes are developed through branches and pull requests. The release workflow c
 - route/navigation behaviour
 - scroll and fixed-navigation clearance
 
-The browser suite covers Map, Offers, Jobs, Community, Parking and Business navigation as well as core map/search/location/HiPulse/business-access behaviours.
+The browser suite covers the five primary destinations—Map, Offers, Jobs, Community and Business—plus the direct Parking coming-soon route and core map/search/location/HiPulse/business-access behaviours.
 
 ## Local development
 
@@ -227,9 +227,9 @@ Before a public release, verify at minimum:
 2. Newham postcode search accepts valid Newham postcodes and rejects non-Newham postcodes.
 3. Optional location works when approved and the app remains usable when location is denied.
 4. Offers, Jobs and Community remain scrollable without visible scrollbar rails or bottom-navigation overlap.
-5. All six bottom navigation destinations stay on one row across mobile Chromium, mobile WebKit and desktop.
+5. All five primary bottom-navigation destinations stay on one row across mobile Chromium, mobile WebKit and desktop; Parking remains available only as a direct coming-soon route.
 6. Create account, email confirmation, password sign-in, forgot-password and recovery work with real production email delivery.
-7. Existing-account secure email-link sign-in works without silently creating a new account.
+7. Existing-account secure email-code sign-in works without silently creating a new account, for the configured six- or eight-digit OTP length.
 8. Business claim and new-business registration correctly avoid duplicates.
 9. Verification evidence and CVs remain private.
 10. Admin/Super Admin access is role-protected after the same authentication page.

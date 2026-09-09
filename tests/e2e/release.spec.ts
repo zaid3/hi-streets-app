@@ -31,6 +31,23 @@ test.describe('HiStreets final mobile release', () => {
     permissions: ['geolocation'],
   })
 
+  test('browsers without WebGL can search the directory and navigate', async ({ page }) => {
+    await page.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext
+      HTMLCanvasElement.prototype.getContext = function (kind: string, ...args: any[]) {
+        if (kind === 'webgl' || kind === 'webgl2' || kind === 'experimental-webgl') return null
+        return original.call(this, kind as any, ...args)
+      } as typeof original
+    })
+    await page.goto('/map')
+    await expect(page.getByRole('heading', { name: 'Explore Newham businesses' })).toBeVisible()
+    await smartSearch(page).fill('zzzz-no-matching-listing')
+    await smartSearch(page).press('Enter')
+    await expect(page.getByText('No matching listings', { exact: true })).toBeVisible()
+    await page.getByRole('navigation').getByRole('button', { name: 'Jobs', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Jobs in Newham' })).toBeVisible()
+  })
+
   test('map opens on mobile and location succeeds from a user tap', async ({ page }) => {
     await page.goto('/map')
     await expect(page.locator('.map-screen')).toBeVisible()

@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
-import maplibregl, { Map as MapLibre } from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
+import type { Map as MapLibre } from 'maplibre-gl'
 import { CircleAlert, LocateFixed, Search, Store } from 'lucide-react'
 import { fetchBusinessById, loadBusinessesGeoJson, loadNewhamBoundaryGeoJson } from '../lib/data'
 import { getReliableUserPosition, locationErrorMessage } from '../lib/geolocation'

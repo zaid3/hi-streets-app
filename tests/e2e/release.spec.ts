@@ -31,6 +31,23 @@ test.describe('HiStreets final mobile release', () => {
     permissions: ['geolocation'],
   })
 
+  test('browsers without WebGL can search the directory and navigate', async ({ page }) => {
+    await page.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext
+      HTMLCanvasElement.prototype.getContext = function (kind: string, ...args: any[]) {
+        if (kind === 'webgl' || kind === 'webgl2' || kind === 'experimental-webgl') return null
+        return original.call(this, kind as any, ...args)
+      } as typeof original
+    })
+    await page.goto('/map')
+    await expect(page.getByRole('heading', { name: 'Explore Newham businesses' })).toBeVisible()
+    await smartSearch(page).fill('zzzz-no-matching-listing')
+    await smartSearch(page).press('Enter')
+    await expect(page.getByText('No matching listings', { exact: true })).toBeVisible()
+    await page.getByRole('navigation').getByRole('button', { name: 'Jobs', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Jobs in Newham' })).toBeVisible()
+  })
+
   test('map opens on mobile and location succeeds from a user tap', async ({ page }) => {
     await page.goto('/map')
     await expect(page.locator('.map-screen')).toBeVisible()
@@ -75,7 +92,9 @@ test.describe('HiStreets final mobile release', () => {
     expect(box).not.toBeNull()
     expect(box!.x).toBeGreaterThanOrEqual(0)
     expect(box!.width).toBeLessThanOrEqual((await page.viewportSize())!.width + 1)
-    await expect(dialog).toContainText(/AI unavailable|Understanding your need|verified HiStreets/i)
+    // This layout smoke test runs without production credentials in CI.
+    // Provider availability is verified separately from sheet rendering.
+    await expect(dialog).toContainText(/Understanding your need|real HiStreets|couldn't find|AI unavailable/i)
   })
 
   test('natural language jobs search opens the jobs feed', async ({ page }) => {
@@ -154,10 +173,10 @@ test.describe('HiStreets final mobile release', () => {
     await expect(page.getByRole('status')).toContainText('No matching business found yet')
   })
 
-  test('all six bottom navigation destinations stay on one row', async ({ page }) => {
+  test('all five primary navigation destinations stay on one row', async ({ page }) => {
     await page.goto('/map')
     const buttons = page.locator('.bottom-tabs button')
-    await expect(buttons).toHaveCount(6)
+    await expect(buttons).toHaveCount(5)
     const tops = await buttons.evaluateAll(nodes => nodes.map(node => Math.round(node.getBoundingClientRect().top)))
     expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(2)
   })

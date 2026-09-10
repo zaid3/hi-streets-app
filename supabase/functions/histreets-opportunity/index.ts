@@ -19,13 +19,13 @@ Deno.serve(async(req:Request)=>{
   if(req.method!=="POST")return json({error:"Method not allowed"},405,origin);
   if(origin&&!ALLOWED_ORIGINS.has(origin))return json({error:"Origin not allowed"},403,origin);
   let body:any; try{ body=await req.json(); }catch{ return json({error:"Invalid request"},400,origin); }
-  const businessId=clean(body?.business_id,64); if(!businessId)return json({error:"Choose an approved business first."},400,origin);
+  const businessId=clean(body?.business_id,64); if(!businessId)return json({error:"Choose a verified business first."},400,origin);
   const auth=req.headers.get("authorization")||""; if(!auth.toLowerCase().startsWith("bearer "))return json({error:"Sign in to view local opportunities."},401,origin);
   const user=(await db.auth.getUser(auth.slice(7).trim())).data.user; if(!user)return json({error:"Your session has expired."},401,origin);
   const role=String((await db.from("profiles").select("role").eq("id",user.id).maybeSingle()).data?.role||"");
   let query=db.from("businesses").select("id,name,category,address,verification_status,claimed_by").eq("id",businessId).eq("verification_status","verified");
   if(!["admin","super_admin"].includes(role))query=query.eq("claimed_by",user.id);
-  const result=await query.maybeSingle(); if(result.error||!result.data)return json({error:"This approved business is not available to your account."},403,origin);
+  const result=await query.maybeSingle(); if(result.error||!result.data)return json({error:"This verified business is not available to your account."},403,origin);
   const business=result.data as any; const area=(String(business.address||"").match(OUTCODE_RE)?.[0]||"").toUpperCase(); const category=classify(String(business.category||""));
   if(!area||!category)return json({eligible:false,reason:"Opportunity intelligence needs a recognised Newham area and business category."},200,origin);
   const since=new Date(); since.setUTCDate(since.getUTCDate()-6); const sinceDate=since.toISOString().slice(0,10);

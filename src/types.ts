@@ -116,11 +116,29 @@ export interface Post {
   recurrence?: string | null
   apply_url?: string | null
   apply_phone?: string | null
+  details?: PostDetails | null
   status: 'pending' | 'live' | 'expired' | 'rejected' | 'removed'
   source: 'web' | 'web_auto_checked' | 'whatsapp' | 'admin'
   lat?: number | null
   lng?: number | null
   business?: Business | null
+}
+
+export interface PostDetails {
+  pay?: string
+  hours?: string
+  employment_type?: string
+  workplace?: string
+  job_location?: string
+  cv_required?: boolean
+  original_price?: string
+  offer_price?: string
+  redemption?: string
+  terms?: string
+  schedule?: string
+  cost?: string
+  eligibility?: string
+  booking?: string
 }
 
 export interface JobApplication {
@@ -133,7 +151,7 @@ export interface JobApplication {
   applicant_email: string
   applicant_phone: string
   cover_note?: string | null
-  cv_url: string
+  cv_url?: string | null
   created_at: string
 }
 

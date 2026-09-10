@@ -1,6 +1,6 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
-import type { Business, BusinessClaimOption, BusinessEvidenceKind, BusinessProfileInput, BusinessRegistrationInput, BusinessVerificationEvidence, ClaimMethod, JobApplication, ParkingPoint, Post, Role, SuperAdminBusinessRow, SuperAdminOverview, SuperAdminPostRow } from '../types'
+import type { Business, BusinessClaimOption, BusinessEvidenceKind, BusinessProfileInput, BusinessRegistrationInput, BusinessVerificationEvidence, ClaimMethod, JobApplication, ParkingPoint, Post, PostDetails, Role, SuperAdminBusinessRow, SuperAdminOverview, SuperAdminPostRow } from '../types'
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 
@@ -132,7 +132,8 @@ export async function deleteBusinessVerificationEvidence(businessId: string) {
 export async function loadBusinessesGeoJson(): Promise<FeatureCollection> {
   if (!supabaseConfigured || !supabase) return { type: 'FeatureCollection', features: [] }
   const { data, error } = await supabase.rpc('businesses_geojson')
-  if (error || !data) return { type: 'FeatureCollection', features: [] }
+  if (error) throw error
+  if (!data) return { type: 'FeatureCollection', features: [] }
   return data as FeatureCollection
 }
 
@@ -189,6 +190,21 @@ export async function saveMyBusinessProfile(input: BusinessProfileInput): Promis
   return data as Business
 }
 
+export async function uploadBusinessProfilePhoto(businessId: string, file: File) {
+  if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
+  if (!businessId) throw new Error('Choose a verified business first')
+  if (file.size > 5 * 1024 * 1024) throw new Error('Business image must be under 5MB')
+  const ext = file.name.split('.').pop()?.toLowerCase() || ''
+  const contentTypes: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }
+  const contentType = contentTypes[ext]
+  if (!contentType) throw new Error('Business image must be JPG, PNG or WEBP')
+  const path = `${businessId}/profile-image`
+  const { error } = await supabase.storage.from('business-assets').upload(path, file, { upsert: true, contentType, cacheControl: '3600' })
+  if (error) throw error
+  const { data } = supabase.storage.from('business-assets').getPublicUrl(path)
+  return `${data.publicUrl}?v=${Date.now()}`
+}
+
 export async function getCurrentRole(): Promise<Role | null> {
   if (!supabaseConfigured || !supabase) return null
   const { data: userData } = await supabase.auth.getUser()
@@ -203,7 +219,8 @@ export async function loadPosts(type?: Post['type']): Promise<Post[]> {
   let query = supabase.from('posts_public').select('*').order('created_at', { ascending: false }).limit(100)
   if (type) query = query.eq('type', type)
   const { data, error } = await query
-  if (error || !data) return []
+  if (error) throw error
+  if (!data) return []
   return data.map((row: any) => ({
     id: row.id,
     business_id: row.business_id,
@@ -214,13 +231,14 @@ export async function loadPosts(type?: Post['type']): Promise<Post[]> {
     starts_at: row.starts_at,
     expires_at: row.expires_at,
     recurrence: row.recurrence,
+    details: row.details || {},
     apply_url: row.apply_url,
     apply_phone: row.apply_phone,
     status: row.status,
     source: row.source,
     lat: row.lat ?? row.business_lat,
     lng: row.lng ?? row.business_lng,
-    business: row.business_id ? { id: row.business_id, name: row.business_name, category: row.business_category, address: row.business_address, lat: row.business_lat, lng: row.business_lng, verification_status: 'verified', source: row.business_source || 'owner_registration' } : null,
+    business: row.business_id ? { id: row.business_id, name: row.business_name, category: row.business_category, address: row.business_address, phone: row.business_phone, website: row.business_website, whatsapp: row.business_whatsapp, lat: row.business_lat, lng: row.business_lng, verification_status: row.business_verification_status || 'verified', source: row.business_source || 'owner_registration' } : null,
   }))
 }
 
@@ -238,21 +256,22 @@ export async function getJobCvSignedUrl(pathOrLegacyUrl: string) {
   return data.signedUrl
 }
 
-export async function submitJobApplication(input: { post_id: string; applicant_name: string; applicant_email: string; applicant_phone: string; cover_note?: string; cv_file: File }) {
+export async function submitJobApplication(input: { post_id: string; applicant_name: string; applicant_email: string; applicant_phone: string; cover_note?: string; cv_file?: File | null }) {
   if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
-  if (!input.cv_file) throw new Error('CV is required')
-  if (input.cv_file.size > 10 * 1024 * 1024) throw new Error('CV must be under 10MB')
-  const ext = input.cv_file.name.split('.').pop()?.toLowerCase() || ''
+  if (input.cv_file && input.cv_file.size > 10 * 1024 * 1024) throw new Error('CV must be under 10MB')
+  const ext = input.cv_file?.name.split('.').pop()?.toLowerCase() || ''
   const mimeByExt: Record<string, string> = {
     pdf: 'application/pdf',
     doc: 'application/msword',
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   }
-  const contentType = mimeByExt[ext]
-  if (!contentType) throw new Error('CV must be PDF, DOC or DOCX')
-  const path = `applications/${input.post_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const upload = await supabase.storage.from('job-cvs').upload(path, input.cv_file, { upsert: false, contentType })
-  if (upload.error) throw upload.error
+  const contentType = ext ? mimeByExt[ext] : ''
+  if (input.cv_file && !contentType) throw new Error('CV must be PDF, DOC or DOCX')
+  const path = input.cv_file ? `applications/${input.post_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}` : ''
+  if (input.cv_file) {
+    const upload = await supabase.storage.from('job-cvs').upload(path, input.cv_file, { upsert: false, contentType })
+    if (upload.error) throw upload.error
+  }
   const { error } = await supabase.rpc('submit_job_application', {
     p_post_id: input.post_id,
     p_applicant_name: input.applicant_name.trim(),
@@ -261,10 +280,10 @@ export async function submitJobApplication(input: { post_id: string; applicant_n
     p_cover_note: input.cover_note?.trim() || '',
     p_cv_url: path,
   })
-  if (error) {
+  if (error && path) {
     await supabase.storage.from('job-cvs').remove([path]).catch(() => {})
-    throw error
   }
+  if (error) throw error
 }
 
 export async function loadMyJobApplications(): Promise<JobApplication[]> {
@@ -309,13 +328,13 @@ export async function createBlueBadgeBay() {
   throw new Error('Parking is not active in this version')
 }
 
-export async function createPost(input: Pick<Post, 'type' | 'title' | 'body' | 'category' | 'expires_at' | 'apply_url' | 'apply_phone' | 'recurrence'> & { business_id: string }) {
+export async function createPost(input: Pick<Post, 'type' | 'title' | 'body' | 'category' | 'expires_at' | 'apply_url' | 'apply_phone' | 'recurrence'> & { business_id: string; details?: PostDetails }) {
   if (!supabaseConfigured || !supabase) throw new Error('Supabase is not configured')
   const { data: userData } = await supabase.auth.getUser()
   const user = userData.user
   if (!user) throw new Error('Sign in first')
   if (!input.business_id) throw new Error('Approved business required')
-  const { error } = await supabase.rpc('create_verified_business_post', {
+  const { error } = await supabase.rpc('create_verified_business_post_v2', {
     p_business_id: input.business_id,
     p_type: input.type,
     p_title: input.title,
@@ -325,6 +344,7 @@ export async function createPost(input: Pick<Post, 'type' | 'title' | 'body' | '
     p_apply_url: input.apply_url || '',
     p_apply_phone: input.apply_phone || '',
     p_recurrence: input.recurrence || '',
+    p_details: input.details || {},
   })
   if (error) throw error
 }

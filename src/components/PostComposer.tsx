@@ -55,7 +55,21 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   const [applyUrl, setApplyUrl] = useState('')
   const [applyPhone, setApplyPhone] = useState('')
   const [recurrence, setRecurrence] = useState('')
-  const [status, setStatus] = useState('Loading your approved businesses…')
+  const [jobPay, setJobPay] = useState('')
+  const [jobHours, setJobHours] = useState('')
+  const [employmentType, setEmploymentType] = useState('')
+  const [workplace, setWorkplace] = useState('On-site')
+  const [jobLocation, setJobLocation] = useState('')
+  const [cvRequired, setCvRequired] = useState(true)
+  const [originalPrice, setOriginalPrice] = useState('')
+  const [offerPrice, setOfferPrice] = useState('')
+  const [redemption, setRedemption] = useState('')
+  const [terms, setTerms] = useState('')
+  const [communityCost, setCommunityCost] = useState('Free')
+  const [eligibility, setEligibility] = useState('')
+  const [schedule, setSchedule] = useState('')
+  const [booking, setBooking] = useState('')
+  const [status, setStatus] = useState('Loading your verified businesses…')
   const [submitting, setSubmitting] = useState(false)
   const [copilotPrompt, setCopilotPrompt] = useState('')
   const [copilotDraft, setCopilotDraft] = useState<BusinessCopilotDraft | null>(null)
@@ -66,9 +80,15 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
     loadMyVerifiedBusinesses().then(rows => {
       setBusinesses(rows)
       setBusinessId(rows[0]?.id || '')
-      setStatus(rows.length ? '' : 'No approved business found yet.')
-    }).catch(() => setStatus('Could not load your approved businesses.')).finally(() => setLoadingBusinesses(false))
+      setStatus(rows.length ? '' : 'No verified business found yet.')
+    }).catch(() => setStatus('Could not load your verified businesses.')).finally(() => setLoadingBusinesses(false))
   }, [])
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [onClose])
 
   function goToRegisterForm() {
     onClose()
@@ -108,6 +128,11 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
     try {
       setSubmitting(true)
       setStatus('Checking post details…')
+      const details = type === 'job'
+        ? { pay: jobPay.trim(), hours: jobHours.trim(), employment_type: employmentType, workplace, job_location: jobLocation.trim(), cv_required: cvRequired }
+        : type === 'offer'
+          ? { original_price: originalPrice.trim(), offer_price: offerPrice.trim(), redemption: redemption.trim(), terms: terms.trim() }
+          : { cost: communityCost.trim(), eligibility: eligibility.trim(), schedule: schedule.trim(), booking: booking.trim() }
       await createPost({
         business_id: businessId,
         type,
@@ -118,6 +143,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         apply_url: applyUrl.trim(),
         apply_phone: applyPhone.trim(),
         recurrence: recurrence.trim(),
+        details,
       })
       setStatus('Submitted. If the post follows HiStreets rules, it goes live automatically. If not, it waits for review.')
       onSubmitted()
@@ -133,14 +159,14 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
 
   if (!loadingBusinesses && businesses.length === 0) {
     return (
-      <div className="bottom-sheet post-composer">
-        <button className="sheet-close" onClick={onClose}>×</button>
+      <div className="bottom-sheet post-composer" role="dialog" aria-modal="true" aria-labelledby="post-composer-empty-title">
+        <button type="button" className="sheet-close" onClick={onClose} aria-label="Close post composer">×</button>
         <div className="sheet-handle" />
-        <h2>Post from your business</h2>
+        <h2 id="post-composer-empty-title">Post from your business</h2>
         <div className="empty-action-card">
           <Store size={24} />
-          <strong>No approved business yet</strong>
-          <p>Register or claim your business first. After Super Admin approval, you can post offers, jobs, free meals and community support from here.</p>
+          <strong>No verified business yet</strong>
+          <p>Register or claim your business first. After verification, you can post offers, jobs, free meals and community support from here.</p>
           <button onClick={goToRegisterForm}>Go to register / claim form</button>
         </div>
         {status && <p className="form-status">{status}</p>}
@@ -149,13 +175,13 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   }
 
   return (
-    <div className="bottom-sheet post-composer">
-      <button className="sheet-close" onClick={onClose}>×</button>
+    <div className="bottom-sheet post-composer" role="dialog" aria-modal="true" aria-labelledby="post-composer-title">
+      <button type="button" className="sheet-close" onClick={onClose} aria-label="Close post composer">×</button>
       <div className="sheet-handle" />
-      <h2>{type === 'job' ? 'Post a local job' : type === 'offer' ? 'Post an offer' : 'Post locally'}</h2>
-      <p className="muted">Approved businesses can post quickly. Clean posts go live automatically. Risky or incomplete posts wait for review.</p>
+      <h2 id="post-composer-title">{type === 'job' ? 'Post a local job' : type === 'offer' ? 'Post an offer' : 'Post locally'}</h2>
+      <p className="muted">Verified businesses can post quickly. Posts that pass the safety checks go live; risky or incomplete posts wait for review.</p>
 
-      <label>Approved business
+      <label>Verified business
         <select value={businessId} onChange={e => { setBusinessId(e.target.value); setCopilotDraft(null) }} disabled={loadingBusinesses}>
           {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
@@ -200,14 +226,44 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
       </label>
 
       <label>Category
-        <input value={category} onChange={e => setCategory(e.target.value)} placeholder="e.g. Food, retail, youth job" />
+        <select value={category} onChange={e => setCategory(e.target.value)}>
+          <option value={defaultCategory(type)}>{defaultCategory(type)}</option>
+          {type === 'job' && <><option value="Hospitality">Hospitality</option><option value="Retail">Retail</option><option value="Office & administration">Office & administration</option><option value="Care & support">Care & support</option><option value="Skilled trade">Skilled trade</option></>}
+          {type === 'offer' && <><option value="Food & drink">Food & drink</option><option value="Retail">Retail</option><option value="Beauty & wellbeing">Beauty & wellbeing</option><option value="Local services">Local services</option></>}
+          {(type === 'community' || type === 'free_meal') && <><option value="Food support">Food support</option><option value="Advice & support">Advice & support</option><option value="Skills & education">Skills & education</option><option value="Community event">Community event</option></>}
+        </select>
       </label>
 
       <label>End date
         <input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} />
       </label>
 
-      {type === 'job' && <div className="missing-note">Applicants apply inside HiStreets without sign-up. They must provide name, email, phone/WhatsApp and CV. Your business contacts them directly if shortlisted.</div>}
+      {type === 'job' && <div className="structured-fields" aria-label="Job details">
+        <h3>Job details</h3>
+        <label>Pay or salary<input value={jobPay} onChange={e => setJobPay(e.target.value)} placeholder="e.g. £12.50 per hour" maxLength={120} /></label>
+        <label>Hours<input value={jobHours} onChange={e => setJobHours(e.target.value)} placeholder="e.g. 20 hours per week" maxLength={120} /></label>
+        <label>Employment type<select value={employmentType} onChange={e => setEmploymentType(e.target.value)}><option value="">Choose type</option><option>Permanent</option><option>Temporary</option><option>Fixed-term</option><option>Apprenticeship</option><option>Volunteer</option></select></label>
+        <label>Workplace<select value={workplace} onChange={e => setWorkplace(e.target.value)}><option>On-site</option><option>Hybrid</option><option>Remote</option></select></label>
+        <label>Work location<input value={jobLocation} onChange={e => setJobLocation(e.target.value)} placeholder="Business address or Newham area" maxLength={160} /></label>
+        <label className="service-area-toggle"><span><input type="checkbox" checked={cvRequired} onChange={e => setCvRequired(e.target.checked)} /> Require applicants to upload a CV</span><small>Turn this off for entry-level roles where a CV is unnecessary.</small></label>
+        <div className="missing-note">Applicants apply inside HiStreets without signing up. They provide name, email and phone/WhatsApp. Your business contacts shortlisted applicants directly.</div>
+      </div>}
+
+      {type === 'offer' && <div className="structured-fields" aria-label="Offer details">
+        <h3>Offer details</h3>
+        <label>Normal price<input value={originalPrice} onChange={e => setOriginalPrice(e.target.value)} placeholder="Optional, e.g. £20" maxLength={60} /></label>
+        <label>Offer price or discount<input value={offerPrice} onChange={e => setOfferPrice(e.target.value)} placeholder="e.g. £15 or 25% off" maxLength={80} /></label>
+        <label>How to claim<input value={redemption} onChange={e => setRedemption(e.target.value)} placeholder="e.g. Show this offer in store" maxLength={160} /></label>
+        <label>Short terms<textarea value={terms} onChange={e => setTerms(e.target.value)} placeholder="Optional limits or exclusions" maxLength={400} /></label>
+      </div>}
+
+      {(type === 'free_meal' || type === 'community') && <div className="structured-fields" aria-label="Community details">
+        <h3>Access details</h3>
+        <label>Cost<input value={communityCost} onChange={e => setCommunityCost(e.target.value)} placeholder="Free" maxLength={60} /></label>
+        <label>Who can attend<input value={eligibility} onChange={e => setEligibility(e.target.value)} placeholder="e.g. Open to all Newham residents" maxLength={180} /></label>
+        <label>Days and times<input value={schedule} onChange={e => setSchedule(e.target.value)} placeholder="e.g. Fridays, 12pm–2pm" maxLength={160} /></label>
+        <label>Booking or contact<input value={booking} onChange={e => setBooking(e.target.value)} placeholder="e.g. Walk in, no booking required" maxLength={180} /></label>
+      </div>}
 
       {type === 'job' && <>
         <label>Optional external apply link

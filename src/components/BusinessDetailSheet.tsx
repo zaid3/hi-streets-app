@@ -1,4 +1,4 @@
-import { BadgeCheck, Globe, Mail, MapPin, Phone, ShieldCheck, Tag } from 'lucide-react'
+import { BadgeCheck, CircleAlert, Globe, Mail, MapPin, MessageCircle, Phone, ShieldCheck, Tag } from 'lucide-react'
 import { directionsUrl } from '../lib/newham'
 import type { Business, Post, PostType } from '../types'
 
@@ -6,6 +6,13 @@ function cleanWebsite(url?: string | null) {
   if (!url) return ''
   if (/^https?:\/\//i.test(url)) return url
   return `https://${url}`
+}
+
+function whatsappNumber(value?: string | null) {
+  let digits = String(value || '').replace(/\D/g, '')
+  if (digits.startsWith('00')) digits = digits.slice(2)
+  if (digits.startsWith('0')) digits = `44${digits.slice(1)}`
+  return digits
 }
 
 function fsaBadge(business: Business) {
@@ -62,6 +69,8 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
   const missing = missingFields(business, isServiceArea)
   const missingCriticalContact = !business.phone || !business.opening_hours
   const destinationLabel = [business.name, business.address || 'Newham London'].filter(Boolean).join(', ')
+  const isVerified = business.verification_status === 'verified'
+  const whatsapp = whatsappNumber(business.whatsapp)
 
   return (
     <>
@@ -73,7 +82,9 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
           <p className="eyebrow">{smartCategoryLabel(business)}</p>
           <h2>{business.name}</h2>
           <div className="listing-meta-row">
-            <span className="status-pill verified"><BadgeCheck size={14} /> Approved business</span>
+            {isVerified
+              ? <span className="status-pill verified"><BadgeCheck size={14} /> Verified business</span>
+              : <span className="status-pill unclaimed"><CircleAlert size={14} /> Unclaimed listing</span>}
             {business.wheelchair && <span className="status-pill soft">♿ Wheelchair: {business.wheelchair}</span>}
           </div>
         </div>
@@ -96,13 +107,14 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
       ) : (
         <div className="no-live-posts">
           <strong>No live offers or jobs yet</strong>
-          <span>Approved owners can post offers, local jobs, free meals and community help here.</span>
+          <span>{isVerified ? 'Verified owners can post offers, local jobs, free meals and community help here.' : 'The owner can claim and verify this listing to publish local updates.'}</span>
         </div>
       )}
 
       <section className="business-facts" aria-label="Business information">
         <h3>{isServiceArea ? 'Contact & service area' : 'Contact & visit'}</h3>
-        {missingCriticalContact && <div className="critical-missing"><strong>Important details missing</strong><span>The approved owner or admin can complete phone number and opening hours from Profile.</span></div>}
+        {business.description && <p className="business-description">{business.description}</p>}
+        {missingCriticalContact && <div className="critical-missing"><strong>Important details missing</strong><span>The verified owner or HiStreets admin can complete phone number and opening hours.</span></div>}
         {business.address ? <p><MapPin size={16} /> <span>{business.address}</span></p> : <p><MapPin size={16} /> <span>{isServiceArea ? 'Serves Newham' : 'Address not available yet'}</span></p>}
         {business.opening_hours ? <p><ShieldCheck size={16} /> <span>Opening hours: {business.opening_hours}</span></p> : <p><ShieldCheck size={16} /> <span>Opening hours not available yet</span></p>}
         {business.phone ? <p><Phone size={16} /> <a href={`tel:${business.phone}`}>{business.phone}</a></p> : <p><Phone size={16} /> <span>Phone not available yet</span></p>}
@@ -113,8 +125,11 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
       <div className="sheet-actions primary-actions">
         {!isServiceArea && <a href={directionsUrl(business.lat, business.lng, destinationLabel)} target="_blank" rel="noreferrer">Directions</a>}
         {business.phone && <a href={`tel:${business.phone}`}>Call</a>}
+        {whatsapp && <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> WhatsApp</a>}
         {website && <a href={website} target="_blank" rel="noreferrer">Website</a>}
       </div>
+
+      {!isVerified && <div className="claim-listing-action"><strong>Is this your business?</strong><span>Claim it to correct details and publish offers or jobs.</span><a href="/business">Claim this listing</a></div>}
 
       <div className="listing-chip-row">
         {business.cuisine && <span className="listing-chip"><Tag size={12} /> {business.cuisine}</span>}
@@ -122,7 +137,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
         {fsaBadge(business)}
       </div>
 
-      {missing.length > 0 && <p className="missing-note">Missing: {missing.join(', ')}. The approved owner can complete these details in Profile.</p>}
+      {missing.length > 0 && <p className="missing-note">Missing: {missing.join(', ')}. The verified owner can complete these details in the Business area.</p>}
       {business.fsa_rating_date && business.fsa_rating != null && Number(business.fsa_match_confidence || 0) >= 0.85 && <p className="trust">Food hygiene source: Food Standards Agency · Rated on {new Date(business.fsa_rating_date).toLocaleDateString()}</p>}
     </>
   )

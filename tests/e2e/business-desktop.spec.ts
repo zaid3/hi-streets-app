@@ -38,7 +38,7 @@ test.describe('HiStreets desktop business shell', () => {
 
   test('desktop bottom navigation remains one row and centered', async ({ page }) => {
     const buttons = page.locator('.bottom-tabs button')
-    await expect(buttons).toHaveCount(6)
+    await expect(buttons).toHaveCount(5)
     const rects = await buttons.evaluateAll(nodes => nodes.map(node => {
       const r = node.getBoundingClientRect()
       return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right) }

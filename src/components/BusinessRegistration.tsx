@@ -3,6 +3,7 @@ import { Camera, MapPin, Send, Store } from 'lucide-react'
 import { loadMyBusinesses, registerBusiness, uploadBusinessVerificationEvidence } from '../lib/data'
 import { getPreciseBusinessPosition, locationErrorMessage } from '../lib/geolocation'
 import { inNewham, NEWHAM_CENTER } from '../lib/newham'
+import { BUSINESS_CATEGORIES } from '../lib/businessCategories'
 import type { Business } from '../types'
 
 const initialForm = {
@@ -181,7 +182,10 @@ export default function BusinessRegistration() {
         <input value={form.name} onChange={e => update('name', e.target.value)} placeholder="e.g. Green Street Pharmacy" maxLength={120} autoComplete="organization" />
       </label>
       <label>Category
-        <input value={form.category} onChange={e => update('category', e.target.value)} placeholder="Restaurant, barber, pharmacy, solicitor…" maxLength={80} />
+        <select value={form.category} onChange={e => update('category', e.target.value)}>
+          <option value="">Choose the closest category</option>
+          {BUSINESS_CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+        </select>
       </label>
       <label className="service-area-toggle"><span><input type="checkbox" checked={serviceAreaOnly} onChange={e => {
         const next = e.target.checked
@@ -229,7 +233,7 @@ export default function BusinessRegistration() {
           <input value={form.phone} onChange={e => update('phone', e.target.value)} placeholder="Business phone" maxLength={50} autoComplete="tel" />
         </label>
         <label>WhatsApp
-          <input value={form.whatsapp} onChange={e => update('whatsapp', e.target.value)} placeholder="WhatsApp number or wa.me link" maxLength={120} />
+          <input value={form.whatsapp} onChange={e => update('whatsapp', e.target.value)} placeholder="Business WhatsApp number" maxLength={50} inputMode="tel" autoComplete="tel" />
         </label>
         <label>Email
           <input type="email" value={form.email} onChange={e => update('email', e.target.value)} placeholder="business@example.com" maxLength={160} autoComplete="email" />
@@ -238,7 +242,7 @@ export default function BusinessRegistration() {
           <input value={form.website} onChange={e => update('website', e.target.value)} placeholder="https://example.com" maxLength={240} inputMode="url" />
         </label>
         <label>Opening hours
-          <input value={form.opening_hours} onChange={e => update('opening_hours', e.target.value)} placeholder="Mon–Sat 9am–6pm" maxLength={160} />
+          <textarea value={form.opening_hours} onChange={e => update('opening_hours', e.target.value)} placeholder={'Mon–Fri 9am–6pm\nSat 10am–4pm\nSun closed'} maxLength={240} />
         </label>
       </details>
 

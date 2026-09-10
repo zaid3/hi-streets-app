@@ -1,6 +1,7 @@
 import { supabase, supabaseConfigured } from './supabase'
 import { inNewham } from './newham'
 import type { Business, BusinessClaimOption, BusinessEvidenceKind, BusinessProfileInput, BusinessRegistrationInput, BusinessVerificationEvidence, ClaimMethod, JobApplication, ParkingPoint, Post, PostDetails, Role, SuperAdminBusinessRow, SuperAdminOverview, SuperAdminPostRow } from '../types'
+import { loadWorkspaceRefs } from './workspaces'
 
 type FeatureCollection = { type: 'FeatureCollection'; features: Array<any> }
 
@@ -26,7 +27,10 @@ export async function loadMyBusinesses(): Promise<Business[]> {
   const { data: userData } = await supabase.auth.getUser()
   const user = userData.user
   if (!user) return []
-  const { data, error } = await supabase.from('businesses').select(ownBusinessSelect).eq('claimed_by', user.id).order('created_at', { ascending: false }).limit(50)
+  const refs = await loadWorkspaceRefs()
+  const ids = refs.map(item => item.business_id)
+  if (!ids.length) return []
+  const { data, error } = await supabase.from('businesses').select(ownBusinessSelect).in('id', ids).order('created_at', { ascending: false }).limit(50)
   if (error || !data) return []
   return (data as Business[]).filter(b => inNewham(b.lat, b.lng))
 }
@@ -42,7 +46,12 @@ export async function loadMyVerifiedBusinesses(): Promise<Business[]> {
   if (!user) return []
   const role = await getCurrentRole()
   let query = supabase.from('businesses').select(ownBusinessSelect).eq('verification_status', 'verified').order('name', { ascending: true }).limit(200)
-  if (role !== 'admin' && role !== 'super_admin') query = query.eq('claimed_by', user.id)
+  if (role !== 'admin' && role !== 'super_admin') {
+    const refs = await loadWorkspaceRefs()
+    const ids = refs.map(item => item.business_id)
+    if (!ids.length) return []
+    query = query.in('id', ids)
+  }
   const { data, error } = await query
   if (error || !data) return []
   return (data as Business[]).filter(canPostFromBusiness)

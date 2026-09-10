@@ -1,6 +1,7 @@
 export type TabKey = 'map' | 'offers' | 'jobs' | 'community' | 'parking' | 'profile'
 export type PostType = 'offer' | 'job' | 'free_meal' | 'community'
-export type Role = 'user' | 'business' | 'charity' | 'admin' | 'super_admin'
+export type Role = 'user' | 'business' | 'charity' | 'admin' | 'super_admin' | 'suspended'
+export type BusinessMemberRole = 'owner' | 'manager' | 'editor' | 'viewer'
 export type ClaimMethod = 'phone_otp' | 'domain_email' | 'website_code' | 'document'
 export type BusinessEvidenceKind = 'shopfront' | 'inside'
 
@@ -175,6 +176,67 @@ export interface SuperAdminOverview {
   live_posts: number
   pending_posts: number
   job_applications: number
+}
+
+export interface BusinessWorkspaceRef {
+  business_id: string
+  membership_role: BusinessMemberRole
+}
+
+export interface BusinessDashboardOverview {
+  business_id: string
+  business_name: string
+  period_days: number
+  listing_views: number
+  action_clicks: number
+  content_views: number
+  applications: number
+  live_posts: number
+  pending_posts: number
+  team_members: number
+  profile_completeness: number
+}
+
+export interface BusinessAnalyticsPoint {
+  day: string
+  listing_views: number
+  action_clicks: number
+  content_views: number
+  applicants: number
+}
+
+export interface PlatformDashboardOverview {
+  auth_users: number
+  directory_businesses: number
+  claimed_businesses: number
+  verified_businesses: number
+  pending_businesses: number
+  pending_ownership: number
+  live_posts: number
+  pending_posts: number
+  job_applications: number
+  engagement_events: number
+}
+
+export interface PlatformAnalyticsPoint {
+  day: string
+  new_users: number
+  claims: number
+  posts: number
+  applications: number
+  engagement: number
+}
+
+export interface BusinessTeamRecord {
+  kind: 'member' | 'invitation'
+  record_id: string
+  user_id?: string | null
+  display_name: string
+  email: string
+  member_role: BusinessMemberRole
+  status: string
+  created_at: string
+  expires_at?: string | null
 }
 
 export interface SuperAdminBusinessRow {

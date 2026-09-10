@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { BadgeCheck, CircleAlert, Globe, Mail, MapPin, MessageCircle, Phone, ShieldCheck, Tag } from 'lucide-react'
 import { directionsUrl } from '../lib/newham'
+import { trackBusinessEvent } from '../lib/workspaces'
 import type { Business, Post, PostType } from '../types'
 
 function cleanWebsite(url?: string | null) {
@@ -72,6 +74,11 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
   const isVerified = business.verification_status === 'verified'
   const whatsapp = whatsappNumber(business.whatsapp)
 
+  useEffect(() => {
+    trackBusinessEvent(business.id, 'listing_view')
+    activePosts.forEach(post => trackBusinessEvent(business.id, 'content_view', post.id))
+  }, [business.id, activePosts.map(post => post.id).join(',')])
+
   return (
     <>
       <div className="sheet-handle" />
@@ -117,16 +124,16 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
         {missingCriticalContact && <div className="critical-missing"><strong>Important details missing</strong><span>The verified owner or HiStreets admin can complete phone number and opening hours.</span></div>}
         {business.address ? <p><MapPin size={16} /> <span>{business.address}</span></p> : <p><MapPin size={16} /> <span>{isServiceArea ? 'Serves Newham' : 'Address not available yet'}</span></p>}
         {business.opening_hours ? <p><ShieldCheck size={16} /> <span>Opening hours: {business.opening_hours}</span></p> : <p><ShieldCheck size={16} /> <span>Opening hours not available yet</span></p>}
-        {business.phone ? <p><Phone size={16} /> <a href={`tel:${business.phone}`}>{business.phone}</a></p> : <p><Phone size={16} /> <span>Phone not available yet</span></p>}
+        {business.phone ? <p><Phone size={16} /> <a href={`tel:${business.phone}`} onClick={() => trackBusinessEvent(business.id, 'phone_click')}>{business.phone}</a></p> : <p><Phone size={16} /> <span>Phone not available yet</span></p>}
         {business.email && <p><Mail size={16} /> <a href={`mailto:${business.email}`}>{business.email}</a></p>}
-        {website ? <p><Globe size={16} /> <a href={website} target="_blank" rel="noreferrer">Website</a></p> : <p><Globe size={16} /> <span>Website not available yet</span></p>}
+        {website ? <p><Globe size={16} /> <a href={website} target="_blank" rel="noreferrer" onClick={() => trackBusinessEvent(business.id, 'website_click')}>Website</a></p> : <p><Globe size={16} /> <span>Website not available yet</span></p>}
       </section>
 
       <div className="sheet-actions primary-actions">
-        {!isServiceArea && <a href={directionsUrl(business.lat, business.lng, destinationLabel)} target="_blank" rel="noreferrer">Directions</a>}
-        {business.phone && <a href={`tel:${business.phone}`}>Call</a>}
-        {whatsapp && <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={16} /> WhatsApp</a>}
-        {website && <a href={website} target="_blank" rel="noreferrer">Website</a>}
+        {!isServiceArea && <a href={directionsUrl(business.lat, business.lng, destinationLabel)} target="_blank" rel="noreferrer" onClick={() => trackBusinessEvent(business.id, 'directions_click')}>Directions</a>}
+        {business.phone && <a href={`tel:${business.phone}`} onClick={() => trackBusinessEvent(business.id, 'phone_click')}>Call</a>}
+        {whatsapp && <a href={`https://wa.me/${whatsapp}`} target="_blank" rel="noreferrer" onClick={() => trackBusinessEvent(business.id, 'whatsapp_click')}><MessageCircle size={16} /> WhatsApp</a>}
+        {website && <a href={website} target="_blank" rel="noreferrer" onClick={() => trackBusinessEvent(business.id, 'website_click')}>Website</a>}
       </div>
 
       {!isVerified && <div className="claim-listing-action"><strong>Is this your business?</strong><span>Claim it to correct details and publish offers or jobs.</span><a href="/business">Claim this listing</a></div>}

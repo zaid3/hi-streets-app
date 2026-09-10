@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Building2, KeyRound, LockKeyhole, LogOut, ShieldCheck, Sparkles, UserPlus } from 'lucide-react'
+import { ArrowRight, BarChart3, BriefcaseBusiness, Building2, ClipboardCheck, FilePenLine, KeyRound, LockKeyhole, LogOut, ShieldCheck, Sparkles, Store, UserPlus, Users } from 'lucide-react'
 import { getCurrentRole } from '../lib/data'
 import { supabase, supabaseConfigured } from '../lib/supabase'
 import type { PostType, Role } from '../types'
@@ -10,9 +10,15 @@ import BusinessOnboarding from './BusinessOnboarding'
 import BusinessPostingDashboard from './BusinessPostingDashboard'
 import JobApplicationsPanel from './JobApplicationsPanel'
 import OwnerBusinessProfile from './OwnerBusinessProfile'
+import BusinessAnalyticsDashboard from './BusinessAnalyticsDashboard'
+import PlatformAnalyticsDashboard from './PlatformAnalyticsDashboard'
+import BusinessTeamPanel from './BusinessTeamPanel'
+import BusinessInvitationInbox from './BusinessInvitationInbox'
 
 type Props = { onPost: (type: PostType) => void }
 type LoginMode = 'signin' | 'signup'
+type OwnerSection = 'overview' | 'profile' | 'content' | 'applications' | 'team'
+type AdminSection = 'overview' | 'queue' | 'applications' | 'users'
 
 const PASSWORD_MIN_LENGTH = 12
 const PROJECT_WEBSITE = 'https://histreets.uk/'
@@ -53,6 +59,8 @@ export default function Profile({ onPost }: Props) {
   const [working, setWorking] = useState(false)
   const [recoveryMode, setRecoveryMode] = useState(false)
   const [message, setMessage] = useState('')
+  const [ownerSection, setOwnerSection] = useState<OwnerSection>('overview')
+  const [adminSection, setAdminSection] = useState<AdminSection>('overview')
 
   async function resolveSession(hasUser: boolean) {
     setSignedIn(hasUser)
@@ -278,16 +286,24 @@ export default function Profile({ onPost }: Props) {
     </section>
   )
 
+  if (role === 'suspended') return <section className="profile-screen business-shell"><div className="account-suspended-screen"><LockKeyhole size={34} /><span className="eyebrow">Account unavailable</span><h1>Your account is suspended</h1><p>Contact HiStreets support if you believe this is a mistake. Public directory pages remain available without an account.</p><button type="button" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button></div></section>
+
   if (role === 'admin' || role === 'super_admin') return (
     <section className="profile-screen business-shell admin-workspace">
       <header className="portal-header">
-        <div><span className="eyebrow"><ShieldCheck size={14} /> {role === 'super_admin' ? 'Developer control centre' : 'Admin workspace'}</span><h1>{role === 'super_admin' ? 'Super Admin' : 'Admin'}</h1><p>Manage users, businesses, ownership, posts and applications from one responsive workspace.</p></div>
+        <div><span className="eyebrow"><ShieldCheck size={14} /> {role === 'super_admin' ? 'Founder console' : 'Platform operations'}</span><h1>{role === 'super_admin' ? 'HiStreets Founder' : 'Operations Admin'}</h1><p>{role === 'super_admin' ? 'Understand growth, protect access and guide the whole platform.' : 'Review businesses and content without founder-level account access.'}</p></div>
         <button className="portal-signout" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button>
       </header>
-      {role === 'super_admin' && <AdminUserManagement />}
-      <AdminOwnershipRequests />
-      <AdminPanel />
-      <JobApplicationsPanel />
+      <nav className="workspace-tabs" aria-label="Platform workspace sections">
+        <button type="button" className={adminSection === 'overview' ? 'active' : ''} onClick={() => setAdminSection('overview')}><BarChart3 size={17} /> Overview</button>
+        <button type="button" className={adminSection === 'queue' ? 'active' : ''} onClick={() => setAdminSection('queue')}><ClipboardCheck size={17} /> Review queue</button>
+        <button type="button" className={adminSection === 'applications' ? 'active' : ''} onClick={() => setAdminSection('applications')}><BriefcaseBusiness size={17} /> Applications</button>
+        {role === 'super_admin' && <button type="button" className={adminSection === 'users' ? 'active' : ''} onClick={() => setAdminSection('users')}><Users size={17} /> People & access</button>}
+      </nav>
+      {adminSection === 'overview' && <PlatformAnalyticsDashboard founder={role === 'super_admin'} />}
+      {adminSection === 'queue' && <><AdminOwnershipRequests /><AdminPanel /></>}
+      {adminSection === 'applications' && <JobApplicationsPanel />}
+      {adminSection === 'users' && role === 'super_admin' && <AdminUserManagement />}
       {message && <p className="form-status">{message}</p>}
       <footer className="portal-footer"><ProjectLinks /></footer>
     </section>
@@ -299,11 +315,18 @@ export default function Profile({ onPost }: Props) {
         <div><span className="eyebrow"><Building2 size={14} /> Business workspace</span><h1>Your HiStreets business</h1><p>Claim or register once, then manage your profile, AI-assisted posts and job applications here.</p></div>
         <button className="portal-signout" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button>
       </header>
-      <BusinessOnboarding />
-      <div className="portal-section-label"><span>2</span><div><strong>Manage & grow</strong><small>Update your public profile and use local intelligence.</small></div></div>
-      <OwnerBusinessProfile />
-      <BusinessPostingDashboard onPost={onPost} />
-      <JobApplicationsPanel />
+      <nav className="workspace-tabs owner-tabs" aria-label="Business workspace sections">
+        <button type="button" className={ownerSection === 'overview' ? 'active' : ''} onClick={() => setOwnerSection('overview')}><BarChart3 size={17} /> Overview</button>
+        <button type="button" className={ownerSection === 'profile' ? 'active' : ''} onClick={() => setOwnerSection('profile')}><Store size={17} /> Profile</button>
+        <button type="button" className={ownerSection === 'content' ? 'active' : ''} onClick={() => setOwnerSection('content')}><FilePenLine size={17} /> Content</button>
+        <button type="button" className={ownerSection === 'applications' ? 'active' : ''} onClick={() => setOwnerSection('applications')}><BriefcaseBusiness size={17} /> Applicants</button>
+        <button type="button" className={ownerSection === 'team' ? 'active' : ''} onClick={() => setOwnerSection('team')}><Users size={17} /> Team</button>
+      </nav>
+      {ownerSection === 'overview' && <><BusinessInvitationInbox /><BusinessAnalyticsDashboard onNavigate={setOwnerSection} /><BusinessOnboarding /></>}
+      {ownerSection === 'profile' && <OwnerBusinessProfile />}
+      {ownerSection === 'content' && <BusinessPostingDashboard onPost={onPost} />}
+      {ownerSection === 'applications' && <JobApplicationsPanel />}
+      {ownerSection === 'team' && <BusinessTeamPanel />}
       {message && <p className="form-status">{message}</p>}
       <footer className="portal-footer"><ProjectLinks /></footer>
     </section>

@@ -52,12 +52,15 @@ test('secure access uses the exact public website design system and project link
   assert.match(manifest, /"theme_color": "#0A3B39"/)
 })
 
-test('Super Admin management is server-side and blocks self-demotion', async () => {
+test('Founder account management is server-side and blocks privilege escalation, self-change and unsafe deletion', async () => {
   const component = await read('src/components/AdminUserManagement.tsx')
   const edge = await read('supabase/functions/histreets-admin-users/index.ts')
   assert.match(component, /histreets-admin-users/)
-  assert.match(edge, /profile\?\.role !== 'super_admin'/)
-  assert.match(edge, /targetId === user\.id && nextRole !== 'super_admin'/)
+  assert.match(edge, /actor\?\.role !== "super_admin"/)
+  assert.match(edge, /targetId === user\.id/)
+  assert.match(edge, /MUTABLE_PLATFORM_ROLES = new Set\(\["user", "admin"\]\)/)
+  assert.match(edge, /admin\.auth\.admin\.deleteUser\(targetId, true\)/)
+  assert.match(edge, /confirmation !== target\.email\.toLowerCase\(\)/)
   assert.match(edge, /admin\.auth\.admin\.listUsers/)
   assert.match(edge, /profiles.*upsert/s)
 })

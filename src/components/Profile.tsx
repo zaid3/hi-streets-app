@@ -1,6 +1,7 @@
 import AccountSafety from './AccountSafety'
 import AuthFeedback from './AuthFeedback'
 import AdminReports from './AdminReports'
+import AdminFeedback from './AdminFeedback'
 import { authRedirect } from '../lib/auth-redirect'
 import { useEffect, useRef, useState } from 'react'
 import { authErrorMessage, emailRetrySeconds } from '../lib/auth-feedback'
@@ -23,7 +24,7 @@ import BusinessInvitationInbox from './BusinessInvitationInbox'
 type Props = { onPost: (type: PostType) => void }
 type LoginMode = 'signin' | 'signup'
 type OwnerSection = 'overview' | 'profile' | 'content' | 'applications' | 'team'
-type AdminSection = 'overview' | 'queue' | 'applications' | 'users'
+type AdminSection = 'overview' | 'queue' | 'applications' | 'users' | 'feedback'
 
 const PASSWORD_MIN_LENGTH = 12
 const PROJECT_WEBSITE = 'https://histreets.uk/'
@@ -45,6 +46,8 @@ function ProjectLinks() {
       <a href="/privacy.html">Privacy</a>
       <span aria-hidden="true">·</span>
       <a href="/terms.html">Terms</a>
+      <span aria-hidden="true">·</span>
+      <a href="/feedback">Give feedback</a>
     </nav>
   )
 }
@@ -420,11 +423,13 @@ export default function Profile({ onPost }: Props) {
         <button type="button" className={adminSection === 'queue' ? 'active' : ''} onClick={() => setAdminSection('queue')}><ClipboardCheck size={17} /> Review queue</button>
         <button type="button" className={adminSection === 'applications' ? 'active' : ''} onClick={() => setAdminSection('applications')}><BriefcaseBusiness size={17} /> Applications</button>
         {role === 'super_admin' && <button type="button" className={adminSection === 'users' ? 'active' : ''} onClick={() => setAdminSection('users')}><Users size={17} /> People & access</button>}
+        {role === 'super_admin' && <button type="button" className={adminSection === 'feedback' ? 'active' : ''} onClick={() => setAdminSection('feedback')}><FilePenLine size={17} /> User feedback</button>}
       </nav>
       {adminSection === 'overview' && <PlatformAnalyticsDashboard founder={role === 'super_admin'} />}
       {adminSection === 'queue' && <><AdminReports /><AdminOwnershipRequests /><AdminPanel /></>}
       {adminSection === 'applications' && <JobApplicationsPanel />}
       {adminSection === 'users' && role === 'super_admin' && <AdminUserManagement />}
+      {adminSection === 'feedback' && role === 'super_admin' && <AdminFeedback />}
       <AccountSafety /><footer className="portal-footer"><ProjectLinks /></footer>
     </section>
   )

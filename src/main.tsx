@@ -22,9 +22,12 @@ import './native.css'
 import './content-safety.css'
 import App from './App'
 
+const FeedbackPage = React.lazy(() => import('./components/UserFeedback'))
+const isFeedbackPage = window.location.pathname.replace(/\/+$/, '') === '/feedback'
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    {isFeedbackPage ? <React.Suspense fallback={<p role="status">Opening feedback form…</p>}><FeedbackPage /></React.Suspense> : <App />}
   </React.StrictMode>
 )
 

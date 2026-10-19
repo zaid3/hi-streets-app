@@ -1,4 +1,5 @@
 import AccountSafety from './AccountSafety'
+import AuthFeedback from './AuthFeedback'
 import AdminReports from './AdminReports'
 import { authRedirect } from '../lib/auth-redirect'
 import { useEffect, useRef, useState } from 'react'
@@ -64,6 +65,9 @@ export default function Profile({ onPost }: Props) {
   const [working, setWorking] = useState(false)
   const requestInFlight = useRef(false)
   const [confirmationEmail, setConfirmationEmail] = useState('')
+  const [resetEmail, setResetEmail] = useState('')
+  const screenRef = useRef<HTMLElement>(null)
+  const previousStep = useRef('')
   const [emailRetryAt, setEmailRetryAt] = useState(() => {
     try { return Number(sessionStorage.getItem('histreets-auth-email-retry-at')) || 0 }
     catch { return 0 }
@@ -74,6 +78,21 @@ export default function Profile({ onPost }: Props) {
   const [message, setMessage] = useState('')
   const [ownerSection, setOwnerSection] = useState<OwnerSection>('overview')
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
+  const followupStep = Boolean(confirmationEmail || resetEmail || otpRequested)
+  const step = recoveryMode ? 'recovery' : signedIn ? 'workspace' : confirmationEmail ? 'confirmation' : resetEmail ? 'reset-email' : otpRequested ? 'email-code' : mode
+
+  useEffect(() => {
+    if (authLoading || previousStep.current === step) return
+    previousStep.current = step
+    const screen = screenRef.current
+    if (!screen) return
+    screen.scrollTo({ top: 0, behavior: 'instant' })
+    const heading = screen.querySelector<HTMLElement>('[data-auth-heading], .portal-header h1')
+    if (heading) {
+      heading.tabIndex = -1
+      heading.focus({ preventScroll: true })
+    }
+  }, [authLoading, step])
 
   useEffect(() => {
     if (!emailRetryAt) return
@@ -96,6 +115,7 @@ export default function Profile({ onPost }: Props) {
     }
     requestInFlight.current = true
     setWorking(true)
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     return true
   }
 
@@ -141,6 +161,7 @@ export default function Profile({ onPost }: Props) {
     setConfirmPassword('')
     setMessage('')
     setConfirmationEmail('')
+    setResetEmail('')
   }
 
   async function sendEmailCode() {
@@ -256,6 +277,7 @@ export default function Profile({ onPost }: Props) {
       })
       if (error) return showAuthError(error, 'We could not send the reset email right now. Please wait a moment and try again.')
       startEmailCooldown()
+      setResetEmail(cleanEmail)
       setMessage('If an account exists for that email, a password reset link has been sent.')
     } catch { setMessage('Could not connect. Check your internet connection and try again.') }
     finally { endRequest() }
@@ -298,7 +320,8 @@ export default function Profile({ onPost }: Props) {
   if (authLoading) return <section className="profile-screen business-shell"><div className="auth-loading-card"><ShieldCheck size={30} /><strong>Opening your secure HiStreets workspace…</strong></div></section>
 
   if (recoveryMode) return (
-    <section className="profile-screen business-shell auth-screen auth-recovery-screen">
+    <section ref={screenRef} className="profile-screen business-shell auth-screen auth-recovery-screen">
+      <AuthFeedback message={message} working={working} emailWait={emailWait} onDismiss={() => setMessage('')} />
       <div className="auth-brand-panel">
         <span className="brand-wordmark"><strong>hi</strong>streets</span>
         <span className="portal-mark"><ShieldCheck size={18} /> Secure account recovery</span>
@@ -307,19 +330,19 @@ export default function Profile({ onPost }: Props) {
         <p>Use 12 or more characters. A short phrase is usually easier to remember than a complicated password.</p>
       </div>
       <div className="auth-card auth-card-final">
-        <div className="auth-card-title"><span><KeyRound size={22} /></span><div><small>Secure recovery</small><h2>Set new password</h2></div></div>
+        <div className="auth-card-title"><span><KeyRound size={22} /></span><div><small>Secure recovery</small><h2 data-auth-heading tabIndex={-1}>Set new password</h2></div></div>
         <label className="auth-field"><span>New password</span><input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="12 or more characters" /></label>
         <label className="auth-field"><span>Confirm new password</span><input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} placeholder="Type it again" onKeyDown={e => { if (e.key === 'Enter') void updateRecoveredPassword() }} /></label>
         <button className="auth-primary" type="button" onClick={() => void updateRecoveredPassword()} disabled={working}><span>{working ? 'Updating…' : 'Update password'}</span><ArrowRight size={18} /></button>
         <button className="auth-secondary-link" type="button" onClick={() => void cancelRecovery()}>Back to sign in</button>
-        {message && <p className="form-status auth-status" role="status" aria-live="polite">{message}</p>}
         <ProjectLinks /><AccountSafety />
       </div>
     </section>
   )
 
   if (!signedIn) return (
-    <section className="profile-screen business-shell auth-screen">
+    <section ref={screenRef} className={`profile-screen business-shell auth-screen${followupStep ? ' auth-followup-screen' : ''}`}>
+      <AuthFeedback message={message} working={working} emailWait={emailWait} onDismiss={() => setMessage('')} />
       <div className="auth-brand-panel">
         <span className="brand-wordmark"><strong>hi</strong>streets</span>
         <span className="portal-mark"><Building2 size={18} /> Business & Admin</span>
@@ -331,13 +354,25 @@ export default function Profile({ onPost }: Props) {
 
       <div className="auth-card auth-card-final">
         {confirmationEmail ? <>
-          <div className="auth-card-title"><span><ShieldCheck size={22} /></span><div><small>One more step</small><h2>Check your email</h2></div></div>
+          <div className="auth-card-title"><span><ShieldCheck size={22} /></span><div><small>One more step</small><h2 data-auth-heading tabIndex={-1}>Check your email</h2></div></div>
           <p className="auth-intro">Confirm <strong>{confirmationEmail}</strong> using the latest confirmation link in your inbox or spam folder. Then return here to sign in.</p>
           <button className="auth-primary" type="button" disabled={working || emailWait > 0} onClick={() => void resendConfirmation()}><span>{working ? 'Sending…' : emailWait > 0 ? `Resend available in ${emailWait}s` : 'Resend confirmation email'}</span><ArrowRight size={18} /></button>
           <button className="auth-secondary-link" type="button" disabled={working} onClick={() => switchMode('signin')}>Back to sign in</button>
           <button className="auth-text-action" type="button" disabled={working} onClick={() => { switchMode('signup'); setEmail('') }}>Use a different email</button>
+        </> : resetEmail ? <>
+          <div className="auth-card-title"><span><KeyRound size={22} /></span><div><small>Password recovery</small><h2 data-auth-heading tabIndex={-1}>Check your email</h2></div></div>
+          <p className="auth-intro">If an account exists for <strong>{resetEmail}</strong>, a reset link is on its way. Open the latest email to choose a new password. Check your spam folder too.</p>
+          <button className="auth-primary" type="button" disabled={working || emailWait > 0} onClick={() => void sendPasswordReset()}><span>{working ? 'Sending…' : emailWait > 0 ? `Resend available in ${emailWait}s` : 'Resend password reset email'}</span><ArrowRight size={18} /></button>
+          <button className="auth-secondary-link" type="button" disabled={working} onClick={() => switchMode('signin')}>Back to sign in</button>
+        </> : otpRequested ? <>
+          <div className="auth-card-title"><span><KeyRound size={22} /></span><div><small>Email sign-in</small><h2 data-auth-heading tabIndex={-1}>Enter your sign-in code</h2></div></div>
+          <p className="auth-intro">If <strong>{email.trim().toLowerCase()}</strong> has a HiStreets account, a code is on its way. Check your inbox and spam folder.</p>
+          <label className="auth-field"><span>Email sign-in code</span><input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" maxLength={10} placeholder="Enter code" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 10))} onKeyDown={e => { if (e.key === 'Enter') void verifyEmailCode() }} /></label>
+          <button className="auth-primary" type="button" onClick={() => void verifyEmailCode()} disabled={working}><span>{working ? 'Checking…' : 'Verify code and sign in'}</span><ArrowRight size={18} /></button>
+          <button className="auth-secondary-link" type="button" onClick={() => void sendEmailCode()} disabled={working || emailWait > 0}>{emailWait > 0 ? `Resend available in ${emailWait}s` : 'Send a new sign-in code'}</button>
+          <button className="auth-text-action" type="button" disabled={working} onClick={() => switchMode('signin')}>Back to sign in</button>
         </> : <>
-        <div className="auth-card-title"><span>{mode === 'signup' ? <UserPlus size={22} /> : <ShieldCheck size={22} />}</span><div><small>HiStreets secure access</small><h2>{mode === 'signup' ? 'Create your account' : 'Sign in to HiStreets'}</h2></div></div>
+        <div className="auth-card-title"><span>{mode === 'signup' ? <UserPlus size={22} /> : <ShieldCheck size={22} />}</span><div><small>HiStreets secure access</small><h2 data-auth-heading tabIndex={-1}>{mode === 'signup' ? 'Create your account' : 'Sign in to HiStreets'}</h2></div></div>
         <p className="auth-intro">{mode === 'signup' ? 'New to HiStreets? Enter your email and choose a password. That is all you need to start.' : 'Use your email and password. Admins and business owners sign in here.'}</p>
 
         <label className="auth-field"><span>Email address</span><input type="email" inputMode="email" autoCapitalize="none" autoComplete="email" spellCheck={false} placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} /></label>
@@ -355,13 +390,8 @@ export default function Profile({ onPost }: Props) {
           <button className="auth-text-action" type="button" onClick={() => void resendConfirmation()} disabled={working || emailWait > 0}>Resend confirmation email</button>
 
           <div className="auth-divider" aria-hidden="true"><span>or</span></div>
-          <button className="auth-secondary-link auth-email-link" type="button" onClick={() => void sendEmailCode()} disabled={working || emailWait > 0}><KeyRound size={16} /> {working ? 'Sending…' : otpRequested ? 'Send a new sign-in code' : 'Email me a sign-in code'}</button>
+          <button className="auth-secondary-link auth-email-link" type="button" onClick={() => void sendEmailCode()} disabled={working || emailWait > 0}><KeyRound size={16} /> {working ? 'Sending…' : 'Email me a sign-in code'}</button>
           <p className="auth-simple-note">No password needed. We email a secure numeric code to an existing HiStreets account.</p>
-
-          {otpRequested && <>
-            <label className="auth-field"><span>Email sign-in code</span><input type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" maxLength={10} placeholder="Enter code" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 10))} onKeyDown={e => { if (e.key === 'Enter') void verifyEmailCode() }} /></label>
-            <button className="auth-primary" type="button" onClick={() => void verifyEmailCode()} disabled={working}><span>{working ? 'Checking…' : 'Verify code and sign in'}</span><ArrowRight size={18} /></button>
-          </>}
 
           <div className="auth-account-switch"><span>New to HiStreets?</span><button type="button" disabled={working} onClick={() => switchMode('signup')}>Create account</button></div>
         </> : <>
@@ -370,9 +400,8 @@ export default function Profile({ onPost }: Props) {
         </>}
         </>}
 
-        {emailWait > 0 && <p className="auth-simple-note">You can request another email in {emailWait}s.</p>}
-        {message && <p className="form-status auth-status" role="status" aria-live="polite">{message}</p>}
-        <ProjectLinks /><AccountSafety />
+        {!message && emailWait > 0 && <p className="auth-simple-note">You can request another email in {emailWait}s.</p>}
+        <ProjectLinks />{!followupStep && <AccountSafety />}
       </div>
     </section>
   )
@@ -380,7 +409,8 @@ export default function Profile({ onPost }: Props) {
   if (role === 'suspended') return <section className="profile-screen business-shell"><div className="account-suspended-screen"><LockKeyhole size={34} /><span className="eyebrow">Account unavailable</span><h1>Your account is suspended</h1><p>Contact HiStreets support if you believe this is a mistake. Public directory pages remain available without an account.</p><button type="button" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button><AccountSafety /></div></section>
 
   if (role === 'admin' || role === 'super_admin') return (
-    <section className="profile-screen business-shell admin-workspace">
+    <section ref={screenRef} className="profile-screen business-shell admin-workspace">
+      <AuthFeedback message={message} working={working} emailWait={emailWait} onDismiss={() => setMessage('')} />
       <header className="portal-header">
         <div><span className="eyebrow"><ShieldCheck size={14} /> {role === 'super_admin' ? 'Founder console' : 'Platform operations'}</span><h1>{role === 'super_admin' ? 'HiStreets Founder' : 'Operations Admin'}</h1><p>{role === 'super_admin' ? 'Understand growth, protect access and guide the whole platform.' : 'Review businesses and content without founder-level account access.'}</p></div>
         <button className="portal-signout" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button>
@@ -395,13 +425,13 @@ export default function Profile({ onPost }: Props) {
       {adminSection === 'queue' && <><AdminReports /><AdminOwnershipRequests /><AdminPanel /></>}
       {adminSection === 'applications' && <JobApplicationsPanel />}
       {adminSection === 'users' && role === 'super_admin' && <AdminUserManagement />}
-      {message && <p className="form-status">{message}</p>}
       <AccountSafety /><footer className="portal-footer"><ProjectLinks /></footer>
     </section>
   )
 
   return (
-    <section className="profile-screen business-shell owner-workspace">
+    <section ref={screenRef} className="profile-screen business-shell owner-workspace">
+      <AuthFeedback message={message} working={working} emailWait={emailWait} onDismiss={() => setMessage('')} />
       <header className="portal-header">
         <div><span className="eyebrow"><Building2 size={14} /> Business workspace</span><h1>Your HiStreets business</h1><p>Claim or register once, then manage your profile, AI-assisted posts and job applications here.</p></div>
         <button className="portal-signout" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button>
@@ -418,7 +448,6 @@ export default function Profile({ onPost }: Props) {
       {ownerSection === 'content' && <BusinessPostingDashboard onPost={onPost} />}
       {ownerSection === 'applications' && <JobApplicationsPanel />}
       {ownerSection === 'team' && <BusinessTeamPanel />}
-      {message && <p className="form-status">{message}</p>}
       <AccountSafety /><footer className="portal-footer"><ProjectLinks /></footer>
     </section>
   )

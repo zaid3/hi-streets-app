@@ -44,9 +44,7 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: |
-            cd android
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon || { adb logcat -d > app/build/reports/androidTests/native-logcat.txt; exit 1; }
+          script: cd android && (./gradlew :app:connectedDebugAndroidTest --no-daemon || { mkdir -p app/build/reports/androidTests; adb logcat -d > app/build/reports/androidTests/native-logcat.txt; exit 1; })
       - name: Upload native test results
         if: always()
         uses: actions/upload-artifact@v4

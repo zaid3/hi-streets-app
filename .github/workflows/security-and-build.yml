@@ -11,10 +11,10 @@ permissions:
 jobs:
   gitleaks:
     name: Secret scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Run gitleaks
@@ -24,16 +24,18 @@ jobs:
 
   release-checks:
     name: Tests, audit, TypeScript and production build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Save generated lockfile
         uses: actions/upload-artifact@v4
         with:
@@ -44,24 +46,30 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Release checks
         run: npm run check
+      - name: Test reporting permissions in isolated PostgreSQL
+        run: npm run test:reports
 
   browser-release:
     name: Mobile Chromium and WebKit release smoke tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: release-checks
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Install Chromium and WebKit
         run: npx playwright install --with-deps chromium webkit
       - name: Run browser release tests
         run: npm run test:e2e
+      - name: Test reporting, blocking and account controls
+        run: npm run test:safety
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4

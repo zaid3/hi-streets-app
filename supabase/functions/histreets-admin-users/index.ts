@@ -13,7 +13,7 @@ const SERVICE_ROLE_KEY = configuredKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const publicAuth = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false } });
 const MUTABLE_PLATFORM_ROLES = new Set(["user", "admin"]);
-const ALLOWED_ORIGINS = new Set(["https://app.histreets.uk", "https://histreets.uk", "http://localhost:3000", "http://localhost:4173", "http://localhost:5173"]);
+const ALLOWED_ORIGINS = new Set(["https://localhost", "capacitor://localhost", "https://app.histreets.uk", "https://histreets.uk", "http://localhost:3000", "http://localhost:4173", "http://localhost:5173"]);
 
 function cors(origin: string | null) {
   const allow = origin && ALLOWED_ORIGINS.has(origin) ? origin : "https://app.histreets.uk";

@@ -12,3 +12,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .DS_Store
+
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+keystore.properties
+playwright-report/

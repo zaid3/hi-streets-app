@@ -1,3 +1,5 @@
+import { useBlockedBusinesses } from './lib/contentSafety'
+import NativeIntegration from './components/NativeIntegration'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import BottomTabs from './components/BottomTabs'
 import { loadPosts } from './lib/data'
@@ -31,6 +33,7 @@ function tabFromPath(pathname: string): TabKey {
 }
 
 export default function App() {
+  const blocked = useBlockedBusinesses()
   const [tab, setTab] = useState<TabKey>(() => tabFromPath(window.location.pathname))
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,7 +66,7 @@ export default function App() {
     }
   }, [])
 
-  const livePosts = useMemo(() => posts.filter(p => p.status === 'live'), [posts])
+  const livePosts = useMemo(() => posts.filter(p => p.status === 'live' && !blocked.includes(p.business_id || '')), [posts, blocked])
 
   function changeTab(nextTab: TabKey) {
     setComposerOpen(false)
@@ -79,6 +82,7 @@ export default function App() {
 
   return (
     <main className="app-shell">
+      <NativeIntegration />
       {loading && <div className="boot-loader">Loading HiStreets…</div>}
       {postsError && <div className="global-error" role="alert">{postsError}</div>}
       <Suspense fallback={<div className="boot-loader">Opening HiStreets…</div>}>

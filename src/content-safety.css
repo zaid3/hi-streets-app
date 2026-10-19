@@ -1,0 +1,18 @@
+
+.content-safety-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.content-safety-actions button,.safety-dialog button,.blocked-row button{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border:1px solid #a9c3c0;border-radius:10px;background:#fff;color:#174f4b;cursor:pointer;font:inherit}
+.safety-dialog{width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 48px);box-sizing:border-box;overflow:auto;border:1px solid #abc4c0;border-radius:18px;padding:24px;background:#fff;color:#183b38;font:16px/1.5 system-ui,sans-serif}
+.safety-dialog::backdrop{background:#001d1ab3}
+.safety-dialog label{display:grid;gap:6px;margin:16px 0}
+.safety-dialog input,.safety-dialog select,.safety-dialog textarea{width:100%;box-sizing:border-box;font:inherit;min-height:44px;border:1px solid #8daaa6;border-radius:8px;padding:10px;background:white;color:#183b38}
+.safety-dialog textarea{min-height:110px;resize:vertical}
+.safety-dialog .safety-close{float:right;padding:8px}
+.safety-dialog .safety-primary{background:#075e59;color:white}
+.safety-dialog button:disabled{opacity:.6;cursor:wait}
+.safety-consent{display:flex!important;align-items:flex-start;gap:12px;margin:18px 0;font-size:15px;line-height:1.5}
+.safety-consent input{width:24px!important;height:24px!important;min-width:24px;margin:0}
+.safety-link{display:inline-flex;align-items:center;min-height:44px;font-weight:650;text-decoration:underline}
+.account-safety details{margin-top:16px}.account-safety summary{cursor:pointer;min-height:44px;display:list-item}
+.blocked-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0}
+.report-review{border-top:1px solid #bbcfc8;padding:16px 0}.report-review pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;background:#f5f8f7;padding:12px;border-radius:8px}
+.content-safety-actions button:focus-visible,.safety-dialog :focus-visible,.account-safety :focus-visible,.safety-consent :focus-visible{outline:3px solid #c45521;outline-offset:3px}

@@ -1,3 +1,4 @@
+import { prepareDocumentWindow, openPrivateDocument } from '../lib/nativeBrowser'
 import { useEffect, useState } from 'react'
 import { BarChart3, Camera, CheckCircle2, FileText, Store, XCircle } from 'lucide-react'
 import { deleteBusinessVerificationEvidence, getBusinessEvidenceSignedUrl, getCurrentRole, loadBusinessVerificationEvidence, loadSuperAdminBusinesses, loadSuperAdminOverview, loadSuperAdminPosts } from '../lib/data'
@@ -60,13 +61,11 @@ export default function AdminPanel() {
   }
 
   async function openEvidence(item: BusinessVerificationEvidence) {
-    const popup = window.open('', '_blank')
-    if (popup) popup.opener = null
+    const popup = prepareDocumentWindow()
     try {
       setMessage('Opening verification evidence securely…')
       const url = await getBusinessEvidenceSignedUrl(item.storage_path)
-      if (popup) popup.location.href = url
-      else window.location.assign(url)
+      await openPrivateDocument(url, popup)
       setMessage('')
     } catch (error) {
       popup?.close()

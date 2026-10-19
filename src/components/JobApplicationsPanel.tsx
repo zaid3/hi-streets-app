@@ -1,3 +1,4 @@
+import { prepareDocumentWindow, openPrivateDocument } from '../lib/nativeBrowser'
 import { useEffect, useState } from 'react'
 import { Briefcase, FileText, Mail, MessageCircle, Phone } from 'lucide-react'
 import { getJobCvSignedUrl, loadMyJobApplications } from '../lib/data'
@@ -27,14 +28,12 @@ export default function JobApplicationsPanel() {
 
   async function openCv(item: JobApplication) {
     if (!item.cv_url || openingCv) return
-    const popup = window.open('', '_blank')
-    if (popup) popup.opener = null
+    const popup = prepareDocumentWindow()
     try {
       setOpeningCv(item.id)
       setStatus('Opening CV securely…')
       const signedUrl = await getJobCvSignedUrl(item.cv_url)
-      if (popup) popup.location.href = signedUrl
-      else window.location.assign(signedUrl)
+      await openPrivateDocument(signedUrl, popup)
       setStatus('')
     } catch (error) {
       popup?.close()

@@ -1,3 +1,5 @@
+import ContentSafety from './ContentSafety'
+import { useBlockedBusinesses } from '../lib/contentSafety'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bot, BriefcaseBusiness, LocateFixed, MapPin, Search, Sparkles, Store, Tag, X } from 'lucide-react'
 import { askHiStreets, type AskHiStreetsResponse } from '../lib/ai'
@@ -40,6 +42,7 @@ function tabForPostType(type: string): SmartSearchTab {
 }
 
 export default function SmartMapSearch({ onNavigate }: Props) {
+  const blocked = useBlockedBusinesses()
   const [query, setQuery] = useState('')
   const [businesses, setBusinesses] = useState<SmartSearchBusiness[]>([])
   const [open, setOpen] = useState(false)
@@ -83,7 +86,7 @@ export default function SmartMapSearch({ onNavigate }: Props) {
     }
   }, [])
 
-  const suggestions = useMemo(() => buildSmartSearchSuggestions(query, businesses), [query, businesses])
+  const suggestions = useMemo(() => buildSmartSearchSuggestions(query, businesses.filter(b => !blocked.includes(b.id))), [query, businesses, blocked])
 
   function closeSuggestions() {
     setOpen(false)
@@ -217,7 +220,7 @@ export default function SmartMapSearch({ onNavigate }: Props) {
           {query.trim().length >= 3 && (
             <button type="button" className="ask-histreets-option" onMouseDown={event => event.preventDefault()} onClick={() => void runAi()}>
               <span className="smart-search-option-icon ai"><Bot size={19} /></span>
-              <span className="smart-search-option-copy"><strong>Ask HiStreets AI</strong><small>Understand my need and find real local actions</small></span>
+              <span className="smart-search-option-copy"><strong>Ask HiStreets AI</strong><small>Uses Google Gemini. Do not enter sensitive data.</small></span>
             </button>
           )}
           <div className="smart-search-options">
@@ -255,9 +258,9 @@ export default function SmartMapSearch({ onNavigate }: Props) {
             {aiLoading && <div className="ask-ai-loading"><Sparkles size={20} /><strong>Understanding your need…</strong><span>Checking HiStreets business listings and live local posts.</span></div>}
             {aiError && <div className="ask-ai-error" role="status"><strong>AI unavailable</strong><span>{aiError}</span><button type="button" onClick={() => void runAi()}>Try again</button></div>}
             {aiResult && <>
-              <div className="ask-ai-answer"><Sparkles size={18} /><p>{aiResult.answer}</p></div>
-              {aiResult.posts.length > 0 && <div className="ask-ai-results"><h3>Live local actions</h3>{aiResult.posts.slice(0, 5).map(post => <button key={post.id} type="button" onClick={() => { setAiOpen(false); onNavigate(tabForPostType(post.type)) }}><span>{post.type === 'job' ? <BriefcaseBusiness size={18} /> : post.type === 'offer' ? <Tag size={18} /> : <Sparkles size={18} />}</span><div><strong>{post.title}</strong><small>{post.business?.name || post.category || 'HiStreets'}</small></div></button>)}</div>}
-              {aiResult.businesses.length > 0 && <div className="ask-ai-results"><h3>Local business listings</h3>{aiResult.businesses.slice(0, 4).map(business => <button key={business.id} type="button" onClick={() => { setAiOpen(false); setQuery(business.name); runMapQuery(business.name) }}><span><Store size={18} /></span><div><strong>{business.name}</strong><small>{business.verification_status === 'verified' ? 'Verified business' : business.category || business.address || 'Unclaimed listing'}</small></div></button>)}</div>}
+              <div className="ask-ai-answer"><Sparkles size={18} /><p>{aiResult.answer}</p></div><ContentSafety target={{ kind: 'ai', label: 'Ask HiStreets response', text: aiResult.answer }} />
+              {aiResult.posts.length > 0 && <div className="ask-ai-results"><h3>Live local actions</h3>{aiResult.posts.filter(p => !blocked.includes(p.business_id || '')).slice(0, 5).map(post => <button key={post.id} type="button" onClick={() => { setAiOpen(false); onNavigate(tabForPostType(post.type)) }}><span>{post.type === 'job' ? <BriefcaseBusiness size={18} /> : post.type === 'offer' ? <Tag size={18} /> : <Sparkles size={18} />}</span><div><strong>{post.title}</strong><small>{post.business?.name || post.category || 'HiStreets'}</small></div></button>)}</div>}
+              {aiResult.businesses.length > 0 && <div className="ask-ai-results"><h3>Local business listings</h3>{aiResult.businesses.filter(b => !blocked.includes(b.id)).slice(0, 4).map(business => <button key={business.id} type="button" onClick={() => { setAiOpen(false); setQuery(business.name); runMapQuery(business.name) }}><span><Store size={18} /></span><div><strong>{business.name}</strong><small>{business.verification_status === 'verified' ? 'Verified business' : business.category || business.address || 'Unclaimed listing'}</small></div></button>)}</div>}
               <p className="ask-ai-trust">AI interprets your request. Results come only from HiStreets data, and verification status is shown separately. It does not invent local listings.</p>
             </>}
           </section>

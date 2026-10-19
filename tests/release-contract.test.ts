@@ -120,7 +120,7 @@ test('five primary navigation destinations remain on one mobile tab row', async 
 
 test('business portal supports email OTP sign-in and keeps signup confirmation on the business route', async () => {
   const profile = await read('src/components/Profile.tsx')
-  assert.match(profile, /emailRedirectTo:\s*`\$\{window\.location\.origin\}\/business`/)
+  assert.match(profile, /emailRedirectTo:\s*authRedirect\(\)/)
   assert.match(profile, /signInWithOtp/)
   assert.match(profile, /verifyOtp/)
   assert.match(profile, /type:\s*'email'/)

@@ -1,3 +1,4 @@
+import ContentSafety from './ContentSafety'
 import { useEffect, useState } from 'react'
 import { Bot, Send, Sparkles, Store } from 'lucide-react'
 import { draftBusinessPost, type BusinessCopilotDraft } from '../lib/ai'
@@ -70,6 +71,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   const [schedule, setSchedule] = useState('')
   const [booking, setBooking] = useState('')
   const [status, setStatus] = useState('Loading your verified businesses…')
+  const [acceptedRules, setAcceptedRules] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [copilotPrompt, setCopilotPrompt] = useState('')
   const [copilotDraft, setCopilotDraft] = useState<BusinessCopilotDraft | null>(null)
@@ -125,6 +127,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   }
 
   async function submit() {
+    if (!acceptedRules) return setStatus('Accept the Community rules before posting.')
     try {
       setSubmitting(true)
       setStatus('Checking post details…')
@@ -155,7 +158,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   }
 
   const needsRecurrence = type === 'free_meal' || type === 'community'
-  const disabled = submitting || !businessId || !title.trim() || !body.trim() || !expiresAt || (needsRecurrence && !recurrence.trim())
+  const disabled = !acceptedRules || submitting || !businessId || !title.trim() || !body.trim() || !expiresAt || (needsRecurrence && !recurrence.trim())
 
   if (!loadingBusinesses && businesses.length === 0) {
     return (
@@ -197,10 +200,10 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
           <strong>{copilotDraft.title}</strong>
           <p>{copilotDraft.body}</p>
           {copilotDraft.missing_fields.length > 0 && <div className="copilot-missing"><b>Before publishing:</b> {copilotDraft.missing_fields.join(', ')}</div>}
-          <button type="button" onClick={useCopilotDraft}>Use this draft</button>
+          <button type="button" onClick={useCopilotDraft}>Use this draft</button><ContentSafety target={{ kind: 'ai', label: 'Business Copilot draft', text: JSON.stringify(copilotDraft) }} />
         </div>}
         {copilotStatus && <p className="form-status" role="status" aria-live="polite">{copilotStatus}</p>}
-        <small className="copilot-trust">AI drafts only from what you provide and your verified business profile. It cannot publish without your review.</small>
+        <small className="copilot-trust">Your instructions and business details may be processed by Google Gemini. Do not include private or sensitive data. AI drafts only from what you provide and your verified business profile. It cannot publish without your review.</small>
       </section>
 
       <label>Post type
@@ -278,6 +281,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         <input value={recurrence} onChange={e => setRecurrence(e.target.value)} placeholder="e.g. Every Saturday 12–2pm" />
       </label>}
 
+      <label className="safety-consent"><input type="checkbox" checked={acceptedRules} onChange={e => setAcceptedRules(e.target.checked)} /><span>I accept the <a href="/terms.html">Community rules</a> and confirm this post is genuine, lawful and safe.</span></label>
       <button onClick={submit} disabled={disabled}><Send size={17} /> Submit post</button>
       {status && <p className="form-status">{status}</p>}
     </div>

@@ -12,6 +12,8 @@ const MODEL = "gemini-2.5-flash";
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
 const ALLOWED_ORIGINS = new Set([
+  "https://localhost",
+  "capacitor://localhost",
   "https://app.histreets.uk",
   "https://histreets.uk",
   "http://localhost:3000",

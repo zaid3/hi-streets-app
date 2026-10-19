@@ -1,0 +1,14 @@
+html.histreets-native { background:#063b3a; overscroll-behavior:none }
+.histreets-native .app-shell { padding-top:env(safe-area-inset-top); box-sizing:border-box; min-height:100dvh }
+.histreets-native .map-screen { height:calc(100dvh - env(safe-area-inset-top))!important }
+.histreets-native .bottom-tabs { bottom:0!important; padding-bottom:max(10px,env(safe-area-inset-bottom))!important; padding-left:max(6px,env(safe-area-inset-left))!important; padding-right:max(6px,env(safe-area-inset-right))!important }
+.histreets-native .smart-map-search { top:calc(env(safe-area-inset-top) + 10px)!important; left:max(10px,env(safe-area-inset-left))!important; right:max(10px,env(safe-area-inset-right))!important; width:auto!important; transform:none!important }
+.histreets-native .map-filterbar { top:calc(env(safe-area-inset-top) + 76px)!important }
+.histreets-native .profile-screen,.histreets-native .feed-screen { padding-bottom:calc(140px + env(safe-area-inset-bottom))!important }
+.histreets-native .bottom-sheet { bottom:calc(86px + env(safe-area-inset-bottom))!important; max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 110px)!important }
+.histreets-native .ask-ai-layer { padding-top:env(safe-area-inset-top)!important }
+.histreets-native .ask-ai-sheet { max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px)!important }
+.histreets-native.histreets-keyboard-open .bottom-tabs { display:none!important }
+.histreets-native.histreets-keyboard-open .bottom-sheet { bottom:0!important }
+.native-link-notice { position:fixed; z-index:500; top:calc(env(safe-area-inset-top) + 12px); left:12px; right:12px; padding:12px; background:#fff8e8; border:1px solid #d9c9a6; border-radius:12px }
+.native-link-notice button { margin-left:12px }

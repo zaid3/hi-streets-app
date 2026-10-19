@@ -46,6 +46,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Release checks
         run: npm run check
+      - name: Test reporting permissions in isolated PostgreSQL
+        run: npm run test:reports
 
   browser-release:
     name: Mobile Chromium and WebKit release smoke tests
@@ -66,6 +68,8 @@ jobs:
         run: npx playwright install --with-deps chromium webkit
       - name: Run browser release tests
         run: npm run test:e2e
+      - name: Test reporting, blocking and account controls
+        run: npm run test:safety
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4

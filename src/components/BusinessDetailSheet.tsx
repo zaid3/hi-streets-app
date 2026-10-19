@@ -1,3 +1,4 @@
+import ContentSafety from './ContentSafety'
 import { useEffect } from 'react'
 import { BadgeCheck, CircleAlert, Globe, Mail, MapPin, MessageCircle, Phone, ShieldCheck, Tag } from 'lucide-react'
 import { directionsUrl } from '../lib/newham'
@@ -105,7 +106,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
               <div>
                 <strong>{postLabel(post.type)}</strong>
                 <h3>{post.title}</h3>
-                <p>{post.body}</p>
+                <p>{post.body}</p><ContentSafety target={{ kind: 'post', id: post.id, label: post.title }} businessId={business.id} />
                 {post.type === 'job' && (post.apply_phone || post.apply_url) && <small>Apply by {post.apply_phone ? 'phone/WhatsApp' : 'link'}</small>}
               </div>
             </article>
@@ -138,6 +139,7 @@ export default function BusinessDetailSheet({ business, posts }: { business: Bus
 
       {!isVerified && <div className="claim-listing-action"><strong>Is this your business?</strong><span>Claim it to correct details and publish offers or jobs.</span><a href="/business">Claim this listing</a></div>}
 
+      <ContentSafety target={{ kind: 'business', id: business.id, label: business.name }} businessId={business.id} />
       <div className="listing-chip-row">
         {business.cuisine && <span className="listing-chip"><Tag size={12} /> {business.cuisine}</span>}
         {business.brand && <span className="listing-chip">{business.brand}</span>}

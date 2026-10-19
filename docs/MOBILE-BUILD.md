@@ -42,3 +42,13 @@ These changes are **not deployed**. Automatic approval review rejected replaceme
 - Produce and inspect a signed AAB only after those checks. A passing web build or debug compilation is not a completed Play submission.
 
 The developer account, store declarations and any required closed testing remain Play Console steps. Store approval cannot be guaranteed by a build.
+
+## Resumed 19 October 2026
+
+The prior Android compilation and Security and release workflows passed at commit 59af399. New source adds in-app reports for public posts, business listings and AI responses; persistent device-local business blocking; moderator review/removal; signup/posting rule acceptance; a prominent deletion-request path; and revised privacy/terms/deletion pages. Account/data deletion is a documented, manually processed support request, not an automatic database deletion. The operator must actually fulfil requests, including private Storage files and provider-held data.
+
+The new content_reports migration was tested with 22 checks in isolated PostgreSQL. Automatic approval review rejected applying it to production, requiring explicit owner approval for its table, functions and anti-republication triggers. It has NOT been deployed. The earlier native-origin function deployment is also still blocked pending explicit approval. Do not retry either production mutation without that approval.
+
+Browser testing: 36 existing mobile checks passed (3 desktop-only skips), all 72 unit checks passed, and four new reporting/blocking/deletion/accessibility browser tests passed after fixing report-dialog focus restoration. Production dependency audit found no vulnerabilities. These results are not a substitute for authenticated native-device testing.
+
+The Supabase CLI created the new migration filename before automatic approval blocked its telemetry attempt. No further CLI telemetry attempt was made. Local SQL tests use PGlite without network access.

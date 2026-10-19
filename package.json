@@ -17,7 +17,9 @@
     "mobile:preview": "node scripts/prepare-mobile.mjs --preview",
     "mobile:android": "cap open android",
     "mobile:ios": "cap open ios",
-    "mobile:assets": "capacitor-assets generate --android --ios --assetPath assets --iconBackgroundColor '#EF6C34' --iconBackgroundColorDark '#EF6C34' --splashBackgroundColor '#063b3a' --splashBackgroundColorDark '#063b3a'"
+    "mobile:assets": "capacitor-assets generate --android --ios --assetPath assets --iconBackgroundColor '#EF6C34' --iconBackgroundColorDark '#EF6C34' --splashBackgroundColor '#063b3a' --splashBackgroundColorDark '#063b3a'",
+    "test:reports": "node scripts/test-mobile-reports.mjs",
+    "test:safety": "playwright test --config playwright-safety.config.ts"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
@@ -38,6 +40,7 @@
   "devDependencies": {
     "@capacitor/assets": "3.0.5",
     "@capacitor/cli": "8.5.3",
+    "@electric-sql/pglite": "0.5.10",
     "@playwright/test": "1.62.1",
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",

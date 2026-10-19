@@ -19,6 +19,7 @@ import './final-mobile-overlap-fix.css'
 import './reliability-upgrades.css'
 import './workspace-dashboard.css'
 import './native.css'
+import './content-safety.css'
 import App from './App'
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

@@ -1,3 +1,4 @@
+import { useBlockedBusinesses, blockedBusinesses } from '../lib/contentSafety'
 import { Capacitor } from '@capacitor/core'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
@@ -293,6 +294,8 @@ function postcodeLookupFailure(status: number) {
 }
 
 export default function MapView({ posts }: { posts: Post[] }) {
+  const blocked = useBlockedBusinesses()
+  useEffect(() => { if (selected && blocked.includes(selected.id)) setSelected(null) }, [blocked])
   const nodeRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibre | null>(null)
   const businessesGeoJsonRef = useRef<FeatureCollection>(EMPTY_FC)
@@ -310,7 +313,7 @@ export default function MapView({ posts }: { posts: Post[] }) {
   const [searching, setSearching] = useState(false)
 
   const businessPostKinds = useMemo(() => getBusinessPostKinds(posts), [posts])
-  const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson(businessesGeoJson, businessPostKinds), [businessesGeoJson, businessPostKinds])
+  const enrichedBusinesses = useMemo(() => enrichBusinessGeoJson({ ...businessesGeoJson, features: businessesGeoJson.features.filter(f => !blocked.includes(String(f.properties?.id || f.id || ''))) }, businessPostKinds), [businessesGeoJson, businessPostKinds, blocked])
   const visibleBusinesses = useMemo(() => filteredBusinessGeoJson(enrichedBusinesses, filter, appliedSearch), [enrichedBusinesses, filter, appliedSearch])
 
   function applyMapData(nextBusinesses = visibleBusinesses, nextUserPoint = userPoint) {
@@ -322,9 +325,9 @@ export default function MapView({ posts }: { posts: Post[] }) {
   }
 
   async function openBusinessById(id: string, coords?: [number, number] | null) {
-    if (!id) return
+    if (!id || blockedBusinesses().includes(id)) return
     const business = await fetchBusinessById(id)
-    if (!business) return
+    if (!business || blockedBusinesses().includes(id)) return
     setSelected(business)
     const map = mapRef.current
     const point = coords || [business.lng, business.lat]

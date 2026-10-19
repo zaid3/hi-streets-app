@@ -1,3 +1,5 @@
+import AccountSafety from './AccountSafety'
+import AdminReports from './AdminReports'
 import { authRedirect } from '../lib/auth-redirect'
 import { useEffect, useState } from 'react'
 import { ArrowRight, BarChart3, BriefcaseBusiness, Building2, ClipboardCheck, FilePenLine, KeyRound, LockKeyhole, LogOut, ShieldCheck, Sparkles, Store, UserPlus, Users } from 'lucide-react'
@@ -46,6 +48,7 @@ function ProjectLinks() {
 }
 
 export default function Profile({ onPost }: Props) {
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
@@ -144,6 +147,7 @@ export default function Profile({ onPost }: Props) {
   }
 
   async function createAccount() {
+    if (!acceptedTerms) return setMessage('Please accept the Terms and Community rules first.')
     if (!supabaseConfigured || !supabase) return setMessage('Secure sign-up is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail) return setMessage('Enter your email address.')
@@ -234,7 +238,7 @@ export default function Profile({ onPost }: Props) {
         <button className="auth-primary" type="button" onClick={() => void updateRecoveredPassword()} disabled={working}><span>{working ? 'Updating…' : 'Update password'}</span><ArrowRight size={18} /></button>
         <button className="auth-secondary-link" type="button" onClick={() => void cancelRecovery()}>Back to sign in</button>
         {message && <p className="form-status auth-status" role="status" aria-live="polite">{message}</p>}
-        <ProjectLinks />
+        <ProjectLinks /><AccountSafety />
       </div>
     </section>
   )
@@ -259,6 +263,7 @@ export default function Profile({ onPost }: Props) {
 
         {mode === 'signup' && <>
           <label className="auth-field"><span>Confirm password</span><input type="password" autoComplete="new-password" minLength={PASSWORD_MIN_LENGTH} placeholder="Type it again" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void createAccount() }} /></label>
+          <label className="safety-consent"><input type="checkbox" checked={acceptedTerms} onChange={e => setAcceptedTerms(e.target.checked)} /><span>I accept the <a href="/terms.html">Terms and Community rules</a> and have read the <a href="/privacy.html">Privacy Policy</a>.</span></label>
           <p className="password-tip"><ShieldCheck size={15} /> Use 12 or more characters. A short memorable phrase works well.</p>
         </>}
 
@@ -277,17 +282,17 @@ export default function Profile({ onPost }: Props) {
 
           <div className="auth-account-switch"><span>New to HiStreets?</span><button type="button" onClick={() => switchMode('signup')}>Create account</button></div>
         </> : <>
-          <button className="auth-primary" type="button" onClick={() => void createAccount()} disabled={working}><span>{working ? 'Creating…' : 'Create account'}</span><ArrowRight size={18} /></button>
+          <button className="auth-primary" type="button" onClick={() => void createAccount()} disabled={working || !acceptedTerms}><span>{working ? 'Creating…' : 'Create account'}</span><ArrowRight size={18} /></button>
           <div className="auth-account-switch"><span>Already have an account?</span><button type="button" onClick={() => switchMode('signin')}>Back to sign in</button></div>
         </>}
 
         {message && <p className="form-status auth-status" role="status" aria-live="polite">{message}</p>}
-        <ProjectLinks />
+        <ProjectLinks /><AccountSafety />
       </div>
     </section>
   )
 
-  if (role === 'suspended') return <section className="profile-screen business-shell"><div className="account-suspended-screen"><LockKeyhole size={34} /><span className="eyebrow">Account unavailable</span><h1>Your account is suspended</h1><p>Contact HiStreets support if you believe this is a mistake. Public directory pages remain available without an account.</p><button type="button" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button></div></section>
+  if (role === 'suspended') return <section className="profile-screen business-shell"><div className="account-suspended-screen"><LockKeyhole size={34} /><span className="eyebrow">Account unavailable</span><h1>Your account is suspended</h1><p>Contact HiStreets support if you believe this is a mistake. Public directory pages remain available without an account.</p><button type="button" onClick={() => void signOut()}><LogOut size={17} /> Sign out</button><AccountSafety /></div></section>
 
   if (role === 'admin' || role === 'super_admin') return (
     <section className="profile-screen business-shell admin-workspace">
@@ -302,11 +307,11 @@ export default function Profile({ onPost }: Props) {
         {role === 'super_admin' && <button type="button" className={adminSection === 'users' ? 'active' : ''} onClick={() => setAdminSection('users')}><Users size={17} /> People & access</button>}
       </nav>
       {adminSection === 'overview' && <PlatformAnalyticsDashboard founder={role === 'super_admin'} />}
-      {adminSection === 'queue' && <><AdminOwnershipRequests /><AdminPanel /></>}
+      {adminSection === 'queue' && <><AdminReports /><AdminOwnershipRequests /><AdminPanel /></>}
       {adminSection === 'applications' && <JobApplicationsPanel />}
       {adminSection === 'users' && role === 'super_admin' && <AdminUserManagement />}
       {message && <p className="form-status">{message}</p>}
-      <footer className="portal-footer"><ProjectLinks /></footer>
+      <AccountSafety /><footer className="portal-footer"><ProjectLinks /></footer>
     </section>
   )
 
@@ -329,7 +334,7 @@ export default function Profile({ onPost }: Props) {
       {ownerSection === 'applications' && <JobApplicationsPanel />}
       {ownerSection === 'team' && <BusinessTeamPanel />}
       {message && <p className="form-status">{message}</p>}
-      <footer className="portal-footer"><ProjectLinks /></footer>
+      <AccountSafety /><footer className="portal-footer"><ProjectLinks /></footer>
     </section>
   )
 }

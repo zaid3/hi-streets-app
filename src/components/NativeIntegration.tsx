@@ -40,7 +40,7 @@ export default function NativeIntegration() {
     }))
     const link = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0) return
-      const anchor = (event.target as Element)?.closest<HTMLAnchorElement>('a[href]')
+      const anchor = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>('a[href]') : null
       if (!anchor || anchor.hasAttribute('download')) return
       event.preventDefault()
       const destination = nativeDestination(anchor.getAttribute('href') || '', window.location.origin)

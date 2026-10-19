@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { Geolocation } from '@capacitor/geolocation'
+import { nativePosition } from './nativeLocation'
 type LocationPosition = { timestamp: number; coords: Pick<GeolocationCoordinates, 'latitude' | 'longitude' | 'accuracy' | 'altitude' | 'altitudeAccuracy' | 'heading' | 'speed'> }
 function errorCode(error: unknown) {
   if (!error || typeof error !== 'object' || !('code' in error)) return null
@@ -13,13 +14,7 @@ function errorCode(error: unknown) {
 
 export async function getPosition(options: PositionOptions): Promise<LocationPosition> {
   if (Capacitor.isNativePlatform()) {
-    let permission = await Geolocation.checkPermissions()
-    if (permission.location !== 'granted' && permission.coarseLocation !== 'granted') {
-      permission = await Geolocation.requestPermissions({ permissions: ['location'] })
-    }
-    if (permission.location !== 'granted' && permission.coarseLocation !== 'granted') throw Object.assign(new Error('Location permission denied'), { code: 1 })
-    const position = await Geolocation.getCurrentPosition(options)
-    return { ...position, coords: { ...position.coords, altitude: position.coords.altitude ?? null, altitudeAccuracy: position.coords.altitudeAccuracy ?? null, heading: position.coords.heading ?? null, speed: position.coords.speed ?? null } }
+    return nativePosition(Geolocation, options)
   }
   return new Promise<LocationPosition>((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, options)

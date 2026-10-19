@@ -11,10 +11,10 @@ permissions:
 jobs:
   gitleaks:
     name: Secret scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Run gitleaks
@@ -24,14 +24,14 @@ jobs:
 
   release-checks:
     name: Tests, audit, TypeScript and production build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
       - name: Install dependencies
@@ -49,15 +49,15 @@ jobs:
 
   browser-release:
     name: Mobile Chromium and WebKit release smoke tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: release-checks
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 22
       - name: Install dependencies

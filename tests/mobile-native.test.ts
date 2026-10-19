@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises'
 const origin = 'https://localhost'
 test('native links keep only app routes inside the WebView', () => {
   assert.deepEqual(nativeDestination('/business?mode=recovery', origin), { kind:'internal', url:'/business?mode=recovery' })
+  assert.deepEqual(nativeDestination('/business', 'capacitor://localhost'), { kind:'internal', url:'/business' })
+  assert.equal(nativeDestination('capacitor://other/business', 'capacitor://localhost').kind, 'blocked')
   assert.equal(nativeDestination('/privacy.html', origin).url, 'https://app.histreets.uk/privacy.html')
   for (const url of ['javascript:alert(1)','data:text/html,Hello','file:///tmp/key','intent://test','https://user:pass@example.com','https://localhost/unknown']) assert.equal(nativeDestination(url,origin).kind,'blocked')
   assert.equal(nativeDestination('https://example.com/listing',origin).kind,'external')

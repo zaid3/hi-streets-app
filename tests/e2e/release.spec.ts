@@ -107,61 +107,65 @@ test.describe('HiStreets final mobile release', () => {
     await expect(page.getByRole('heading', { name: 'Jobs in Newham' })).toBeVisible()
   })
 
-  test('full Newham postcode search works with spaces and validates the borough', async ({ page }) => {
-    await page.route('https://api.postcodes.io/postcodes/**', route => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(newhamFullPostcode),
-    }))
-
-    await page.goto('/map')
-    await page.getByRole('button', { name: 'Use Newham map for now' }).click()
-    const search = smartSearch(page)
-    await search.fill(' e7 8le ')
-    await search.press('Enter')
-
-    await expect(page.getByRole('status')).toHaveText('Showing E7 8LE.')
-  })
-
-  test('Newham outward postcode search works', async ({ page }) => {
-    await page.route('https://api.postcodes.io/outcodes/**', route => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(newhamOutcode),
-    }))
-
-    await page.goto('/map')
-    await page.getByRole('button', { name: 'Use Newham map for now' }).click()
-    const search = smartSearch(page)
-    await search.fill('e7')
-    await search.press('Enter')
-
-    await expect(page.getByRole('status')).toHaveText('Showing E7 in Newham.')
-  })
-
-  test('postcode outside Newham is rejected without moving into another borough', async ({ page }) => {
-    await page.route('https://api.postcodes.io/postcodes/**', route => route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
+  test.describe('postcode fixtures', () => {
+    // A service worker bypasses page.route; isolate only these mocked responses.
+    test.use({ serviceWorkers: 'block' })
+    test('full Newham postcode search works with spaces and validates the borough', async ({ page }) => {
+      await page.route('https://api.postcodes.io/postcodes/**', route => route.fulfill({
         status: 200,
-        result: {
-          postcode: 'SW1A 1AA',
-          latitude: 51.50101,
-          longitude: -0.141563,
-          admin_district: 'Westminster',
-          codes: { admin_district: 'E09000033' },
-        },
-      }),
-    }))
+        contentType: 'application/json',
+        body: JSON.stringify(newhamFullPostcode),
+      }))
 
-    await page.goto('/map')
-    await page.getByRole('button', { name: 'Use Newham map for now' }).click()
-    const search = smartSearch(page)
-    await search.fill('SW1A 1AA')
-    await search.press('Enter')
+      await page.goto('/map')
+      await page.getByRole('button', { name: 'Use Newham map for now' }).click()
+      const search = smartSearch(page)
+      await search.fill(' e7 8le ')
+      await search.press('Enter')
 
-    await expect(page.getByRole('status')).toHaveText('That postcode is outside the London Borough of Newham.')
+      await expect(page.getByRole('status')).toHaveText('Showing E7 8LE.')
+    })
+
+    test('Newham outward postcode search works', async ({ page }) => {
+      await page.route('https://api.postcodes.io/outcodes/**', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(newhamOutcode),
+      }))
+
+      await page.goto('/map')
+      await page.getByRole('button', { name: 'Use Newham map for now' }).click()
+      const search = smartSearch(page)
+      await search.fill('e7')
+      await search.press('Enter')
+
+      await expect(page.getByRole('status')).toHaveText('Showing E7 in Newham.')
+    })
+
+    test('postcode outside Newham is rejected without moving into another borough', async ({ page }) => {
+      await page.route('https://api.postcodes.io/postcodes/**', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 200,
+          result: {
+            postcode: 'SW1A 1AA',
+            latitude: 51.50101,
+            longitude: -0.141563,
+            admin_district: 'Westminster',
+            codes: { admin_district: 'E09000033' },
+          },
+        }),
+      }))
+
+      await page.goto('/map')
+      await page.getByRole('button', { name: 'Use Newham map for now' }).click()
+      const search = smartSearch(page)
+      await search.fill('SW1A 1AA')
+      await search.press('Enter')
+
+      await expect(page.getByRole('status')).toHaveText('That postcode is outside the London Borough of Newham.')
+    })
   })
 
   test('business and street search remains usable when no matching data exists', async ({ page }) => {

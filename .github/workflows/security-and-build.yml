@@ -46,6 +46,8 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       - name: Release checks
         run: npm run check
+      - name: Test private feedback and submission limits
+        run: npm run test:feedback
       - name: Test reporting permissions in isolated PostgreSQL
         run: npm run test:reports
 

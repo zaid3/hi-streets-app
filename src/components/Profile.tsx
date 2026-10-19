@@ -1,7 +1,8 @@
 import AccountSafety from './AccountSafety'
 import AdminReports from './AdminReports'
 import { authRedirect } from '../lib/auth-redirect'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { authErrorMessage, emailRetrySeconds } from '../lib/auth-feedback'
 import { ArrowRight, BarChart3, BriefcaseBusiness, Building2, ClipboardCheck, FilePenLine, KeyRound, LockKeyhole, LogOut, ShieldCheck, Sparkles, Store, UserPlus, Users } from 'lucide-react'
 import { getCurrentRole } from '../lib/data'
 import { supabase, supabaseConfigured } from '../lib/supabase'
@@ -61,10 +62,53 @@ export default function Profile({ onPost }: Props) {
   const [role, setRole] = useState<Role | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [working, setWorking] = useState(false)
+  const requestInFlight = useRef(false)
+  const [confirmationEmail, setConfirmationEmail] = useState('')
+  const [emailRetryAt, setEmailRetryAt] = useState(() => {
+    try { return Number(sessionStorage.getItem('histreets-auth-email-retry-at')) || 0 }
+    catch { return 0 }
+  })
+  const [now, setNow] = useState(Date.now())
+  const emailWait = Math.max(0, Math.ceil((emailRetryAt - now) / 1000))
   const [recoveryMode, setRecoveryMode] = useState(false)
   const [message, setMessage] = useState('')
   const [ownerSection, setOwnerSection] = useState<OwnerSection>('overview')
   const [adminSection, setAdminSection] = useState<AdminSection>('overview')
+
+  useEffect(() => {
+    if (!emailRetryAt) return
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [emailRetryAt])
+
+  function startEmailCooldown(seconds = 60) {
+    const retryAt = Date.now() + seconds * 1000
+    setNow(Date.now())
+    setEmailRetryAt(retryAt)
+    try { sessionStorage.setItem('histreets-auth-email-retry-at', String(retryAt)) } catch { /* Storage may be disabled. */ }
+  }
+
+  function beginRequest(sendsEmail = false) {
+    if (requestInFlight.current) return false
+    if (sendsEmail && emailRetryAt > Date.now()) {
+      setMessage('Please wait before requesting another email. Check your inbox and spam folder for the latest one.')
+      return false
+    }
+    requestInFlight.current = true
+    setWorking(true)
+    return true
+  }
+
+  function endRequest() {
+    requestInFlight.current = false
+    setWorking(false)
+  }
+
+  function showAuthError(error: { code?: string; status?: number; message?: string }, fallback: string) {
+    const retry = emailRetrySeconds(error)
+    if (retry !== null) startEmailCooldown(retry)
+    setMessage(authErrorMessage(error, fallback))
+  }
 
   async function resolveSession(hasUser: boolean) {
     setSignedIn(hasUser)
@@ -89,30 +133,34 @@ export default function Profile({ onPost }: Props) {
   }, [])
 
   function switchMode(next: LoginMode) {
+    if (requestInFlight.current) return
     setMode(next)
     setPassword('')
     setOtp('')
     setOtpRequested(false)
     setConfirmPassword('')
     setMessage('')
+    setConfirmationEmail('')
   }
 
   async function sendEmailCode() {
     if (!supabaseConfigured || !supabase) return setMessage('Secure sign-in is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail) return setMessage('Enter your email address first.')
+    if (!beginRequest(true)) return
     try {
-      setWorking(true)
       setMessage('Sending your email sign-in code…')
       const { error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
         options: { shouldCreateUser: false },
       })
-      if (error) return setMessage('We could not send the sign-in code right now. Check the email or try your password.')
+      if (error) return showAuthError(error, 'We could not send the sign-in code right now. Check the email or try your password.')
+      startEmailCooldown()
       setOtp('')
       setOtpRequested(true)
       setMessage('If this email has a HiStreets account, a sign-in code is on its way.')
-    } finally { setWorking(false) }
+    } catch { setMessage('Could not connect. Check your internet connection and try again.') }
+    finally { endRequest() }
   }
 
   async function verifyEmailCode() {
@@ -121,69 +169,96 @@ export default function Profile({ onPost }: Props) {
     const cleanOtp = otp.trim()
     if (!cleanEmail) return setMessage('Enter your email address first.')
     if (!/^\d{6,10}$/.test(cleanOtp)) return setMessage('Enter the numeric code from your email (6 to 10 digits).')
+    if (!beginRequest()) return
     try {
-      setWorking(true)
       setMessage('Checking your sign-in code…')
       const { error } = await supabase.auth.verifyOtp({ email: cleanEmail, token: cleanOtp, type: 'email' })
       if (error) return setMessage('That code is incorrect or has expired. Request a new code and try again.')
       setOtp('')
       setOtpRequested(false)
       setMessage('Signed in.')
-    } finally { setWorking(false) }
+    } catch { setMessage('Could not connect. Check your internet connection and try again.') }
+    finally { endRequest() }
   }
 
   async function passwordLogin() {
     if (!supabaseConfigured || !supabase) return setMessage('Secure sign-in is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail || !password) return setMessage('Enter your email and password.')
+    if (!beginRequest()) return
     try {
-      setWorking(true)
       setMessage('Signing in…')
       const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
-      if (error) return setMessage('Email or password is incorrect. Try again, use Forgot password, or use an email sign-in code.')
+      if (error) {
+        if (error.code === 'email_not_confirmed') setConfirmationEmail(cleanEmail)
+        return showAuthError(error, 'Email or password is incorrect. Try again, use Forgot password, or use an email sign-in code.')
+      }
       setPassword('')
       setMessage('Signed in.')
-    } finally { setWorking(false) }
+    } catch { setMessage('Could not connect. Check your internet connection and try again.') }
+    finally { endRequest() }
   }
 
   async function createAccount() {
+    if (confirmationEmail) return
     if (!acceptedTerms) return setMessage('Please accept the Terms and Community rules first.')
     if (!supabaseConfigured || !supabase) return setMessage('Secure sign-up is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail) return setMessage('Enter your email address.')
     if (password.length < PASSWORD_MIN_LENGTH) return setMessage(`Use at least ${PASSWORD_MIN_LENGTH} characters for your password.`)
     if (password !== confirmPassword) return setMessage('The passwords do not match.')
+    if (!beginRequest(true)) return
     try {
-      setWorking(true)
       setMessage('Creating your HiStreets account…')
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: { emailRedirectTo: authRedirect() },
       })
-      if (error) return setMessage('We could not create the account. If you already have one, go back to Sign in or use Forgot password.')
+      if (error) return showAuthError(error, 'We could not complete sign-up. Please try again. If you already have an account, sign in or use Forgot password.')
       setPassword('')
       setConfirmPassword('')
+      if (!data.session) {
+        setConfirmationEmail(cleanEmail)
+        startEmailCooldown()
+      }
       setMessage(data.session
         ? 'Account created. You are signed in.'
-        : 'Account created. Check your email and confirm your address, then sign in.')
-    } finally { setWorking(false) }
+        : 'Check your email to finish signing up. Open the latest confirmation link, then sign in. If you already have an account, sign in or use Forgot password.')
+    } catch { setMessage('Could not connect. Check your internet connection and try again.') }
+    finally { endRequest() }
+  }
+
+  async function resendConfirmation() {
+    if (!supabaseConfigured || !supabase) return setMessage('Secure sign-up is not available right now.')
+    const cleanEmail = (confirmationEmail || email).trim().toLowerCase()
+    if (!cleanEmail) return setMessage('Enter your email address first, then choose Resend confirmation email.')
+    if (!beginRequest(true)) return
+    try {
+      setMessage('Sending a confirmation email…')
+      const { error } = await supabase.auth.resend({ type: 'signup', email: cleanEmail, options: { emailRedirectTo: authRedirect() } })
+      if (error) return showAuthError(error, 'We could not send the confirmation email right now. Please try again later.')
+      startEmailCooldown()
+      setMessage('If this account is awaiting confirmation, a new email is on its way. Check your inbox and spam folder, and use the latest link.')
+    } catch { setMessage('Could not connect. Check your internet connection and try again.') }
+    finally { endRequest() }
   }
 
   async function sendPasswordReset() {
     if (!supabaseConfigured || !supabase) return setMessage('Password reset is not available right now.')
     const cleanEmail = email.trim().toLowerCase()
     if (!cleanEmail) return setMessage('Enter your email address first, then choose Forgot password.')
+    if (!beginRequest(true)) return
     try {
-      setWorking(true)
       setMessage('Sending a password reset link…')
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: authRedirect(true),
       })
-      setMessage(error
-        ? 'We could not send the reset email right now. Please wait a moment and try again.'
-        : 'If an account exists for that email, a password reset link has been sent.')
-    } finally { setWorking(false) }
+      if (error) return showAuthError(error, 'We could not send the reset email right now. Please wait a moment and try again.')
+      startEmailCooldown()
+      setMessage('If an account exists for that email, a password reset link has been sent.')
+    } catch { setMessage('Could not connect. Check your internet connection and try again.') }
+    finally { endRequest() }
   }
 
   async function updateRecoveredPassword() {
@@ -255,6 +330,13 @@ export default function Profile({ onPost }: Props) {
       </div>
 
       <div className="auth-card auth-card-final">
+        {confirmationEmail ? <>
+          <div className="auth-card-title"><span><ShieldCheck size={22} /></span><div><small>One more step</small><h2>Check your email</h2></div></div>
+          <p className="auth-intro">Confirm <strong>{confirmationEmail}</strong> using the latest confirmation link in your inbox or spam folder. Then return here to sign in.</p>
+          <button className="auth-primary" type="button" disabled={working || emailWait > 0} onClick={() => void resendConfirmation()}><span>{working ? 'Sending…' : emailWait > 0 ? `Resend available in ${emailWait}s` : 'Resend confirmation email'}</span><ArrowRight size={18} /></button>
+          <button className="auth-secondary-link" type="button" disabled={working} onClick={() => switchMode('signin')}>Back to sign in</button>
+          <button className="auth-text-action" type="button" disabled={working} onClick={() => { switchMode('signup'); setEmail('') }}>Use a different email</button>
+        </> : <>
         <div className="auth-card-title"><span>{mode === 'signup' ? <UserPlus size={22} /> : <ShieldCheck size={22} />}</span><div><small>HiStreets secure access</small><h2>{mode === 'signup' ? 'Create your account' : 'Sign in to HiStreets'}</h2></div></div>
         <p className="auth-intro">{mode === 'signup' ? 'New to HiStreets? Enter your email and choose a password. That is all you need to start.' : 'Use your email and password. Admins and business owners sign in here.'}</p>
 
@@ -269,10 +351,11 @@ export default function Profile({ onPost }: Props) {
 
         {mode === 'signin' ? <>
           <button className="auth-primary" type="button" onClick={() => void passwordLogin()} disabled={working}><span>{working ? 'Signing in…' : 'Sign in'}</span><ArrowRight size={18} /></button>
-          <button className="auth-text-action forgot-password-link" type="button" onClick={() => void sendPasswordReset()} disabled={working}>Forgot password?</button>
+          <button className="auth-text-action forgot-password-link" type="button" onClick={() => void sendPasswordReset()} disabled={working || emailWait > 0}>Forgot password?</button>
+          <button className="auth-text-action" type="button" onClick={() => void resendConfirmation()} disabled={working || emailWait > 0}>Resend confirmation email</button>
 
           <div className="auth-divider" aria-hidden="true"><span>or</span></div>
-          <button className="auth-secondary-link auth-email-link" type="button" onClick={() => void sendEmailCode()} disabled={working}><KeyRound size={16} /> {working ? 'Sending…' : otpRequested ? 'Send a new sign-in code' : 'Email me a sign-in code'}</button>
+          <button className="auth-secondary-link auth-email-link" type="button" onClick={() => void sendEmailCode()} disabled={working || emailWait > 0}><KeyRound size={16} /> {working ? 'Sending…' : otpRequested ? 'Send a new sign-in code' : 'Email me a sign-in code'}</button>
           <p className="auth-simple-note">No password needed. We email a secure numeric code to an existing HiStreets account.</p>
 
           {otpRequested && <>
@@ -280,12 +363,14 @@ export default function Profile({ onPost }: Props) {
             <button className="auth-primary" type="button" onClick={() => void verifyEmailCode()} disabled={working}><span>{working ? 'Checking…' : 'Verify code and sign in'}</span><ArrowRight size={18} /></button>
           </>}
 
-          <div className="auth-account-switch"><span>New to HiStreets?</span><button type="button" onClick={() => switchMode('signup')}>Create account</button></div>
+          <div className="auth-account-switch"><span>New to HiStreets?</span><button type="button" disabled={working} onClick={() => switchMode('signup')}>Create account</button></div>
         </> : <>
-          <button className="auth-primary" type="button" onClick={() => void createAccount()} disabled={working || !acceptedTerms}><span>{working ? 'Creating…' : 'Create account'}</span><ArrowRight size={18} /></button>
-          <div className="auth-account-switch"><span>Already have an account?</span><button type="button" onClick={() => switchMode('signin')}>Back to sign in</button></div>
+          <button className="auth-primary" type="button" onClick={() => void createAccount()} disabled={working || !acceptedTerms || emailWait > 0}><span>{working ? 'Creating…' : 'Create account'}</span><ArrowRight size={18} /></button>
+          <div className="auth-account-switch"><span>Already have an account?</span><button type="button" disabled={working} onClick={() => switchMode('signin')}>Back to sign in</button></div>
+        </>}
         </>}
 
+        {emailWait > 0 && <p className="auth-simple-note">You can request another email in {emailWait}s.</p>}
         {message && <p className="form-status auth-status" role="status" aria-live="polite">{message}</p>}
         <ProjectLinks /><AccountSafety />
       </div>

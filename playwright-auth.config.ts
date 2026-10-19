@@ -11,6 +11,8 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Pixel 7'] } },
+    { name: 'small-phone', use: { ...devices['Pixel 7'], viewport: { width: 375, height: 667 } } },
+    { name: 'short-desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 650 } } },
     { name: 'webkit', use: { ...devices['iPhone 15'] } },
   ],
 })

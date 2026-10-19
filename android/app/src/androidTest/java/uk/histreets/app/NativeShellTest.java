@@ -42,8 +42,8 @@ public class NativeShellTest {
   @Test public void androidBackClosesPromptThenReturnsToMap() throws Exception {
     try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){
       waitFor(scenario,"!!document.querySelector('.bottom-tabs')");
-      js(scenario,"localStorage.clear();location.reload()");
-      waitFor(scenario,"!!document.querySelector('.location-gate')");
+      js(scenario,"localStorage.clear();window.__nativeTestReloadPending=true;location.reload()");
+      waitFor(scenario,"window.__nativeTestReloadPending!==true && document.readyState==='complete' && !!document.querySelector('.location-gate')");
       scenario.onActivity(activity->activity.getOnBackPressedDispatcher().onBackPressed());
       waitFor(scenario,"!document.querySelector('.location-gate')");
       js(scenario,"document.querySelector('.bottom-tabs button[aria-label=\"Jobs\"]').click()");

@@ -25,7 +25,7 @@ public class NativeShellTest {
   private void waitFor(ActivityScenario<MainActivity> scenario,String expression) throws Exception {
     long end=SystemClock.elapsedRealtime()+30000;
     while(SystemClock.elapsedRealtime()<end){ if("true".equals(js(scenario,expression)))return; SystemClock.sleep(200); }
-    fail("Native WebView condition failed: "+expression);
+    fail("Native WebView condition failed: "+expression+"; state="+js(scenario,"JSON.stringify({path:location.pathname,text:document.body.innerText.slice(0,2500)})"));
   }
   private void click(ActivityScenario<MainActivity> scenario,String label) throws Exception {
     js(scenario,"Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='"+label+"')?.click()");
@@ -46,7 +46,7 @@ public class NativeShellTest {
       waitFor(scenario,"!!document.querySelector('.location-gate')");
       scenario.onActivity(activity->activity.getOnBackPressedDispatcher().onBackPressed());
       waitFor(scenario,"!document.querySelector('.location-gate')");
-      click(scenario,"Jobs");
+      js(scenario,"document.querySelector('.bottom-tabs button[aria-label=\"Jobs\"]').click()");
       waitFor(scenario,"location.pathname==='/jobs' && document.body.textContent.includes('Jobs in Newham')");
       scenario.onActivity(activity->activity.getOnBackPressedDispatcher().onBackPressed());
       waitFor(scenario,"location.pathname==='/map'");
@@ -63,7 +63,7 @@ public class NativeShellTest {
       waitFor(scenario,"!!document.querySelector('.safety-consent input')");
       assertEquals("true",js(scenario,"Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='Create account').disabled"));
       js(scenario,"document.querySelector('.safety-consent input').click()");
-      assertEquals("false",js(scenario,"Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='Create account').disabled"));
+      waitFor(scenario,"!Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='Create account').disabled");
     }
   }
 }

@@ -2,7 +2,7 @@
 
 The native app packages the existing React interface locally with Capacitor 8. Live business listings, sign-in, uploads, map tiles and server functions use the existing production services. The package is `uk.histreets.app`; Android test builds use `.debug` to keep them separate. Android targets API 36, with minimum API 24. The iOS project requires a later Mac/Xcode build and signing.
 
-Use Node 22+, JDK 21, Android SDK platform 36 and build tools 36.0.0. Run `npm ci` with the committed lockfile.
+Use Node 22+, JDK 21, Android SDK platform 36 and build tools 35.0.0 and 36.0.0. Run `npm ci` with the committed lockfile.
 
 ## Public backend configuration
 
@@ -36,10 +36,10 @@ These changes are **not deployed**. Automatic approval review rejected replaceme
 ## Release gates still open
 
 - Deploy the approved native-origin changes and test real native server calls.
-- Restore and complete account deletion, associated private-file cleanup, report/block tools, and posting terms enforcement. Earlier uncommitted drafts were lost during workspace maintenance; they are not part of this checkpoint and are not deployed.
+- Deploy the approved content-reporting migration. Reports, blocking, signup/posting terms and a support-based deletion-request path are implemented and tested locally; the operator must fulfil deletions using docs/ACCOUNT-DELETION-OPERATIONS.md.
 - Publish accurate privacy, terms and external account-deletion pages, then verify the actual URLs and final data-safety answers.
 - Test an ordinary account end to end, including email delivery/recovery, uploads/CVs, deletion, moderation, offline/relaunch and Android permission/back/keyboard behavior.
-- Produce and inspect a signed AAB only after those checks. A passing web build or debug compilation is not a completed Play submission.
+- Inspect the signed AAB and APK, then complete the live account and deployment checks before production submission. A signed build is not a completed Play submission.
 
 The developer account, store declarations and any required closed testing remain Play Console steps. Store approval cannot be guaranteed by a build.
 

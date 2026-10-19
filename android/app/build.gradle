@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 
+def signingProperties = new Properties()
+def signingPropertiesFile = rootProject.file('keystore.properties')
+if (signingPropertiesFile.exists()) signingPropertiesFile.withInputStream { signingProperties.load(it) }
+
 android {
     namespace = "uk.histreets.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,12 +20,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (signingPropertiesFile.exists()) {
+            release {
+                storeFile file(signingProperties['storeFile'])
+                storePassword signingProperties['storePassword']
+                keyAlias signingProperties['keyAlias']
+                keyPassword signingProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         debug {
             applicationIdSuffix ".debug"
             versionNameSuffix "-test"
         }
         release {
+            if (signingPropertiesFile.exists()) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -64,6 +79,7 @@ def verifyMobileRelease = tasks.register('verifyMobileRelease') {
         if (!marker.exists()) throw new GradleException('Run npm run mobile:sync with the live public backend configuration.')
         def config = new groovy.json.JsonSlurper().parse(marker)
         if (config.preview || config.configured != true) throw new GradleException('Preview/unconfigured builds cannot be released. Run npm run mobile:sync.')
+        if (!signingPropertiesFile.exists()) throw new GradleException('Owner upload signing key is required for a release build. Configure ignored android/keystore.properties.')
     }
 }
 tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn verifyMobileRelease }

@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core'
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import * as maplibregl from 'maplibre-gl'
 import type { Map as MapLibre } from 'maplibre-gl'
@@ -436,11 +437,11 @@ export default function MapView({ posts }: { posts: Post[] }) {
     if (locating) return
     dismissLocationPrompt()
     const map = mapRef.current
-    if (!window.isSecureContext) {
+    if (!Capacitor.isNativePlatform() && !window.isSecureContext) {
       setLocationStatus('Location needs a secure HTTPS connection.')
       return
     }
-    if (!navigator.geolocation) {
+    if (!Capacitor.isNativePlatform() && !navigator.geolocation) {
       setLocationStatus('Location is not supported on this browser.')
       return
     }

@@ -13,7 +13,7 @@ test('business access uses one simple account flow with email OTP, explicit sign
   assert.match(profile, /Email sign-in code/)
   assert.match(profile, /\^\\d\{6,10\}\$/)
   assert.match(profile, /shouldCreateUser: false/)
-  assert.match(profile, /emailRedirectTo: `\$\{window\.location\.origin\}\/business`/)
+  assert.match(profile, /emailRedirectTo: authRedirect\(\)/)
   assert.match(profile, /signInWithPassword/)
   assert.match(profile, /signUp/)
   assert.match(profile, /resetPasswordForEmail/)

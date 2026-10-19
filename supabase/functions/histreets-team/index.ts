@@ -14,6 +14,8 @@ const SERVICE_ROLE_KEY = configuredKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 const ALLOWED_ORIGINS = new Set([
+  "https://localhost",
+  "capacitor://localhost",
   "https://app.histreets.uk",
   "https://histreets.uk",
   "http://localhost:3000",

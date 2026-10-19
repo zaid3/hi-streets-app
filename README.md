@@ -261,3 +261,7 @@ Contact: **ahaque@atomicmail.io**
 ## Licence
 
 The repository currently includes the [CC0 1.0 Universal](LICENSE) dedication. Review the licence before reusing or redistributing project material.
+
+## Native mobile build
+
+See [mobile build and release status](docs/MOBILE-BUILD.md) for Android/iOS setup, live backend configuration and outstanding release gates.

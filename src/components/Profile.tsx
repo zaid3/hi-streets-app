@@ -1,3 +1,4 @@
+import { authRedirect } from '../lib/auth-redirect'
 import { useEffect, useState } from 'react'
 import { ArrowRight, BarChart3, BriefcaseBusiness, Building2, ClipboardCheck, FilePenLine, KeyRound, LockKeyhole, LogOut, ShieldCheck, Sparkles, Store, UserPlus, Users } from 'lucide-react'
 import { getCurrentRole } from '../lib/data'
@@ -154,7 +155,7 @@ export default function Profile({ onPost }: Props) {
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/business` },
+        options: { emailRedirectTo: authRedirect() },
       })
       if (error) return setMessage('We could not create the account. If you already have one, go back to Sign in or use Forgot password.')
       setPassword('')
@@ -173,7 +174,7 @@ export default function Profile({ onPost }: Props) {
       setWorking(true)
       setMessage('Sending a password reset link…')
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/business?mode=recovery`,
+        redirectTo: authRedirect(true),
       })
       setMessage(error
         ? 'We could not send the reset email right now. Please wait a moment and try again.'

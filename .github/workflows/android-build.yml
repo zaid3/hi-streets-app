@@ -1,0 +1,34 @@
+name: Android build
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - run: npm ci
+      - run: npm run mobile:preview
+      - name: Compile Android test package
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Confirm preview cannot become a release
+        working-directory: android
+        run: |
+          if ./gradlew verifyMobileRelease --no-daemon > release-guard.log 2>&1; then
+            cat release-guard.log
+            exit 1
+          fi
+          grep -q 'Preview/unconfigured builds cannot be released' release-guard.log

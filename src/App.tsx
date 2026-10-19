@@ -1,3 +1,4 @@
+import NativeIntegration from './components/NativeIntegration'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import BottomTabs from './components/BottomTabs'
 import { loadPosts } from './lib/data'
@@ -79,6 +80,7 @@ export default function App() {
 
   return (
     <main className="app-shell">
+      <NativeIntegration />
       {loading && <div className="boot-loader">Loading HiStreets…</div>}
       {postsError && <div className="global-error" role="alert">{postsError}</div>}
       <Suspense fallback={<div className="boot-loader">Opening HiStreets…</div>}>

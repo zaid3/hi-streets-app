@@ -4,7 +4,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-const ALLOWED_ORIGINS = new Set(["https://app.histreets.uk","https://histreets.uk","http://localhost:3000","http://localhost:5173"]);
+const ALLOWED_ORIGINS = new Set(["https://localhost", "capacitor://localhost", "https://app.histreets.uk","https://histreets.uk","http://localhost:3000","http://localhost:5173"]);
 const OUTCODE_RE = /\b(E6|E7|E12|E13|E15|E16|E20)\b/i;
 
 function cors(origin:string|null){ const allow=origin&&ALLOWED_ORIGINS.has(origin)?origin:"https://app.histreets.uk"; return {"Access-Control-Allow-Origin":allow,"Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"}; }

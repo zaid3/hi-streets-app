@@ -21,7 +21,8 @@
     "mobile:assets": "capacitor-assets generate --android --ios --assetPath assets --iconBackgroundColor '#EF6C34' --iconBackgroundColorDark '#EF6C34' --splashBackgroundColor '#063b3a' --splashBackgroundColorDark '#063b3a'",
     "test:reports": "node scripts/test-mobile-reports.mjs",
     "test:safety": "playwright test --config playwright-safety.config.ts",
-    "test:feedback": "node scripts/test-feedback.mjs"
+    "test:feedback": "node scripts/test-feedback.mjs",
+    "test:feedback-email": "node scripts/test-feedback-email.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",

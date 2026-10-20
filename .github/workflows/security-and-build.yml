@@ -48,6 +48,8 @@ jobs:
         run: npm run check
       - name: Test private feedback and submission limits
         run: npm run test:feedback
+      - name: Test feedback email queue and retries without sending email
+        run: npm run test:feedback-email
       - name: Test reporting permissions in isolated PostgreSQL
         run: npm run test:reports
 

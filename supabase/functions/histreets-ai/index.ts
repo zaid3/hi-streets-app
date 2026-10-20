@@ -8,7 +8,7 @@ function configuredKey(jsonName:string,legacyName:string){
 }
 const SERVICE_ROLE_KEY = configuredKey("SUPABASE_SECRET_KEYS","SUPABASE_SERVICE_ROLE_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.8-flash";
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
 const ALLOWED_ORIGINS = new Set([

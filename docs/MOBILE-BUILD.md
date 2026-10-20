@@ -31,17 +31,17 @@ Native confirmation/recovery destinations are `https://app.histreets.uk/business
 
 ## Production state on 20 October 2026
 
-Only the source allowlists of the existing `histreets-ai`, `histreets-opportunity`, `histreets-team` and `histreets-admin-users` functions change: they add `https://localhost` and `capacitor://localhost`. Authentication, platform roles, prompt handling and providers remain unchanged. An automated comparison checks that removal of these two additions gives the original function source.
+The source allowlists of the existing `histreets-ai`, `histreets-opportunity`, `histreets-team` and `histreets-admin-users` functions include `https://localhost` and `capacitor://localhost`. Authentication, platform roles and prompt handling remain unchanged. The AI function's retired Gemini 2.5 Flash model was replaced with Gemini 3.8 Flash after Google returned a 404 directing migration; Google's current pricing lists free-tier input/output for the replacement.
 
 Native origins are deployed for `histreets-opportunity` v3, `histreets-team` v2 and `histreets-admin-users` v3. JWT verification is preserved for team/admin services. The content-reporting migration is deployed, with RLS enabled and anonymous report reads/moderation denied. Privacy, terms and deletion pages were verified live.
 
-The native-origin change for `histreets-ai` is **not deployed**; live v5 still has the previous allowlist. Automatic approval review rejected that deployment because it enables Android prompts to reach Google Gemini and required explicit approval. Do not bypass this rejection through another deployment route.
+Following the owner's explicit request for the Gemini-enabled APK, `histreets-ai` native origins were deployed in v6 and the model replacement in v7. Native preflight passes; unsigned Business Copilot requests are rejected (401), and untrusted origins are rejected (403). Google returned 503 high demand on the first current-model check, and the existing local fallback returned real database results. This backend-only change does not alter the signed APK/AAB.
 
 The owner requests retaining Gemini AI and using only the free tier. No billing setting or AI provider has been changed. Google's [Gemini API terms](https://ai.google.dev/gemini-api/terms), checked on 20 October 2026, require Paid Services for API clients offered to UK users; Gemini API access is a Paid Service when its Cloud Project has an active billing account. The free-only public-release decision remains unresolved. Do not enable billing or replace the provider without authorization.
 
 ## Release gates still open
 
-- Resolve the AI service/tier decision, obtain approval for the outstanding AI deployment and verify native AI responses.
+- Resolve the free-only public UK launch requirement and verify Gemini output when Google's service is available. Cloudflare is deferred to a later version at the owner's request.
 - Test an ordinary account in the installed production app, including sign-in/recovery, private uploads, reporting and sign-out. The operator must fulfil deletion requests using docs/ACCOUNT-DELETION-OPERATIONS.md.
 - Complete Play Console declarations, internal testing/pre-launch review and any applicable account testing requirements before public rollout.
 

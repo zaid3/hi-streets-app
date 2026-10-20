@@ -50,12 +50,23 @@ integration does not use stateful AI features, prompt logging or caching.
 
 ## Release status
 
-The provider change is prepared in source. Automatic approval review blocked
-the earlier live-provider deployment because it introduces disclosure of
-entered AI prompts and business context to an external provider. Explicit
-approval for deployment and Cloudflare processing is still needed. No attempt
-to work around that rejection is authorised. Live AI success and rebuilt signed
-Android files remain unverified until configuration and deployment are complete.
+The user explicitly approved deployment and Cloudflare processing on 20 October
+2026. Supabase `histreets-ai` version 8 is now ACTIVE with `index.ts` and
+`cloudflare.ts`; the deployed source contains no Gemini endpoint or key reference.
+The earlier automatic approval rejection was resolved by that user approval.
+
+Live checks returned HTTP 200 and a real listing for a synthetic resident search,
+HTTP 401 for an unauthenticated business draft, and HTTP 403 for an untrusted
+origin. The resident response used `local_resilient_fallback`, not Cloudflare AI.
+Function logs confirmed `AI is not configured`: the required account ID/token
+are missing or invalid. The API credentials must be added directly in Supabase
+before a successful provider test. No paid plan or billing settings were changed.
+
+Updated frontend disclosures still require publication and a new signed Android
+build. The existing signing-key backup was located, but its file retrieval was
+blocked by a file-service HTTP 403. Do not generate a replacement signing key or
+call the earlier package a tested Cloudflare release. Account/device tests and
+the remaining requirements in `AI-LICENCE-AND-PRIVACY-REVIEW.md` are still open.
 
 Sources checked 20 October 2026:
 

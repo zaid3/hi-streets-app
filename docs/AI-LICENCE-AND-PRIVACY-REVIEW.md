@@ -74,13 +74,19 @@ or protection from developer liability is supported by this review.
 
 An earlier live-provider deployment was rejected by automatic approval review
 because it changes production and sends user prompts/business context to an
-external provider. The Cloudflare change is prepared only. Explicit approval
-for that processing, Cloudflare account credentials and successful live tests
-remain outstanding. No alternative deployment route may bypass the rejection.
+external provider. The user explicitly approved Cloudflare deployment and
+processing on 20 October 2026. Supabase `histreets-ai` version 8 is now ACTIVE.
+Live public search, unauthenticated-draft rejection and origin rejection passed.
+The search used local fallback, and function logs confirmed that Cloudflare
+configuration is missing or invalid. Successful live Cloudflare processing is
+not yet verified. No billing settings were changed.
 
 The original signed Android package predates this provider change. A new signed
-build with the existing upload key is needed. Source tests do not substitute
-for a live provider test or installed release verification.
+build with the existing upload key is needed. The key backup was located, but
+file retrieval returned HTTP 403; the private key is not available locally.
+Source tests do not substitute for a live provider test or installed release
+verification. Public policy publication and the legal/operational work above
+remain outstanding.
 
 ## Official sources checked
 

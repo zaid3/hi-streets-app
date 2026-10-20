@@ -15,6 +15,8 @@ VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_PUBLISHABLE_KEY
 
 Never use a secret or service-role key in the frontend. A public key does not grant administrator access; database and storage policies enforce permissions. This repository deliberately contains no local credentials or signing keys.
 
+Native CI now reads `android/app/src/androidTest/assets/live-backend-public.json`, containing the same intentionally public frontend configuration as the deployed app. `prepare-mobile-live-test.mjs` rejects privileged keys before building. The exact historical Gitleaks finding for this public key is recorded in `.gitleaksignore`; no whole-file or general key-pattern exclusion is used. Future changes are still scanned. Installed WebView tests verify public listings, denied private report reads, invalid report rejection and Auth settings without creating users, submitting reports, sending email or invoking AI. These checks do not establish successful account sign-in or private uploads.
+
 Run `npm run check`, then `npm run mobile:sync`. This validates public configuration, builds the web assets and copies them into the native projects. It is a configuration check, not proof that server features or store requirements pass.
 
 From `android`, run `./gradlew assembleDebug` for device testing. The debug APK is not a store release. `npm run mobile:preview` is only for isolated UI/CI checks; release builds reject its marker. Do not bypass the release guard.

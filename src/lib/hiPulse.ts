@@ -5,12 +5,10 @@ export type HiPulseBusiness = {
   category?: string
 }
 
-export type HiPulseConfidence = 'Early' | 'Building' | 'Strong'
-
 export type HiPulseSnapshot = {
   score: number
   label: 'Quiet' | 'Emerging' | 'Active' | 'Vibrant'
-  confidence: HiPulseConfidence
+  strongestSignal: 'map' | 'offers' | 'jobs' | 'community'
   counts: {
     offers: number
     jobs: number
@@ -39,14 +37,10 @@ function scoreLabel(score: number): HiPulseSnapshot['label'] {
   return 'Quiet'
 }
 
-function confidenceFor(sampleSize: number): HiPulseConfidence {
-  if (sampleSize >= 30) return 'Strong'
-  if (sampleSize >= 10) return 'Building'
-  return 'Early'
-}
-
-export function buildHiPulseSnapshot(posts: Post[], businesses: HiPulseBusiness[]): HiPulseSnapshot {
-  const live = posts.filter(post => post.status === 'live')
+export function buildHiPulseSnapshot(posts: Post[], businesses: HiPulseBusiness[], now = Date.now()): HiPulseSnapshot {
+  const live = posts.filter(post => post.status === 'live'
+    && Date.parse(post.expires_at) > now
+    && (!post.starts_at || Date.parse(post.starts_at) <= now))
   const offers = live.filter(post => post.type === 'offer').length
   const jobs = live.filter(post => post.type === 'job').length
   const community = live.filter(post => post.type === 'community' || post.type === 'free_meal').length
@@ -68,18 +62,23 @@ export function buildHiPulseSnapshot(posts: Post[], businesses: HiPulseBusiness[
 
   const score = clamp(Math.round(activityPoints + diversityPoints + coveragePoints + balancePoints), 0, 100)
   const label = scoreLabel(score)
-  const sampleSize = businesses.length + live.length
-
+  let strongestSignal: HiPulseSnapshot['strongestSignal'] = 'map'
   let headline = 'Local activity is still building.'
-  if (jobs > offers && jobs >= community) headline = 'Hiring is the strongest live signal right now.'
-  else if (community > offers && community >= jobs) headline = 'Community support is the strongest live signal right now.'
-  else if (offers > 0) headline = 'Local offers are the strongest live signal right now.'
-  else if (businesses.length > 0) headline = 'Verified local business coverage is growing.'
+  if (jobs > offers && jobs >= community) {
+    headline = 'Hiring has the most live posts in this snapshot.'
+    strongestSignal = 'jobs'
+  } else if (community > offers && community >= jobs) {
+    headline = 'Community support has the most live posts in this snapshot.'
+    strongestSignal = 'community'
+  } else if (offers > 0) {
+    headline = 'Local offers have the most live posts in this snapshot.'
+    strongestSignal = 'offers'
+  } else if (businesses.length > 0) headline = 'Map listings are available; no live posts in this snapshot.'
 
   return {
     score,
     label,
-    confidence: confidenceFor(sampleSize),
+    strongestSignal,
     counts: {
       offers,
       jobs,
@@ -90,7 +89,7 @@ export function buildHiPulseSnapshot(posts: Post[], businesses: HiPulseBusiness[
     factors: [
       { id: 'activity', label: 'Live activity', value: offers + jobs + community, points: activityPoints, maxPoints: 40 },
       { id: 'diversity', label: 'Business diversity', value: categories, points: diversityPoints, maxPoints: 20 },
-      { id: 'coverage', label: 'Local coverage', value: businesses.length, points: coveragePoints, maxPoints: 20 },
+      { id: 'coverage', label: 'Map coverage', value: businesses.length, points: coveragePoints, maxPoints: 20 },
       { id: 'balance', label: 'Signal balance', value: activeSignalTypes, points: balancePoints, maxPoints: 20 },
     ],
     headline,

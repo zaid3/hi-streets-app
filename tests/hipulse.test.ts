@@ -19,7 +19,7 @@ test('HiPulse is zero and transparent when no live data exists', () => {
   const snapshot = buildHiPulseSnapshot([], [])
   assert.equal(snapshot.score, 0)
   assert.equal(snapshot.label, 'Quiet')
-  assert.equal(snapshot.confidence, 'Early')
+  assert.equal(snapshot.strongestSignal, 'map')
   assert.deepEqual(snapshot.counts, { offers: 0, jobs: 0, community: 0, businesses: 0, categories: 0 })
   assert.equal(snapshot.factors.reduce((sum, factor) => sum + factor.points, 0), snapshot.score)
 })
@@ -53,6 +53,33 @@ test('HiPulse rewards balanced opportunity, support and commerce without exceedi
   const snapshot = buildHiPulseSnapshot(posts, businesses)
   assert.equal(snapshot.score, 100)
   assert.equal(snapshot.label, 'Vibrant')
-  assert.equal(snapshot.confidence, 'Strong')
+  assert.equal(snapshot.strongestSignal, 'offers')
   assert.equal(snapshot.factors.find(factor => factor.id === 'balance')?.points, 20)
+})
+
+test('a listing-only snapshot matches the checked Newham inputs without claiming verification or growth', () => {
+  const businesses = Array.from({ length: 3454 }, (_, index) => ({ id: `b-${index}`, category: `category-${index % 8}` }))
+  const snapshot = buildHiPulseSnapshot([], businesses)
+  assert.equal(snapshot.score, 36)
+  assert.deepEqual(snapshot.factors.map(factor => factor.points), [0, 16, 20, 0])
+  assert.equal(snapshot.strongestSignal, 'map')
+  assert.match(snapshot.headline, /no live posts/)
+  assert.doesNotMatch(snapshot.headline, /verified|growing/i)
+})
+
+test('community-led activity links to community rather than offers', () => {
+  const snapshot = buildHiPulseSnapshot([post('1', 'community'), post('2', 'free_meal'), post('3', 'offer')], [])
+  assert.equal(snapshot.strongestSignal, 'community')
+})
+
+test('expired, future and invalid-date posts are excluded from the current snapshot', () => {
+  const now = Date.parse('2026-10-20T21:00:00Z')
+  const snapshot = buildHiPulseSnapshot([
+    { ...post('expired', 'offer'), expires_at: '2026-10-20T20:59:59Z' },
+    { ...post('boundary', 'offer'), expires_at: '2026-10-20T21:00:00Z' },
+    { ...post('future', 'job'), starts_at: '2026-10-20T21:01:00Z' },
+    { ...post('invalid', 'job'), expires_at: 'invalid' },
+    { ...post('current', 'community'), starts_at: '2026-10-20T21:00:00Z' },
+  ], [], now)
+  assert.deepEqual(snapshot.counts, { offers: 0, jobs: 0, community: 1, businesses: 0, categories: 0 })
 })

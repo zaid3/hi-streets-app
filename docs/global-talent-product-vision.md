@@ -1,136 +1,66 @@
-# HiStreets — Global Talent Product Vision
+# HiStreets product vision and implementation
 
-## One-line positioning
+HiStreets was conceived and developed by **Ahtashamul Haque** as an independent open-source product for local businesses, residents and community organisations. The initial geographic focus is the London Borough of Newham. This record describes the product as at 20 October 2026.
 
-HiStreets is a founder-led civic-local commerce platform for UK high streets, helping small businesses become discoverable, verified, and able to publish trusted local offers, jobs, and community support directly to nearby residents.
+## The problem and intended users
 
-## Why this is not just another map app
+Small businesses may have limited time, advertising budgets or confidence using digital marketing and recruitment tools. A short-lived offer or a weekend vacancy can remain in a shop window or a private message group, making it difficult for nearby residents to discover. Charity support can be similarly dispersed.
 
-HiStreets is not being built as a Google Maps clone, a review app, or a coupon app. The product vision is to create a practical high-street operating layer for local communities where verified businesses can communicate useful local opportunities quickly and where residents can discover what is happening around them in real time.
+HiStreets addresses this discovery and publishing problem by linking opportunities to local business locations. A resident can browse nearby offers, local jobs and community assistance in one service. Businesses and charities can publish structured posts through the business workspace, subject to the platform's verification and moderation controls. Public browsing does not require a resident account.
 
-The core difference is that HiStreets focuses on the gap between small local businesses and residents. Many small businesses do not have the digital confidence, advertising budget, or recruitment knowledge to maintain strong visibility on large platforms. Their offers, job vacancies, free meals, community support, and service updates are often scattered across shop windows, WhatsApp groups, Facebook posts, or word of mouth. HiStreets turns this fragmented local information into structured, map-based, verified local content.
+The intended benefit is easier local participation: a small organisation can communicate an opportunity and nearby people can find it. Increased sales, employment or wider community outcomes require evidence beyond the existence of these features.
 
-## Problem being solved
+## Product innovation
 
-Small and independent businesses on UK high streets often struggle with digital visibility. They may not know how to manage online profiles, run ads, use LinkedIn, post jobs professionally, or reach local residents quickly. This means local people may spend outside their borough or use larger platforms even when local options exist nearby.
+### Location-linked opportunities
 
-Young people and local jobseekers also struggle to find small local vacancies because many high-street businesses do not advertise on LinkedIn, Indeed, or formal recruitment platforms. A small restaurant, garage, salon, charity, grocery shop, or service provider may need staff but only advertise through a handwritten poster or informal WhatsApp message.
+The map connects business locations with offers, jobs and community posts. It provides local context for an offer or vacancy, while the dedicated feeds allow people to inspect the details. The jobs workflow supports small local recruitment needs, including part-time and weekend roles. Community posts and free meals use the same local discovery system.
 
-Community support is similarly fragmented. Free meals, local help, disability-access support, emergency offers, and charity-led services are often difficult to discover quickly.
+### HiPulse
 
-HiStreets aims to solve these problems by giving small businesses and community organisations a simple, fast way to publish local opportunities that nearby people can see on a live map.
+HiPulse makes the platform's activity and map coverage inspectable. Its 0–100 score has four visible contributions: live activity, category diversity, map coverage and balance across offers, jobs and support. Users can inspect the breakdown and navigate to the corresponding posts or listings.
 
-## Core product idea
+The model is deterministic. Its capped factors prevent any one factor from supplying the whole score, and its calculation does not need a personal search history or an AI provider. Public listings may be unclaimed; coverage points are not evidence of verified owners or customer adoption. See [the model, checked example and limitations](hipulse.md).
 
-HiStreets shows real local businesses on a map and allows verified business owners to publish location-linked posts, including:
+### Support for publishing and unmet local needs
 
-- Local offers, such as discounts or daily promotions.
-- Local jobs, especially entry-level or youth-friendly roles.
-- Community support, such as free meals or charity help.
-- Service updates, such as availability, opening changes, or local notices.
-- Accessibility-related information, including future disability-help features.
+Business Copilot turns an owner's plain-language description into a draft that the owner reviews before publication. Ask HiStreets interprets a resident's request against the platform's local data. The current provider integration is Cloudflare Workers AI, called through server-side functions.
 
-The product is designed to be fast and simple for businesses. The long-term vision includes WhatsApp-style posting and chat/text-message workflows so that a small business owner can post an offer or job without needing technical knowledge, a marketing team, or a complex dashboard.
+Opportunity Gap is a separate mechanism for sufficiently aggregated demand signals. It is designed to surface unmet needs to relevant businesses only after privacy thresholds are met. Its presence in the code is not evidence that businesses have received or acted on such signals.
 
-## Target users
+These features form a connected product workflow: discovery, publication, understandable activity signals and assistance for local participation. The implementation uses established technologies. A claim about novelty across the entire market would require comparative evidence beyond this repository.
 
-### Local residents
+## Individual contribution and implementation
 
-Residents can open the map and discover what is nearby: local offers, shops, services, jobs, food support, community help, and accessible locations.
+Ahtashamul's contribution covers the product concept, user experience, application and database design, geospatial discovery, business and community workflows, integration, testing and deployment. The source and commit history are public under the GitHub account `zaid3`.
 
-### Small businesses
+The implementation includes:
 
-Small businesses can claim their listing, verify ownership, complete their profile, and publish local posts that are visible to people nearby.
+- React and TypeScript interfaces with a MapLibre map.
+- Supabase/PostGIS data queries and geographic boundary enforcement.
+- Separate public listing, ownership verification and posting states.
+- Server-side and database controls for protected business and administration actions.
+- Private storage and authorised access for job CVs and verification documents.
+- HiPulse's scoring function and factor breakdown.
+- AI-assisted search and owner-reviewed drafts through server-side functions.
+- A web application and an Android project, with source and browser release checks.
 
-### Young jobseekers
+The source establishes what has been implemented. Operational status and outcomes must be checked against deployment records, product behaviour and independent evidence.
 
-Young people can discover small local roles that may never appear on LinkedIn or national job boards, then apply quickly through the business's chosen contact method.
+## Development and early evidence
 
-### Community organisations and charities
+The public HiPulse implementation commit is [`b888a82e4e9c6c30db0b98ca0b7e384c46dddd21`](https://github.com/zaid3/hi-streets-app/commit/b888a82e4e9c6c30db0b98ca0b7e384c46dddd21), dated 24 August 2026. The live web service and Android test build provide further implementation records.
 
-Charities and community groups can publish help, free meals, and local support in a structured place rather than relying only on social media.
+At the 20 October 2026 review, Android evidence concerned a test release. It must not be described as a public Play Store production launch without the corresponding production release record.
 
-### Councils and local economic stakeholders
+Early analytics and user feedback can show initial engagement and reactions. Website activity, map listings, feedback respondents and independently verified outcomes are different measures and should retain their original dates and definitions.
 
-HiStreets can help demonstrate local economic activity, business visibility gaps, and high-street engagement opportunities using lawful open data and verified owner input.
+## Community vision and future work
 
-## Innovation and technical contribution
+The aim is to help small businesses become easier to discover, make nearby work easier to find and improve access to charity and community support. Newham is the starting point; wider borough coverage is a future development goal.
 
-The innovation is not only the map interface. The technical and product contribution is the trust-based local business data layer built around the map.
+Potential future work includes simpler messaging-based publishing and accessibility information. Parking remains marked as coming soon until authoritative data can support it. These plans should remain distinct from completed functionality and demonstrated outcomes.
 
-Key technical components include:
+## Evidence and attribution
 
-- MapLibre-based map interface rather than dependency on proprietary Google Maps data storage.
-- Supabase and PostGIS backend for geospatial data, borough boundary enforcement, and map queries.
-- OpenStreetMap import pipeline for initial business coverage.
-- Overture Places enrichment pipeline to improve missing details legally using open data.
-- Confidence-based matching between external place records and existing business records.
-- Owner-edited field protection so trusted owner data is not overwritten by imports.
-- Business verification states: unclaimed, pending, verified, contested, rejected, revoked.
-- Verified-only posting rules for offers, jobs, and community posts.
-- Row Level Security and server-side RPCs to prevent unauthorised posting.
-- Future WhatsApp/text-message posting flow for low-digital-literacy business owners.
-- Future accessibility features, including disability support and verified Blue Badge bay data.
-
-## Trust and safety model
-
-HiStreets must not allow anyone to claim another business and post misleading offers or jobs. The verification model is therefore a core part of the product.
-
-The claim system is designed around these principles:
-
-- Imported businesses are not automatically verified.
-- A business listing starts as unclaimed.
-- Only a verified owner can post offers or jobs.
-- Automated verification can only use contact details that existed on the business record before the claim started.
-- A claimant cannot add their own phone number and use it to verify someone else's business.
-- If a business is already claimed, further ownership requests become contested and require review.
-- Admin review exists for document-based claims and disputes.
-
-## Why HiStreets matters for Newham
-
-Newham has a diverse high-street economy with many independent businesses, migrant-owned businesses, community organisations, food businesses, service providers, and local employers. HiStreets is designed to help local money circulate locally by making nearby businesses and opportunities more visible to residents.
-
-The platform can support:
-
-- Local spending within Newham.
-- Better visibility for small businesses.
-- Easier discovery of local youth jobs.
-- Faster publication of small business offers.
-- Community support discovery, including free meals and charity help.
-- Future accessibility and disability-help information.
-
-## Global Talent evidence value
-
-For a Global Talent portfolio, HiStreets should be presented as a founder-led digital technology product demonstrating product innovation, technical execution, and social impact potential.
-
-The project can support evidence in the following areas:
-
-- Innovation as a founder of a digital technology product.
-- Technical contribution through geospatial engineering, open data pipelines, verification workflows, and secure backend design.
-- Contribution beyond normal employment by addressing local business, youth employment, and community-support problems.
-- Potential impact through letters from local stakeholders, charities, professors, councillors, or community partners.
-- Demonstrable execution through GitHub commits, live deployment, screenshots, architecture documents, and data-quality metrics.
-
-## Claims that are safe and credible
-
-Safe claims:
-
-- HiStreets is a civic-local commerce platform for UK high streets.
-- HiStreets supports small businesses with low digital confidence.
-- HiStreets helps local offers, jobs, and community support become visible on a map.
-- HiStreets uses lawful open data sources and verified owner input rather than scraping closed platforms.
-- HiStreets is designed to support Newham residents, youth jobseekers, small businesses, and community organisations.
-
-Claims to avoid:
-
-- Do not claim HiStreets is the first map app.
-- Do not claim it is better than Google Maps.
-- Do not claim business data is complete.
-- Do not claim AI automatically verifies businesses.
-- Do not claim impact until there is evidence, users, pilots, or stakeholder feedback.
-
-## Strong portfolio wording
-
-HiStreets is my founder-led civic technology platform for UK high streets. It combines geospatial data engineering, open-data enrichment, business ownership verification, and simple local-commerce posting tools to help independent businesses improve digital visibility and allow residents to discover trusted local offers, jobs, services, free meals, and community support.
-
-The platform is designed especially for small businesses that may lack digital marketing knowledge or the resources to advertise on larger platforms. By allowing verified businesses to post local offers and vacancies directly onto a live map, HiStreets aims to help residents spend locally, help young people discover nearby work, and help communities access support faster.
+This document explains the product; it is not an independent assessment or an endorsement decision. Application evidence should connect a specific contribution to dated source records, independent observations and accurately described early use. Open-source components and AI features should be attributed accurately alongside the founder's responsibility for the product.

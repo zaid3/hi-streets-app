@@ -43,6 +43,7 @@ export default function App() {
   const [refreshFlag, setRefreshFlag] = useState(0)
 
   useEffect(() => {
+    setLoading(true)
     setPostsError('')
     loadPosts()
       .then(setPosts)
@@ -89,7 +90,7 @@ export default function App() {
         {tab === 'map' && <>
           <Suspense fallback={<div className="boot-loader">Loading Newham map…</div>}><MapView posts={livePosts} /></Suspense>
           <Suspense fallback={null}><SmartMapSearch onNavigate={changeTab} /></Suspense>
-          <Suspense fallback={null}><HiPulse posts={livePosts} onNavigate={changeTab} /></Suspense>
+          <Suspense fallback={null}><HiPulse posts={livePosts} postsLoading={loading} postsError={postsError} blockedBusinessIds={blocked} onNavigate={changeTab} /></Suspense>
         </>}
         {tab === 'offers' && <Feed type="offer" posts={livePosts} />}
         {tab === 'jobs' && <Feed type="job" posts={livePosts} />}

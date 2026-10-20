@@ -1,23 +1,23 @@
-// Server-only adapter. Use a Groq Free account; this code never changes billing.
-export const GROQ_MODEL = "openai/gpt-oss-20b";
+// Server-only adapter. Use a Cloudflare Workers Free account; this code never changes billing.
+export const CLOUDFLARE_MODEL = "@cf/openai/gpt-oss-20b";
 
-export async function groqJson(system: string, user: string, apiKey: string, fetcher: typeof fetch = fetch) {
-  if (!apiKey.trim()) throw new Error("AI is not configured");
+export async function cloudflareJson(system: string, user: string, apiKey: string, accountId: string, fetcher: typeof fetch = fetch) {
+  if (!apiKey.trim() || !/^[a-f0-9]{32}$/i.test(accountId)) throw new Error("AI is not configured");
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const response = await fetcher("https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetcher(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/v1/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
       signal: controller.signal,
       body: JSON.stringify({
-        model: GROQ_MODEL,
+        model: CLOUDFLARE_MODEL,
         messages: [{ role: "system", content: system }, { role: "user", content: user }],
         response_format: { type: "json_object" },
-        reasoning_effort: "low",
         temperature: 0.15,
-        max_completion_tokens: 1024,
+        max_tokens: 1024,
         stream: false,
+        options: { rejectIfBusy: true },
       }),
     });
     // Never log a provider response body: it may echo private input or credentials.

@@ -203,7 +203,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
           <button type="button" onClick={useCopilotDraft}>Use this draft</button><ContentSafety target={{ kind: 'ai', label: 'Business Copilot draft', text: JSON.stringify(copilotDraft) }} />
         </div>}
         {copilotStatus && <p className="form-status" role="status" aria-live="polite">{copilotStatus}</p>}
-        <small className="copilot-trust">Your instructions and business details may be processed by Groq. Do not include private or sensitive data. AI drafts only from what you provide and your verified business profile. It cannot publish without your review.</small>
+        <small className="copilot-trust">Your instructions and business details may be processed by Cloudflare Workers AI. Do not include private or sensitive data. AI drafts only from what you provide and your verified business profile. It cannot publish without your review.</small>
       </section>
 
       <label>Post type

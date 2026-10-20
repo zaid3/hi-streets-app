@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { groqJson } from "./groq.ts";
+import { cloudflareJson } from "./cloudflare.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 function configuredKey(jsonName:string,legacyName:string){
@@ -8,7 +8,8 @@ function configuredKey(jsonName:string,legacyName:string){
   try{ const values=JSON.parse(Deno.env.get(jsonName)||"{}"); return String(values?.default||Object.values(values||{})[0]||""); }catch{return "";}
 }
 const SERVICE_ROLE_KEY = configuredKey("SUPABASE_SECRET_KEYS","SUPABASE_SERVICE_ROLE_KEY");
-const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY") || "";
+const CLOUDFLARE_ACCOUNT_ID = Deno.env.get("CLOUDFLARE_ACCOUNT_ID") || "";
+const CLOUDFLARE_AI_TOKEN = Deno.env.get("CLOUDFLARE_AI_TOKEN") || "";
 const db = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
 const ALLOWED_ORIGINS = new Set([
@@ -32,7 +33,7 @@ function cors(origin:string|null){ const allow=origin&&ALLOWED_ORIGINS.has(origi
 function json(body:unknown,status=200,origin:string|null=null){ return new Response(JSON.stringify(body),{status,headers:{...cors(origin),"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}}); }
 function cleanText(value:unknown,max=500){ return String(value??"").replace(/[\u0000-\u001f\u007f]/g," ").replace(/\s+/g," ").trim().slice(0,max); }
 async function sha256(value:string){ const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)); return Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join(""); }
-async function providerJson(system:string,user:string){ return groqJson(system,user,GROQ_API_KEY); }
+async function providerJson(system:string,user:string){ return cloudflareJson(system,user,CLOUDFLARE_AI_TOKEN,CLOUDFLARE_ACCOUNT_ID); }
 
 function privateIntent(prompt:string):ResidentIntent{
   const lower=prompt.toLowerCase();
@@ -80,7 +81,7 @@ async function residentMode(prompt:string,req:Request,origin:string|null){
   const isSensitive=SENSITIVE_TERMS.test(prompt); let intent:ResidentIntent; let aiProcessing="local_private_fallback";
   if(isSensitive){ intent=privateIntent(prompt); }
   else{
-    try{ const parsed=await providerJson(`You are the intent engine for HiStreets, a Newham-only local discovery platform. Convert the resident request to strict JSON only. Never answer the request. Never invent listings. Allowed post types: offer, job, free_meal, community. Commercial signal categories may only be food_drink, jobs, retail, beauty, local_services, leisure. Extract only an explicit Newham outward postcode (E6,E7,E12,E13,E15,E16,E20), otherwise area="". JSON shape: {"summary":"","area":"","categories":[],"post_types":[],"business_terms":[],"budget_gbp":null,"time_hint":"","commercial_signal_category":null}`,prompt); intent=normaliseResidentIntent(parsed,prompt); aiProcessing="groq_intent"; }
+    try{ const parsed=await providerJson(`You are the intent engine for HiStreets, a Newham-only local discovery platform. Convert the resident request to strict JSON only. Never answer the request. Never invent listings. Allowed post types: offer, job, free_meal, community. Commercial signal categories may only be food_drink, jobs, retail, beauty, local_services, leisure. Extract only an explicit Newham outward postcode (E6,E7,E12,E13,E15,E16,E20), otherwise area="". JSON shape: {"summary":"","area":"","categories":[],"post_types":[],"business_terms":[],"budget_gbp":null,"time_hint":"","commercial_signal_category":null}`,prompt); intent=normaliseResidentIntent(parsed,prompt); aiProcessing="cloudflare_intent"; }
     catch(error){ console.error("resident intent provider fallback",error); intent=privateIntent(prompt); aiProcessing="local_resilient_fallback"; }
   }
   const terms=[...intent.business_terms,...intent.categories].filter(Boolean);
@@ -114,7 +115,7 @@ async function businessMode(prompt:string,businessId:string,req:Request,origin:s
   let businessQuery=db.from("businesses").select("id,name,category,description,address,opening_hours,verification_status,claimed_by,source").eq("id",businessId).eq("verification_status","verified"); if(!["admin","super_admin"].includes(role))businessQuery=businessQuery.eq("claimed_by",user.id);
   const businessResult=await businessQuery.maybeSingle(); if(businessResult.error||!businessResult.data)return json({error:"This verified business is not available to your account."},403,origin);
   const quotaKey=await sha256(`business|${user.id}`); const quota=await db.rpc("consume_ai_quota",{p_key_hash:quotaKey,p_limit:100}); if(quota.error||quota.data!==true)return json({error:"Daily Business Copilot limit reached. Manual posting remains available."},429,origin);
-  const b=businessResult.data as any; let raw:any; let aiProcessing="groq_draft";
+  const b=businessResult.data as any; let raw:any; let aiProcessing="cloudflare_draft";
   try{ raw=await providerJson(`You are HiStreets Business Copilot. Draft a factual local post for the verified business below. Do not invent prices, pay, dates, opening hours, benefits, certifications or conditions that the owner did not provide. If important information is missing, list it in missing_fields instead of guessing. Keep public copy clear, inclusive and concise. Return JSON only with shape {"type":"offer|job|free_meal|community","title":"","body":"","category":"","expiry_days":7,"recurrence":"","missing_fields":[],"notes":""}. For jobs, if pay/hours are not supplied, mention them in missing_fields. Never auto-publish and never claim official endorsement. Business: ${JSON.stringify({name:b.name,category:b.category,address:b.address,description:b.description,opening_hours:b.opening_hours})}`,prompt); }
   catch(error){ console.error("business draft provider fallback",error); raw=fallbackBusinessDraft(prompt); aiProcessing="local_resilient_fallback"; }
   const type:PostType=["offer","job","free_meal","community"].includes(String(raw?.type))?raw.type:"offer";

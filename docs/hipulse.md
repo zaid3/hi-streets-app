@@ -1,73 +1,44 @@
 # HiPulse
 
-HiPulse is HiStreets' explainable local-signal layer for Newham.
+HiPulse combines HiStreets' public map coverage and current local posts into an explainable score for Newham. It helps people inspect what is available on the platform and open the corresponding offers, jobs, community support or map listings.
 
-It answers a simple product question: **how much useful, currently actionable local activity is visible on HiStreets right now?**
+It is a deterministic product feature, not an AI prediction or an official economic statistic.
 
-The feature is intentionally not presented as an official economic statistic, prediction or council dataset. It is a transparent product signal derived from data already available inside HiStreets.
+## Inputs and scope
 
-## Why it exists
+- Public listings returned by `businesses_geojson()`, within the configured Newham boundary. These can include unclaimed, pending, verified and contested records. A public map listing is not proof of owner verification or platform adoption.
+- The latest 100 public posts loaded by the app. HiPulse includes only posts with live status, a future expiry time and no future start time. Community and free-meal posts are grouped together.
+- Businesses blocked by the viewer are excluded from the displayed snapshot.
 
-A conventional directory tells a user what exists. HiPulse is designed to show what is **active now** and help the user move from a signal to an action:
-
-- current local offers
-- active local job opportunities
-- live community support / free-meal posts
-- breadth of approved local business coverage
-- diversity of business categories represented on the platform
-
-The mobile interface exposes the factors behind the score and provides direct routes to the underlying offers, jobs, community posts and map.
+The panel uses the loaded snapshot, rather than a continuously refreshed server aggregate. While open it checks time-based validity every 30 seconds. Reloading obtains newly published records. A loading failure is shown as unavailable data, rather than a zero score.
 
 ## Scoring model
 
-The score is bounded from 0 to 100 and is made from four capped factors:
-
-| Factor | Maximum | Input |
+| Factor | Maximum | Calculation |
 | --- | ---: | --- |
-| Live activity | 40 | Current offer, job and community-support posts |
-| Business diversity | 20 | Distinct approved business categories |
-| Local coverage | 20 | Number of approved businesses visible to the public map |
-| Signal balance | 20 | Whether activity is present across commerce, jobs and community support rather than only one channel |
+| Live activity | 40 | `min(3 × offers + 4 × jobs + 4 × community, 40)` |
+| Business diversity | 20 | `min(2 × distinct non-empty category labels, 20)` |
+| Map coverage | 20 | `min(round(4 × log2(listings + 1)), 20)`; zero with no listings |
+| Signal balance | 20 | 0, 6, 13 or 20 points for activity in 0, 1, 2 or 3 post types |
 
-The implementation lives in `src/lib/hiPulse.ts` and is covered by unit tests. The caps are deliberate: one unusually active post type cannot dominate the whole product signal.
+The four contributions are summed. Category labels are trimmed and compared without case sensitivity. They are not a standardised economic classification. Weights and thresholds are product design choices; they have not been validated as predictors of business performance.
 
-## Confidence label
+The implementation is in [`src/lib/hiPulse.ts`](../src/lib/hiPulse.ts). Each factor is shown in the interface with its own unit and cap. Coverage and diversity can contribute up to 40 points without any live posts, so the total must be read with its breakdown.
 
-HiPulse also exposes a simple sample-size label:
+## Checked example on 20 October 2026
 
-- **Early** — fewer than 10 public businesses + live posts
-- **Building** — 10–29 public businesses + live posts
-- **Strong** — 30 or more public businesses + live posts
+A read-only production check at 21:05 UTC returned 3,454 public map listings, eight category labels and no public live posts. All 3,454 listing records had `verification_status = unclaimed`.
 
-This is not a statistical confidence interval. It is a product-language indication of how much platform data contributed to the current score.
+The corresponding result is **0 activity + 16 diversity + 20 coverage + 0 balance = 36/100**. This is a coverage-led snapshot, not evidence of 3,454 verified businesses, users, active posters or sales.
 
-## Privacy approach
+An earlier interface called the record-count threshold “Strong confidence” and described coverage as “verified” and “growing”. Those labels were not supported by the calculation. The corrected interface uses “Platform snapshot”, “Map listings” and explicit factor units, without inferring verification, growth or statistical confidence from record counts. The scoring weights are unchanged.
 
-HiPulse does not need a personal profile, search history, advertising identifier or continuous location trail. The first release calculates the borough-level pulse from public platform data already loaded by HiStreets.
+## Privacy and interpretation
 
-That design is intentional. Local intelligence should be useful without requiring behavioural surveillance.
+The score does not require a personal profile, search history, advertising identifier or continuous location trail. This statement concerns HiPulse's calculation, rather than every feature or analytics tool in the wider application.
 
-## Explainability
+HiPulse must not be described as an official council statistic, neighbourhood ranking, footfall measure, revenue measure, employment outcome or forecast. The score is not a measure of completeness of Newham's business data. Future time-series or ward-level comparisons would need their own data and validation.
 
-Every score shown in the interface has a visible factor breakdown. A user can see the points contributed by live activity, diversity, coverage and balance.
+## Tests
 
-This is preferred over an opaque model because the product is civic/local in nature and the signal should be understandable to residents, businesses and reviewers.
-
-## Product limits
-
-HiPulse currently measures **HiStreets platform activity**, not the whole Newham economy.
-
-It must not be described as:
-
-- an official London Borough of Newham metric
-- a prediction of footfall, revenue or employment
-- a substitute for government statistics
-- a ranking of individual residents or businesses
-
-Future versions can add ward-level aggregation or time-series comparison only when the underlying data is sufficiently complete and the privacy implications are reviewed.
-
-## Testing
-
-`tests/hipulse.test.ts` checks scoring, capping, live-status filtering and balance behaviour.
-
-`tests/e2e/hipulse.spec.ts` checks the mobile sheet and the signal-to-action navigation in both Chromium mobile and WebKit mobile through the release workflow.
+`tests/hipulse.test.ts` covers scoring caps, the checked 36-point example, status and date filtering, and selection of the underlying activity route. Browser tests cover the mobile sheet, listing terminology, zero data and navigation.

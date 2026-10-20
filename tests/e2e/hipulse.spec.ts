@@ -13,7 +13,8 @@ test.describe('HiPulse mobile intelligence layer', () => {
     await expect(dialog).toBeVisible()
     await expect(dialog.getByText('Explainable by design')).toBeVisible()
     await expect(dialog.getByText(/not an official council statistic/i)).toBeVisible()
-    await expect(dialog.getByRole('button', { name: /Explore strongest signal/i })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: /Explore (strongest signal|map listings)/i })).toBeVisible()
+    await expect(dialog.getByText(/confidence/i)).toHaveCount(0)
   })
 
   test('turns the live pulse into a user action without breaking navigation', async ({ page }) => {

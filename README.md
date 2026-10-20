@@ -47,7 +47,9 @@ Business owners can describe an offer or job in simple words and receive an AI-a
 
 ### HiPulse
 
-HiPulse is an explainable 0–100 HiStreets activity signal derived from currently visible platform activity such as offers, jobs, community support, approved-business coverage and category diversity.
+HiPulse is an explainable 0–100 signal combining current offers, jobs and community posts with public map coverage and category diversity. The score shows four separate contributions: activity (40 points), diversity (20), coverage (20) and balance (20). Each contribution is capped and visible, with links to the underlying posts or map.
+
+Map listings can be unclaimed and must not be counted as verified owners, users or customers. HiPulse describes the data loaded by the app; a listing-only snapshot can have coverage points even when there are no live posts.
 
 HiPulse is a **HiStreets product signal**. It is not an official London Borough of Newham statistic, economic forecast or neighbourhood ranking. See [docs/hipulse.md](docs/hipulse.md) for the scoring model and limitations.
 
@@ -81,20 +83,26 @@ Super Admin tools include user/role management, business registration and owners
 
 **Parking section kept as coming soon** until reliable, authoritative local parking information can be integrated. HiStreets does not publish guessed parking restrictions.
 
-## What makes the architecture different
+## Product innovation and individual contribution
+
+**HiStreets was conceived and developed by Ahtashamul Haque.** Its product contribution connects a small organisation's ability to publish an opportunity with a resident's ability to find it nearby. Location-linked offers, local vacancies (including part-time and weekend work), and charity support share one discovery flow. Business Copilot helps an owner prepare a post in plain language while keeping the publication decision with the owner.
+
+HiPulse adds an inspectable summary of activity and map coverage. Users can see which inputs contribute to its score and move directly to offers, jobs, support or listings. The model is deterministic and does not need an AI provider or personal tracking. Opportunity Gap is a separate feature for aggregated unmet needs, available only when its privacy thresholds are met.
+
+The implementation uses established open-source tools, geospatial data and server-side access checks. The product contribution lies in how these components and workflows are designed and connected. This repository provides the implementation and development history; it does not establish a market-wide claim of being the first or only such product.
 
 HiStreets combines several local workflows that are usually separated:
 
 **resident need → local discovery → anonymous aggregate signal → opportunity gap → business insight → AI-assisted business action → new local supply → resident discovery**
 
-The value is not one isolated AI feature. It is the connection between geospatial discovery, local commerce, employment, community support, explainable signals and owner-controlled AI assistance.
+See [the product vision and implementation record](docs/global-talent-product-vision.md) for the problem, intended users, implemented features and development scope.
 
 ## Trust and privacy
 
 Current design principles include:
 
 - public resident browsing without account creation
-- approved-business rules before listings become public
+- public map listings that may be unclaimed, with separate ownership verification and posting controls
 - Newham geographic enforcement for relevant registration and map flows
 - private job CV storage
 - private business-verification evidence
@@ -132,7 +140,7 @@ HiStreets starts with the London Borough of Newham deliberately. The aim is to m
 - Supabase Postgres / PostGIS
 - Supabase Storage
 - Supabase Edge Functions
-- Google Gemini through server-side Edge Function integration for AI-assisted flows
+- Cloudflare Workers AI through server-side Edge Functions for AI-assisted flows
 - Progressive Web App shell
 - Playwright browser release testing
 
@@ -229,7 +237,7 @@ Before a public release, verify at minimum:
 4. Offers, Jobs and Community remain scrollable without visible scrollbar rails or bottom-navigation overlap.
 5. All five primary bottom-navigation destinations stay on one row across mobile Chromium, mobile WebKit and desktop; Parking remains available only as a direct coming-soon route.
 6. Create account, email confirmation, password sign-in, forgot-password and recovery work with real production email delivery.
-7. Existing-account secure email-code sign-in works without silently creating a new account, for the configured six- or eight-digit OTP length.
+7. Existing-account secure email-code sign-in works without silently creating a new account, for the configured 6 to 10 digit OTP length.
 8. Business claim and new-business registration correctly avoid duplicates.
 9. Verification evidence and CVs remain private.
 10. Admin/Super Admin access is role-protected after the same authentication page.

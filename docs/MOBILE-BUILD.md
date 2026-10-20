@@ -1,8 +1,8 @@
 # Current provider change — 20 October 2026
 
 The release source now replaces Gemini with Cloudflare Workers Free (`@cf/openai/gpt-oss-20b`).
-See `FREE-AI-SETUP.md`. A configured free-account key and a successful live AI
-request are still required. The earlier signed 0.3.1 binaries below predate
+See `FREE-AI-SETUP.md`. The owner configured credentials, and version 11 returned a successful live
+`cloudflare_intent` response. The earlier signed 0.3.1 binaries below predate
 this provider/disclosure change and must be rebuilt before final distribution.
 The previous verification records below are historical, not validation of the
 new provider or a new signed binary.

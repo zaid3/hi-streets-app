@@ -50,23 +50,20 @@ integration does not use stateful AI features, prompt logging or caching.
 
 ## Release status
 
-The user explicitly approved deployment and Cloudflare processing on 20 October
-2026. Supabase `histreets-ai` version 8 is now ACTIVE with `index.ts` and
-`cloudflare.ts`; the deployed source contains no Gemini endpoint or key reference.
-The earlier automatic approval rejection was resolved by that user approval.
+The user approved deployment and Cloudflare processing on 20 October 2026.
+Supabase `histreets-ai` version 11 is ACTIVE with `index.ts` and `cloudflare.ts`.
+After the owner saved the credentials and the function was refreshed, a synthetic
+resident search returned HTTP 200 with `ai_processing: cloudflare_intent`.
+This confirms provider processing; the search returned zero matching listings.
+Unauthenticated business drafting returned 401 and an untrusted origin returned 403.
+Authenticated business drafting remains untested. No paid plan or billing settings
+were changed; the account's plan was not independently queried.
 
-Live checks returned HTTP 200 and a real listing for a synthetic resident search,
-HTTP 401 for an unauthenticated business draft, and HTTP 403 for an untrusted
-origin. The resident response used `local_resilient_fallback`, not Cloudflare AI.
-Function logs confirmed `AI is not configured`: the required account ID/token
-are missing or invalid. The API credentials must be added directly in Supabase
-before a successful provider test. No paid plan or billing settings were changed.
-
-Updated frontend disclosures still require publication and a new signed Android
-build. The existing signing-key backup was located, but its file retrieval was
-blocked by a file-service HTTP 403. Do not generate a replacement signing key or
-call the earlier package a tested Cloudflare release. Account/device tests and
-the remaining requirements in `AI-LICENCE-AND-PRIVACY-REVIEW.md` are still open.
+The owner supplied the original signing-key backup, and its private-key entry
+was validated. Version 0.3.2 (versionCode 3) is being rebuilt using that key.
+Previous 0.3.1 files predate this provider/disclosure change. Web publication,
+account/device checks and the operational review in
+`AI-LICENCE-AND-PRIVACY-REVIEW.md` remain separate release gates.
 
 Sources checked 20 October 2026:
 

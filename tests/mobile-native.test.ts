@@ -20,7 +20,25 @@ test('native origins are added without changing backend authorization logic', as
     const original = execFileSync('git',['show',`f61e557f3a227a78088fe192f3b12b16e94843a1:${path}`],{encoding:'utf8'})
     const current = await readFile(path,'utf8')
     const normalize = (text:string) => text.replace(/"https:\/\/localhost",\s*/g,'').replace(/"capacitor:\/\/localhost",\s*/g,'').replace(/\s/g,'')
-    assert.equal(normalize(current), normalize(original))
+    if (name === 'histreets-ai') {
+      // Provider code is tested separately. Preserve exact authentication,
+      // ownership, verification, quotas and HTTP/origin checks across migration.
+      for (const [start, end] of [
+        ['async function businessMode(', '  const b=businessResult.data'],
+        ['async function residentMode(', '  const isSensitive='],
+        ['Deno.serve(', ''],
+      ]) {
+        const section = (source:string) => {
+          const from = source.indexOf(start)
+          const to = end ? source.indexOf(end, from) : source.length
+          assert.ok(from >= 0 && to > from, `Missing authorization section: ${start}`)
+          return normalize(source.slice(from, to))
+        }
+        assert.equal(section(current), section(original))
+      }
+    } else {
+      assert.equal(normalize(current), normalize(original))
+    }
     assert.match(current,/const ALLOWED_ORIGINS = new Set\(\[[\s\S]*?"https:\/\/localhost"[\s\S]*?"capacitor:\/\/localhost"/)
   }
 })

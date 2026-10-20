@@ -1,3 +1,12 @@
+# Current provider change — 20 October 2026
+
+The release source now replaces Gemini with Groq Free (`openai/gpt-oss-20b`).
+See `FREE-AI-SETUP.md`. A configured free-account key and a successful live AI
+request are still required. The earlier signed 0.3.1 binaries below predate
+this provider/disclosure change and must be rebuilt before final distribution.
+The previous verification records below are historical, not validation of the
+new provider or a new signed binary.
+
 # HiStreets mobile build
 
 The native app packages the existing React interface locally with Capacitor 8. Live business listings, sign-in, uploads, map tiles and server functions use the existing production services. The package is `uk.histreets.app`; Android test builds use `.debug` to keep them separate. Android targets API 36, with minimum API 24. The iOS project requires a later Mac/Xcode build and signing.

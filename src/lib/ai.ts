@@ -17,7 +17,7 @@ export type AskHiStreetsResponse = {
   businesses: Business[]
   posts: Post[]
   source: 'histreets_public_data'
-  ai_processing: 'gemini_intent' | 'local_private_fallback' | 'local_resilient_fallback'
+  ai_processing: 'groq_intent' | 'local_private_fallback' | 'local_resilient_fallback'
   generated_at: string
 }
 
@@ -36,7 +36,7 @@ export type BusinessCopilotResponse = {
   mode: 'business_draft'
   business: { id: string; name: string }
   draft: BusinessCopilotDraft
-  ai_processing: 'gemini_draft' | 'local_resilient_fallback'
+  ai_processing: 'groq_draft' | 'local_resilient_fallback'
   requires_owner_review: true
   published: false
 }

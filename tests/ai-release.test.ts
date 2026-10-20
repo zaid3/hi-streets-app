@@ -6,7 +6,7 @@ async function read(path: string) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 }
 
-test('Gemini secret stays server-side and frontend uses only the HiStreets function', async () => {
+test('Groq secret stays server-side and frontend uses only the HiStreets function', async () => {
   const client = await read('src/lib/ai.ts')
   const edge = await read('supabase/functions/histreets-ai/index.ts')
   const allFrontend = [
@@ -16,10 +16,12 @@ test('Gemini secret stays server-side and frontend uses only the HiStreets funct
   ].join('\n')
 
   assert.match(client, /functions\.invoke\('histreets-ai'/)
-  assert.match(edge, /Deno\.env\.get\("GEMINI_API_KEY"\)/)
-  assert.doesNotMatch(allFrontend, /GEMINI_API_KEY/)
+  assert.match(edge, /Deno\.env\.get\("GROQ_API_KEY"\)/)
+  assert.doesNotMatch(allFrontend, /GROQ_API_KEY/)
+  assert.doesNotMatch(edge, /GEMINI_API_KEY|generativelanguage/ )
+  assert.doesNotMatch(allFrontend, /api\.groq\.com/)
   assert.doesNotMatch(allFrontend, /generativelanguage\.googleapis\.com/)
-  assert.doesNotMatch(allFrontend, /VITE_GEMINI/)
+  assert.doesNotMatch(allFrontend, /VITE_GROQ/)
 })
 
 test('resident AI can only return database-backed local results and has a no-invention fallback', async () => {

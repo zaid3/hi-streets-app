@@ -220,7 +220,7 @@ export default function SmartMapSearch({ onNavigate }: Props) {
           {query.trim().length >= 3 && (
             <button type="button" className="ask-histreets-option" onMouseDown={event => event.preventDefault()} onClick={() => void runAi()}>
               <span className="smart-search-option-icon ai"><Bot size={19} /></span>
-              <span className="smart-search-option-copy"><strong>Ask HiStreets AI</strong><small>Uses Google Gemini. Do not enter sensitive data.</small></span>
+              <span className="smart-search-option-copy"><strong>Ask HiStreets AI</strong><small>Uses Groq. Do not enter sensitive data.</small></span>
             </button>
           )}
           <div className="smart-search-options">

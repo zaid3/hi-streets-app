@@ -35,7 +35,7 @@ The long-term goal is not to make AI answer every question. It is to shorten the
 
 ## Source-of-truth rule
 
-Gemini is an interpretation and drafting component. It is **not** the source of local facts.
+Groq is an interpretation and drafting component. It is **not** the source of local facts.
 
 Resident results are selected from HiStreets' approved public business and live-post datasets. The server does not ask the model to invent nearby businesses, jobs, offers or community services. If there is no verified result, the response says so.
 
@@ -67,7 +67,7 @@ Opportunity Gap stores only:
 
 The initial allowed categories are food & drink, jobs, retail, beauty, local services and leisure.
 
-Sensitive requests are excluded from commercial demand intelligence. Requests involving immigration/asylum, hardship/free meals, medical or mental-health needs, disability, homelessness, domestic abuse, religion, sexual matters, crime/police and related vulnerability terms bypass Gemini and use a local private routing fallback. They do not create business opportunity signals.
+Sensitive requests are excluded from commercial demand intelligence. Requests involving immigration/asylum, hardship/free meals, medical or mental-health needs, disability, homelessness, domestic abuse, religion, sexual matters, crime/police and related vulnerability terms bypass Groq and use a local private routing fallback. They do not create business opportunity signals.
 
 ## Abuse and cost controls
 
@@ -77,21 +77,21 @@ If the AI provider is unavailable or a quota is exhausted, core HiStreets map, p
 
 ## Deployment boundary
 
-The browser never receives the Gemini API key.
+The browser never receives the Groq API key.
 
 ```text
 React / Vite client
        ↓
 Supabase Edge Function: histreets-ai
        ↓
-Gemini API (intent / draft generation)
+Groq API (intent / draft generation)
        ↓
 validated structured output
        ↓
 HiStreets verified database results / owner review
 ```
 
-`GEMINI_API_KEY` is stored only as a Supabase Edge Function secret. No `VITE_GEMINI_API_KEY` exists.
+`GROQ_API_KEY` is stored only as a Supabase Edge Function secret. No `VITE_GROQ_API_KEY` exists.
 
 ## Current limitations
 

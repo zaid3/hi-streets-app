@@ -1,6 +1,10 @@
 -- Private persistence is independent of mail availability. Credentials stay in Vault.
 create extension if not exists pg_net with schema extensions;
 create extension if not exists pg_cron;
+-- Best effort on databases where the migration role owns net. Hosted Supabase
+-- owns net as supabase_admin and these revokes have no effect there. Keep net
+-- outside the Data API's exposed schemas: verify that separately at deployment.
+-- All trusted database login roles can read queued HTTP headers on Supabase.
 revoke all on schema net from public, anon, authenticated;
 revoke all on all tables in schema net from public, anon, authenticated;
 revoke all on all sequences in schema net from public, anon, authenticated;

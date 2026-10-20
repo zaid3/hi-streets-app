@@ -54,7 +54,8 @@ eq((await one('select count(*)::int as n from net.requests')).n, 0)
 
 await db.exec('set role anon')
 await denies(() => db.query('select * from public.feedback_email_deliveries'))
-await denies(() => db.query('select * from net.requests'))
+// Hosted Supabase owns net and retains PUBLIC grants. Data API exclusion,
+// checked against the live endpoint at deployment, is its browser boundary.
 await denies(() => db.query('select * from vault.decrypted_secrets'))
 await denies(() => db.query('select feedback_private.process_emails()'))
 await db.exec("reset role; set role authenticated; set test.user_role='user'")

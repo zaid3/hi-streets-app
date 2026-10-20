@@ -11,6 +11,8 @@ import org.junit.runner.RunWith;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONObject;
 import static org.junit.Assert.*;
 
 @RunWith(AndroidJUnit4.class)
@@ -29,6 +31,19 @@ public class NativeShellTest {
   }
   private void click(ActivityScenario<MainActivity> scenario,String label) throws Exception {
     js(scenario,"Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='"+label+"')?.click()");
+  }
+  @Test public void installedAppReachesLiveBackendAndRejectsPrivateAccess() throws Exception {
+    JSONObject config;
+    try(java.io.InputStream stream=InstrumentationRegistry.getInstrumentation().getContext().getAssets().open("live-backend-public.json")){
+      config=new JSONObject(new String(stream.readAllBytes(),StandardCharsets.UTF_8));
+    }
+    try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){
+      waitFor(scenario,"!!document.querySelector('.bottom-tabs')");
+      String script="(async()=>{try{const c="+config.toString()+";const h={apikey:c.publishableKey,'Content-Type':'application/json'};const m=await(await fetch('/mobile-build.json')).json();if(!m.configured||m.preview)throw Error('Incorrect native build configuration');const listings=await fetch(c.url+'/rest/v1/businesses_public?select=id&limit=1',{headers:h});const rows=await listings.json();if(listings.status!==200||!Array.isArray(rows)||rows.length===0)throw Error('Public listing request failed: '+listings.status);const reports=await fetch(c.url+'/rest/v1/content_reports?select=id&limit=1',{headers:h});if(![401,403].includes(reports.status))throw Error('Private reports were not denied: '+reports.status);const invalid=await fetch(c.url+'/rest/v1/rpc/submit_content_report',{method:'POST',headers:h,body:JSON.stringify({p_kind:'invalid-native-test',p_target_id:null,p_reason:'other',p_details:'',p_snapshot:''})});if(invalid.status!==400)throw Error('Invalid report was not rejected: '+invalid.status);const auth=await fetch(c.url+'/auth/v1/settings',{headers:h});if(auth.status!==200)throw Error('Auth settings unavailable: '+auth.status);window.__nativeBackendResult='passed';}catch(e){window.__nativeBackendResult='failed: '+e.message}})()";
+      js(scenario,script);
+      waitFor(scenario,"typeof window.__nativeBackendResult==='string'");
+      assertEquals("\"passed\"",js(scenario,"window.__nativeBackendResult"));
+    }
   }
   @Test public void packagedAppUsesNativeBridgeAndOptionalLocation() throws Exception {
     try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){

@@ -57,9 +57,9 @@ build verification, not an installable TestFlight or App Store package.
 No Apple team, distribution certificate, provisioning profile, App Store Connect
 record or signed iOS upload has been established by this source change.
 
-## App Review issues found in the current shared app
+## Checks before App Review
 
-These must be resolved and verified before submitting for public App Review:
+Complete these operational and signed-release checks before public App Review:
 
 - **Account deletion:** the app now submits an authenticated request directly and
   shows the saved status. The private founder queue and row-level policies are

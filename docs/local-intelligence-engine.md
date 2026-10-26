@@ -1,49 +1,31 @@
 # HiStreets Local Intelligence Engine
 
-HiStreets is designed as borough-level local digital infrastructure rather than a general-purpose chatbot or directory. The first operating area is the London Borough of Newham.
+HiStreets connects local discovery, business publishing and understandable activity signals. Its first operating area is the London Borough of Newham.
 
-The intelligence layer connects four product capabilities:
+The implementation has four parts:
 
-1. **Ask HiStreets** — understands a resident's immediate local need and retrieves actionable results from verified HiStreets data.
-2. **HiPulse** — explains the amount and balance of current platform activity using a transparent deterministic score.
-3. **Opportunity Gap** — aggregates eligible non-sensitive demand signals by broad category and outward-postcode area without storing raw prompts for this purpose.
-4. **Business Copilot** — helps an authenticated owner turn a rough idea into a factual structured post, which the owner must review before submitting.
+1. **Ask HiStreets** interprets a resident's request and retrieves local database results after permission for AI processing.
+2. **HiPulse** shows a deterministic score and factor breakdown for current activity, category diversity and map coverage.
+3. **Opportunity Gap** groups eligible search signals by broad commercial category, outward postcode and day.
+4. **Business Copilot** helps an authenticated, authorised owner draft a structured post for review.
 
-## Closed local feedback loop
+The intended flow is from a local need to a useful result, and from aggregate search activity to a business decision. An eligible Opportunity Gap signal can lead to a Copilot draft, but it does not automatically create or publish an offer.
 
-```text
-Resident need
-    ↓
-Ask HiStreets intent understanding
-    ↓
-Verified businesses / live posts
-    ↓
-Useful resident action
-    ↓
-Eligible anonymous aggregate demand signal
-    ↓
-Opportunity Gap
-    ↓
-Business insight / Business Copilot
-    ↓
-Owner-reviewed local offer, job or support post
-    ↓
-New verified supply becomes discoverable by residents
-```
+## Source of local facts
 
-The long-term goal is not to make AI answer every question. It is to shorten the distance between a local need and a useful local action while giving participating independent businesses a simpler way to respond to genuine neighbourhood demand.
+Cloudflare Workers AI interprets requests and prepares drafts. Resident results come from the HiStreets database. The server does not ask the model to invent nearby businesses, jobs, offers or community services.
 
-## Source-of-truth rule
+Resident business search includes listings with unclaimed or verified status. These states must not be presented as equivalent: a public directory listing is not proof of verified ownership or business participation. Post queries use live, unexpired records. No matching result is a valid outcome.
 
-Cloudflare Workers AI is an interpretation and drafting component. It is **not** the source of local facts.
+Business drafting requires a verified business and ownership or platform-administrator access. The model receives selected business fields and the owner's instructions. It is instructed not to invent prices, wages, dates, hours, benefits, certifications or conditions. Important omissions are requested as `missing_fields`; owners must still check the output.
 
-Resident results are selected from HiStreets' approved public business and live-post datasets. The server does not ask the model to invent nearby businesses, jobs, offers or community services. If there is no verified result, the response says so.
+See the [AI handler](../supabase/functions/histreets-ai/index.ts).
 
-Business Copilot receives the verified business context and the owner's prompt. It is instructed not to invent prices, wages, dates, hours, benefits, certifications or offer conditions. Missing important information is returned as `missing_fields` rather than guessed.
+## Consent and owner control
 
-## Human control for business publishing
+Resident questions and business drafts have separate affirmative consent controls. The shared API client rejects an AI request without an explicit consent value. Declining leaves ordinary search and manual post creation available.
 
-Business Copilot returns a draft only. A draft response explicitly contains:
+A business draft response contains:
 
 ```json
 {
@@ -52,56 +34,30 @@ Business Copilot returns a draft only. A draft response explicitly contains:
 }
 ```
 
-The owner must first choose **Use this draft**, review/edit the populated form, and then separately choose **Submit post**. Existing platform moderation and auto-approval rules remain the publication boundary.
+The owner chooses **Use this draft**, reviews or edits the populated form, then separately chooses **Submit post**. Existing verification, moderation and publication rules still apply. See [the client](../src/lib/ai.ts) and [PostComposer](../src/components/PostComposer.tsx).
 
-## Privacy boundary
+## Aggregate opportunity signals
 
-Raw resident prompts are not stored in the Opportunity Gap table.
+The `ai_opportunity_daily` table contains an outward-postcode area, broad category, date and aggregate count. Raw resident prompts are not stored in this table. Direct client access is denied; recording and querying use protected server paths.
 
-Opportunity Gap stores only:
+Allowed recording categories are food and drink, jobs, retail, beauty, local services and leisure. The current business-category matcher supports food and drink, retail, beauty, local services and leisure; it does not provide a jobs-specific business insight.
 
-- outward-postcode area,
-- a broad allowed commercial category,
-- date,
-- aggregate count.
+A verified owner's insight uses the matching category and area over the current UTC day and previous six days. It is hidden below five recorded signals. Five signals do not establish five unique people. The response includes current offers in that postcode area across categories, not a proven match between supply and each search. A failed offer lookup returns an unavailable response rather than implying zero offers.
 
-The initial allowed categories are food & drink, jobs, retail, beauty, local services and leisure.
+This threshold limits what is shown, but it is not a guarantee of anonymity or a validated demand forecast. Repeated searches can affect the count. The [opportunity handler](../supabase/functions/histreets-opportunity/index.ts) defines the exact behaviour.
 
-Sensitive requests are excluded from commercial demand intelligence. Requests involving immigration/asylum, hardship/free meals, medical or mental-health needs, disability, homelessness, domestic abuse, religion, sexual matters, crime/police and related vulnerability terms bypass Cloudflare Workers AI and use a local private routing fallback. They do not create business opportunity signals.
+## Sensitive inputs and provider boundaries
 
-## Abuse and cost controls
+The sensitive-term filter catches some requests involving hardship, health, immigration, abuse and other vulnerability-related topics. Matches bypass the external provider and commercial signal recording. A keyword filter cannot recognise all sensitive information, and business-draft instructions do not receive equivalent redaction. Users should not include confidential or sensitive personal information in provider-bound text.
 
-The public AI route uses a server-side daily quota bucket. A one-way SHA-256 key is derived from request metadata for rate limiting; the raw fingerprint is not written to the quota table. Business Copilot uses a separate quota tied to the authenticated account.
+Provider requests go from the React client through a Supabase Edge Function to Cloudflare Workers AI. The provider token stays in server secrets. CVs, uploaded verification files and Supabase session tokens are not included in the provider prompt.
 
-If the AI provider is unavailable or a quota is exhausted, core HiStreets map, postcode and smart-search features remain usable.
+The public AI route has a daily quota keyed by a one-way hash of request metadata. Business drafting has an authenticated-account quota. These are abuse controls, not a claim that all service data is anonymous. Provider errors, invalid output and timeouts use local fallbacks; ordinary map and search features remain available without AI.
 
-## Deployment boundary
+See [provider setup and dated checks](FREE-AI-SETUP.md) and [the release review](AI-LICENCE-AND-PRIVACY-REVIEW.md).
 
-The browser never receives the Cloudflare Workers AI API key.
+## Scope and limitations
 
-```text
-React / Vite client
-       ↓
-Supabase Edge Function: histreets-ai
-       ↓
-Cloudflare Workers AI API (intent / draft generation)
-       ↓
-validated structured output
-       ↓
-HiStreets verified database results / owner review
-```
+Ask HiStreets searches available local data; it is not an internet search engine. HiPulse describes platform data rather than official borough economic performance. Opportunity Gap is an aggregate indication rather than proof of unmet need or likely sales. Provider service limits can affect availability.
 
-`CLOUDFLARE_AI_TOKEN` is stored only as a Supabase Edge Function secret. No `VITE_CLOUDFLARE_AI_TOKEN` exists.
-
-## Current limitations
-
-- Ask HiStreets is Newham-only.
-- It searches currently available HiStreets public data; it is not a general internet search engine.
-- HiPulse measures HiStreets platform activity, not official borough economic performance.
-- Opportunity Gap is an aggregate platform-demand signal, not a demographic or economic forecast.
-- Parking remains outside the AI recommendation layer until authoritative parking data is available.
-- A free-tier model/provider can impose request limits or availability constraints; the UI must fail gracefully.
-
-## Expansion model
-
-The product is intentionally borough-scoped. Expansion to another borough should require a verified geographic boundary, borough-specific data sources and the same trust/privacy controls rather than simply widening the map bounds.
+Parking remains outside recommendations until authoritative data is available. Expansion to another borough requires a trusted geographic boundary, appropriate data sources and equivalent access and privacy controls, not just wider map bounds.

@@ -13,7 +13,7 @@ HiStreets is maintained as a product repository rather than a demo sandbox. Chan
 ## Local checks
 
 ```bash
-npm install
+npm ci
 npm run test:unit
 npm run build
 npx playwright install chromium webkit
@@ -26,7 +26,7 @@ The browser suite intentionally covers mobile Chromium and WebKit because locati
 
 - Newham-only public scope unless a separate expansion is designed and reviewed.
 - Do not add fake businesses, offers, jobs, community posts or parking data to production paths.
-- Public businesses must come through the approved-business rules.
+- Public map listings may be unclaimed. Keep listing visibility separate from ownership verification and permission to publish; protected changes must follow the server and database access rules.
 - Parking stays disabled until a reliable local data source is available.
 - Do not expose Supabase service-role credentials, private CVs or verification evidence to the frontend.
 - New analytics or intelligence features should explain their inputs and limitations and avoid unnecessary personal tracking.

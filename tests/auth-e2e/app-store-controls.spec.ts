@@ -19,6 +19,7 @@ async function signInFixture(page: Page) {
   await page.route('**/rest/v1/profiles?**', route => route.fulfill({ json: { role: 'user' } }))
   await page.route('**/rest/v1/rpc/my_business_workspace_ids', route => route.fulfill({ json: [{ business_id: businessId, role: 'owner' }] }))
   await page.route('**/rest/v1/businesses?**', route => route.fulfill({ json: [{ id: businessId, name: 'Test business', category: 'cafe', lat: 51.537, lng: 0.0325, verification_status: 'verified', source: 'owner' }] }))
+  await page.route('**/rest/v1/rpc/business_dashboard_overview', route => route.fulfill({ json: { business_name: 'Test business', listing_views: 0, action_clicks: 0, applications: 0, profile_completeness: 100, live_posts: 0, team_members: 1, pending_posts: 0, content_views: 0 } }))
   await page.goto('/business')
   await expect(page.getByRole('heading', { name: 'Your HiStreets business', exact: true })).toBeVisible()
 }

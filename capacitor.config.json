@@ -11,7 +11,8 @@
     "webContentsDebuggingEnabled": false
   },
   "ios": {
-    "contentInset": "never"
+    "contentInset": "never",
+    "webContentsDebuggingEnabled": false
   },
   "plugins": {
     "SystemBars": {

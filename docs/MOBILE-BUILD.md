@@ -9,6 +9,10 @@ new provider or a new signed binary.
 
 # HiStreets mobile build
 
+For the iPhone/iPad build, native test workflow, Apple signing and current App
+Review gaps, see [IOS-SUBMISSION.md](IOS-SUBMISSION.md). The shared `App` scheme
+and `npm run ios:sync` now prepare iOS separately from Android.
+
 The native app packages the existing React interface locally with Capacitor 8. Live business listings, sign-in, uploads, map tiles and server functions use the existing production services. The package is `uk.histreets.app`; Android test builds use `.debug` to keep them separate. Android targets API 36, with minimum API 24. The iOS project requires a later Mac/Xcode build and signing.
 
 Use Node 22+, JDK 21, Android SDK platform 36 and build tools 35.0.0 and 36.0.0. Run `npm ci` with the committed lockfile.

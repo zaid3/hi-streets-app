@@ -8,6 +8,8 @@ const received = { requested_at: '2026-10-26T12:00:00Z' }
 test.beforeEach(async ({ page }) => {
   // Every HTTPS request is intercepted: no account changes, messages or live AI.
   await page.route('https://**/*', route => route.fulfill({ json: [] }))
+  await page.route('**/rest/v1/rpc/*_geojson', route => route.fulfill({ json: { type: 'FeatureCollection', features: [] } }))
+  await page.route('https://tiles.openfreemap.org/styles/positron', route => route.fulfill({ json: { version: 8, sources: {}, layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f5f3eb' } }] } }))
 })
 
 async function signInFixture(page: Page) {
@@ -57,13 +59,14 @@ test('deletion needs confirmation, retries safely and shows its saved state afte
 
 test('resident AI stays private until consent and declining leaves the map usable', async ({ page }, testInfo) => {
   let requests = 0
+  // Location onboarding is tested separately; keep consent checks independent of WebGL.
+  await page.addInitScript(() => sessionStorage.setItem('histreets_location_prompted_v1', '1'))
   await page.route('**/functions/v1/histreets-ai', async route => {
     requests++
     expect(route.request().postDataJSON()).toEqual({ mode: 'resident', prompt: 'find a cafe' })
     await route.fulfill({ json: { answer: 'Fixture answer.', posts: [], businesses: [] } })
   })
   await page.goto('/map')
-  await page.getByRole('button', { name: 'Use Newham map for now' }).click()
   const search = page.getByRole('combobox', { name: 'Search businesses, services, offers, jobs or postcode' })
   await search.fill('find a cafe')
   await page.getByRole('button', { name: /Ask HiStreets AI/ }).click()
@@ -100,7 +103,7 @@ test('business drafting requires separate consent while manual posting remains a
   await page.getByRole('button', { name: 'Post offer', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Post an offer', exact: true })
   await expect(dialog.getByRole('button', { name: 'Create draft with AI', exact: true })).toBeDisabled()
-  await expect(dialog.getByLabel('Post type', { exact: true })).toBeEnabled()
+  await expect(dialog.getByRole('combobox', { name: 'Post type', exact: true })).toBeEnabled()
   await dialog.getByPlaceholder('Tell HiStreets what you want to post…').fill('Tea costs £2 today')
   expect(requests).toBe(0)
   await dialog.getByRole('checkbox', { name: /share my instructions/ }).check()

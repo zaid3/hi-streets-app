@@ -34,7 +34,8 @@ Deno.serve(async(req:Request)=>{
   const signalCount=(signals.data||[]).reduce((sum:number,row:any)=>sum+Number(row.signal_count||0),0);
   if(signalCount<5)return json({eligible:false,reason:"Not enough anonymous local signals yet.",threshold:5,area,category},200,origin);
   const offers=await db.from("posts_public").select("id",{count:"exact",head:true}).eq("type","offer").ilike("business_address",`%${area}%`);
-  const liveOffers=offers.count||0; const categoryLabel=label(category); const level=signalCount>=15?"strong":signalCount>=9?"growing":"emerging";
+  if(offers.error||typeof offers.count!=="number"||!Number.isInteger(offers.count)||offers.count<0)return json({error:"Local opportunity data is temporarily unavailable."},503,origin);
+  const liveOffers=offers.count; const categoryLabel=label(category); const level=signalCount>=15?"strong":signalCount>=9?"growing":"emerging";
   const suggestion=liveOffers<=2?`Local ${categoryLabel} interest around ${area} is ${level}, with only ${liveOffers} live offer${liveOffers===1?"":"s"} currently visible. Consider creating a timely offer.`:`Local ${categoryLabel} interest around ${area} is ${level}. Consider a clear offer that gives residents a reason to choose your business.`;
   const seedPrompt=`Help me create a factual local offer for ${business.name} responding to ${categoryLabel} interest around ${area}. Do not invent a discount, price or condition. If I have not supplied the actual offer details, list them as missing information.`;
   return json({eligible:true,area,category,category_label:categoryLabel,signal_count:signalCount,live_offer_count:liveOffers,period_days:7,level,suggestion,seed_prompt:seedPrompt,privacy_note:"Shown only after at least 5 anonymous aggregate signals. No individual resident query is exposed."},200,origin);

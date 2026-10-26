@@ -90,6 +90,34 @@ test('resident AI stays private until consent and declining leaves the map usabl
   expect(requests).toBe(1)
 })
 
+test('Escape closes an AI report without losing the answer or making another request', async ({ page }) => {
+  let requests = 0
+  await page.addInitScript(() => sessionStorage.setItem('histreets_location_prompted_v1', '1'))
+  await page.route('**/functions/v1/histreets-ai', async route => {
+    requests++
+    await route.fulfill({ json: { answer: 'Keep this answer visible.', posts: [], businesses: [] } })
+  })
+  await page.goto('/map')
+  await page.getByRole('combobox', { name: 'Search businesses, services, offers, jobs or postcode' }).fill('find a cafe')
+  await page.getByRole('button', { name: /Ask HiStreets AI/ }).click()
+  const aiDialog = page.getByRole('dialog', { name: 'Ask HiStreets', exact: true })
+  await aiDialog.getByRole('checkbox').check()
+  await aiDialog.getByRole('button', { name: 'Ask with AI', exact: true }).click()
+  await expect(aiDialog).toContainText('Keep this answer visible.')
+  await aiDialog.getByRole('button', { name: 'Report AI response', exact: true }).click()
+  const reportDialog = page.getByRole('dialog', { name: 'Report AI response', exact: true })
+  await expect(reportDialog).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(reportDialog).toHaveCount(0)
+  await expect(aiDialog).toBeVisible()
+  await expect(aiDialog).toContainText('Keep this answer visible.')
+  await expect(aiDialog.getByRole('button', { name: 'Report AI response', exact: true })).toBeFocused()
+  expect(requests).toBe(1)
+  await page.keyboard.press('Escape')
+  await expect(aiDialog).toHaveCount(0)
+  expect(requests).toBe(1)
+})
+
 test('business drafting requires separate consent while manual posting remains available', async ({ page }) => {
   let requests = 0
   await page.route('**/rest/v1/account_deletion_requests?**', route => route.fulfill({ json: null }))

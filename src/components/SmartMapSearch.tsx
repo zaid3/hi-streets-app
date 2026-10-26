@@ -64,6 +64,8 @@ export default function SmartMapSearch({ onNavigate }: Props) {
     const previous = document.activeElement as HTMLElement | null
     aiDialogRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus()
     const onKey = (event: KeyboardEvent) => {
+      // A native report dialog owns Escape and focus while it is open.
+      if (event.defaultPrevented || document.querySelector('dialog[open]')) return
       if (event.key === 'Escape') { event.preventDefault(); setAiOpen(false); return }
       if (event.key !== 'Tab') return
       const controls = Array.from(aiDialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled)') || [])

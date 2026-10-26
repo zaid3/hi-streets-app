@@ -15,7 +15,7 @@ create function auth.jwt() returns jsonb language sql stable as $$select coalesc
 create function public.current_user_role() returns text language sql stable as $$select current_setting('test.profile',true)$$;
 revoke all on function public.current_user_role() from public,anon;
 grant execute on function public.current_user_role() to authenticated;`)
-await db.exec(await readFile('supabase/migrations/20261026142746_account_deletion_requests.sql', 'utf8'))
+await db.exec(await readFile('supabase/migrations/20261026143615_account_deletion_requests.sql', 'utf8'))
 let checks = 0
 async function as(role, id = '', profile = 'user', anonymous = false) {
   await db.exec('reset role')

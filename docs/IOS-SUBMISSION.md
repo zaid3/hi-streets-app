@@ -63,8 +63,9 @@ These must be resolved and verified before submitting for public App Review:
 
 - **Account deletion:** the app now submits an authenticated request directly and
   shows the saved status. The private founder queue and row-level policies are
-  included in `20261026142746_account_deletion_requests.sql`. Apply and verify
-  this migration before shipping the frontend. The owner must monitor the queue
+  included in `20261026143615_account_deletion_requests.sql`. This migration was
+  applied to the Hi-Street backend on 26 October 2026; its RLS and column grants
+  were checked and the security advisor reported no finding for the new table. The owner must monitor the queue
   daily, complete the existing removal procedure within the displayed 30-day
   target, and confirm completion. Test the flow with a designated test account.
   The intake does not itself erase data or send a confirmation email.

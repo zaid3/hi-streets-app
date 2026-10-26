@@ -1,6 +1,7 @@
 import ContentSafety from './ContentSafety'
 import { useBlockedBusinesses } from '../lib/contentSafety'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Bot, BriefcaseBusiness, LocateFixed, MapPin, Search, Sparkles, Store, Tag, X } from 'lucide-react'
 import { askHiStreets, type AskHiStreetsResponse } from '../lib/ai'
 import { loadBusinessesGeoJson } from '../lib/data'
@@ -277,7 +278,7 @@ export default function SmartMapSearch({ onNavigate }: Props) {
       )}
       {bridgeStatus && <div className="smart-search-status" role="status">{bridgeStatus}</div>}
 
-      {aiOpen && (
+      {aiOpen && createPortal(
         <div className="ask-ai-layer" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setAiOpen(false) }}>
           <section ref={aiDialogRef} className="ask-ai-sheet" role="dialog" aria-modal="true" aria-labelledby="ask-ai-title">
             <div className="ask-ai-handle" />
@@ -302,7 +303,7 @@ export default function SmartMapSearch({ onNavigate }: Props) {
               <p className="ask-ai-trust">AI interprets your request. Results come only from HiStreets data, and verification status is shown separately. It does not invent local listings.</p>
             </>}
           </section>
-        </div>
+        </div>, document.body
       )}
     </form>
   )

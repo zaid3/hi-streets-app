@@ -72,6 +72,8 @@ jobs:
         run: npm ci
       - name: Install Chromium and WebKit
         run: npx playwright install --with-deps chromium webkit
+      - name: Test signup confirmation and email cooldowns
+        run: npm run test:auth
       - name: Run browser release tests
         run: npm run test:e2e
       - name: Test HiPulse data accuracy and unavailable states
@@ -79,8 +81,6 @@ jobs:
           VITE_SUPABASE_URL: https://hipulse-test.supabase.co
           VITE_SUPABASE_ANON_KEY: sb_publishable_hipulse_fixture
         run: npx playwright test tests/e2e/hipulse-data.spec.ts --project=chromium-mobile --project=webkit-mobile
-      - name: Test signup confirmation and email cooldowns
-        run: npm run test:auth
       - name: Test reporting, blocking and account controls
         run: npm run test:safety
       - name: Upload Playwright report

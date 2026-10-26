@@ -58,6 +58,7 @@ jobs:
   browser-release:
     name: Mobile Chromium and WebKit release smoke tests
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     needs: release-checks
     steps:
       - name: Checkout
@@ -71,9 +72,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install Chromium and WebKit
-        run: npx playwright install --with-deps chromium webkit
-      - name: Test signup confirmation and email cooldowns
+        run: |
+          sudo tee /etc/apt/apt.conf.d/99-histreets-ci-timeouts > /dev/null <<'APT'
+          Acquire::http::Timeout "20";
+          Acquire::https::Timeout "20";
+          Acquire::Retries "3";
+          APT
+          npx playwright install --with-deps chromium webkit
+      - name: Test signup, consent and account controls
         run: npm run test:auth
+      - name: Save account-control screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-control-tests
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Run browser release tests
         run: npm run test:e2e
       - name: Test HiPulse data accuracy and unavailable states

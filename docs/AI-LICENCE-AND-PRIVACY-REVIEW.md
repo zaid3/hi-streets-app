@@ -40,7 +40,8 @@ requiring paid billing. Free service availability can change.
   and harmful-output prevention need operational validation; a report button or
   a system prompt alone is not proof of Google Play policy compliance.
 - Provider disclosure, privacy rights, ICO complaints and AI use restrictions
-  are included in the prepared policy source. It is not yet the live policy.
+  are included in the prepared policy source. Public availability and accuracy
+  must be checked against the deployed policy at release time.
 
 ## Privacy and legal work still needed before claiming readiness
 
@@ -65,28 +66,24 @@ requiring paid billing. Free service availability can change.
    from actual behaviour. Test ordinary-account flows in the signed release and
    review the Play pre-launch results. Do not certify an untested release.
 
-This review does not determine the operator's personal immigration permission,
-employment restrictions, business structure or tax position. A model licence
-does not settle those separate issues. No statement of complete legal safety
-or protection from developer liability is supported by this review.
+This review covers the model integration and the release work listed above.
+It does not establish complete legal compliance or protection from liability.
 
-## Deployment status
+## Deployment records
 
-An earlier live-provider deployment was rejected by automatic approval review
-because it changes production and sends user prompts/business context to an
-external provider. The user explicitly approved Cloudflare deployment and
-processing on 20 October 2026. Supabase `histreets-ai` version 8 is now ACTIVE.
-Live public search, unauthenticated-draft rejection and origin rejection passed.
-The search used local fallback, and function logs confirmed that Cloudflare
-configuration is missing or invalid. Successful live Cloudflare processing is
-not yet verified. No billing settings were changed.
+On 20 October 2026, the initial version 8 deployment returned local fallback
+because provider configuration was missing or invalid. A later version 11 check,
+after configuration, returned HTTP 200 with `cloudflare_intent`. Unauthenticated
+business drafting returned 401 and an untrusted origin returned 403.
+Authenticated provider drafting remains a separate check. See the dated record
+in [FREE-AI-SETUP.md](FREE-AI-SETUP.md).
 
-The original signed Android package predates this provider change. A new signed
-build with the existing upload key is needed. The key backup was located, but
-file retrieval returned HTTP 403; the private key is not available locally.
-Source tests do not substitute for a live provider test or installed release
-verification. Public policy publication and the legal/operational work above
-remain outstanding.
+The signed Android 0.3.2 artifacts included Cloudflare disclosures and were
+validated using the original upload key; see [the artifact record](FINAL-ANDROID-0.3.2.md).
+Later shared-app changes add explicit AI-sharing consent and account-deletion
+requests. New signed binaries are needed to distribute those changes. Source
+checks do not replace installed-release validation, current public policy checks
+or the operational work above.
 
 ## Official sources checked
 

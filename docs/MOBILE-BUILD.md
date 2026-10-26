@@ -1,65 +1,85 @@
-# Current provider change — 20 October 2026
-
-The release source now replaces Gemini with Cloudflare Workers Free (`@cf/openai/gpt-oss-20b`).
-See `FREE-AI-SETUP.md`. The owner configured credentials, and version 11 returned a successful live
-`cloudflare_intent` response. The earlier signed 0.3.1 binaries below predate
-this provider/disclosure change and must be rebuilt before final distribution.
-The previous verification records below are historical, not validation of the
-new provider or a new signed binary.
-
 # HiStreets mobile build
 
-The native app packages the existing React interface locally with Capacitor 8. Live business listings, sign-in, uploads, map tiles and server functions use the existing production services. The package is `uk.histreets.app`; Android test builds use `.debug` to keep them separate. Android targets API 36, with minimum API 24. The iOS project requires a later Mac/Xcode build and signing.
+Source status: 26 October 2026. The native apps bundle the existing React interface locally with Capacitor 8.5.3. Business listings, authentication, uploads, map tiles and server functions use the configured online services.
 
-Use Node 22+, JDK 21, Android SDK platform 36 and build tools 35.0.0 and 36.0.0. Run `npm ci` with the committed lockfile.
+| Platform | Identifier | Current source version | Build requirements |
+| --- | --- | --- | --- |
+| Android | `uk.histreets.app` | 0.3.2, versionCode 3 | Node 22+, JDK 21, Android SDK 36, build tools 35.0.0 and 36.0.0 |
+| iOS/iPadOS | `uk.histreets.app` | 0.3.2, build 1 | Node 22+, Mac and Xcode 26.3 as used in CI |
+
+Android targets API 36 with API 24 as the minimum. The iOS minimum is 15. Android test builds use a `.debug` application ID suffix. Use `npm ci` with the committed lockfile.
 
 ## Public backend configuration
 
-The live app bundle identifies `https://bbfmrxefabmhtlshgemu.supabase.co` as the HiStreets backend. Use its current **public publishable key** in an ignored `.env.production.local`:
+The live web bundle identifies `https://bbfmrxefabmhtlshgemu.supabase.co` as the HiStreets backend. Put its current **public publishable key** in an ignored `.env.production.local`:
 
 ```dotenv
 VITE_SUPABASE_URL=https://bbfmrxefabmhtlshgemu.supabase.co
 VITE_SUPABASE_ANON_KEY=YOUR_PUBLIC_PUBLISHABLE_KEY
 ```
 
-Never use a secret or service-role key in the frontend. A public key does not grant administrator access; database and storage policies enforce permissions. This repository deliberately contains no local credentials or signing keys.
+Never use a secret or service-role key in the frontend. A public key does not grant administrator access; database and storage policies enforce permissions. Keep signing files and credentials outside Git and application assets.
 
-Native CI now reads `android/app/src/androidTest/assets/live-backend-public.json`, containing the same intentionally public frontend configuration as the deployed app. `prepare-mobile-live-test.mjs` rejects privileged keys before building. The exact historical Gitleaks finding for this public key is recorded in `.gitleaksignore`; no whole-file or general key-pattern exclusion is used. Future changes are still scanned. Installed WebView tests verify public map listings through `businesses_geojson`, denied private report reads, invalid report rejection and Auth settings without creating users, submitting reports, sending email or invoking AI. The restricted `businesses_public` view can legitimately return no rows for anonymous visitors; the map uses the public RPC instead. These checks do not establish successful account sign-in or private uploads.
+Native CI uses `android/app/src/androidTest/assets/live-backend-public.json`, containing the intentionally public frontend configuration. The preparation script rejects privileged keys. The exact historical Gitleaks finding for this public key is recorded in `.gitleaksignore`; there is no whole-file or general key-pattern exclusion. Future changes remain scanned.
 
-Run `npm run check`, then `npm run mobile:sync`. This validates public configuration, builds the web assets and copies them into the native projects. It is a configuration check, not proof that server features or store requirements pass.
+## Build commands
 
-From `android`, run `./gradlew assembleDebug` for device testing. The debug APK is not a store release. `npm run mobile:preview` is only for isolated UI/CI checks; release builds reject its marker. Do not bypass the release guard.
+```sh
+npm ci
+npm run check
+npm run mobile:sync
+npm run mobile:android
+```
 
-Use Android Studio's Generate Signed App Bundle flow with the owner's upload key after the release gates pass. Keep the keystore/password outside Git, use Play App Signing, and increase versionCode for each upload. iOS requires a Mac, the owner's Apple team and device/TestFlight validation.
+`mobile:sync` validates public configuration, builds the web assets and syncs the native projects. From `android`, run `./gradlew assembleDebug` for device testing. A debug APK is not a store release.
 
-## Native behavior
+For iOS preparation only:
 
-Location is requested only when the user chooses it; approximate location is accepted and no background tracking is enabled. Back closes the active dialog before navigating or exiting. External websites and temporary private-document links use the native browser. Telephone/email links use OS handlers. The native bundle does not register the website's service worker.
+```sh
+npm run test:ios-guard
+npm run ios:sync
+npm run ios:verify
+npm run mobile:ios
+```
 
-Native confirmation/recovery destinations are `https://app.histreets.uk/business` and `https://app.histreets.uk/business?mode=recovery`. Verify these destinations and email templates in Supabase. A password reset completes in the browser; the person returns to the app to sign in. Custom auth deep links are not configured.
+The shared `App` scheme supports an unsigned Release archive and native navigation tests. The Xcode Release guard rejects preview, missing, incomplete, remotely hosted or debug-enabled bundles. `npm run mobile:preview` is for isolated UI development; do not distribute a preview bundle.
 
-## Production state on 20 October 2026
+Use the original Android upload key for a signed AAB and keep the key/password private and backed up. Increase versionCode for each new Play upload. Apple distribution requires the owner's team, signing and a new build number for each subsequent upload. See [Play submission](PLAY-SUBMISSION.md) and [iOS submission](IOS-SUBMISSION.md).
 
-The source allowlists of the existing `histreets-ai`, `histreets-opportunity`, `histreets-team` and `histreets-admin-users` functions include `https://localhost` and `capacitor://localhost`. Authentication, platform roles and prompt handling remain unchanged. The AI function's retired Gemini 2.5 Flash model was replaced with Gemini 3.8 Flash after Google returned a 404 directing migration; Google's current pricing lists free-tier input/output for the replacement.
+## Native behaviour
 
-Native origins are deployed for `histreets-opportunity` v3, `histreets-team` v2 and `histreets-admin-users` v3. JWT verification is preserved for team/admin services. The content-reporting migration is deployed, with RLS enabled and anonymous report reads/moderation denied. Privacy, terms and deletion pages were verified live.
+Location is requested only when the user chooses it. Approximate location is accepted and there is no background tracking. Back closes the active dialog before navigating or exiting. External websites and temporary private-document links use the native browser; telephone and email links use OS handlers. The native bundle does not register the website's service worker.
 
-Following the owner's explicit request for the Gemini-enabled APK, `histreets-ai` native origins were deployed in v6 and the model replacement in v7. Native preflight passes; unsigned Business Copilot requests are rejected (401), and untrusted origins are rejected (403). Google returned 503 high demand on the first current-model check, and the existing local fallback returned real database results. This backend-only change does not alter the signed APK/AAB.
+Confirmation and recovery destinations are `https://app.histreets.uk/business` and `https://app.histreets.uk/business?mode=recovery`. Verify them against Supabase redirect settings and email templates. Password reset completes in the browser, after which the user returns to the app to sign in. Custom authentication deep links are not configured.
 
-The owner requests retaining Gemini AI and using only the free tier. No billing setting or AI provider has been changed. Google's [Gemini API terms](https://ai.google.dev/gemini-api/terms), checked on 20 October 2026, require Paid Services for API clients offered to UK users; Gemini API access is a Paid Service when its Cloud Project has an active billing account. The free-only public-release decision remains unresolved. Do not enable billing or replace the provider without authorization.
+The shared interface now requires separate opt-ins for resident AI questions and business drafts. It also includes authenticated account-deletion requests, persisted status and a private founder queue. Requests are processed manually under [the deletion procedure](ACCOUNT-DELETION-OPERATIONS.md); the intake itself does not remove accounts or send email.
 
-## Release gates still open
+## Backend and provider records
 
-- Resolve the free-only public UK launch requirement and verify Gemini output when Google's service is available. Cloudflare is deferred to a later version at the owner's request.
-- Test an ordinary account in the installed production app, including sign-in/recovery, private uploads, reporting and sign-out. The operator must fulfil deletion requests using docs/ACCOUNT-DELETION-OPERATIONS.md.
-- Complete Play Console declarations, internal testing/pre-launch review and any applicable account testing requirements before public rollout.
+Native origins are included in the source allowlists for `histreets-ai`, `histreets-opportunity`, `histreets-team` and `histreets-admin-users`. Team/admin services preserve JWT verification. The public resident AI route performs its own origin checks, and business drafting also checks authentication, ownership and verification.
 
-The developer account, store declarations and any required closed testing remain Play Console steps. Store approval cannot be guaranteed by a build.
+On 20 October 2026, Cloudflare Workers AI replaced the earlier Gemini integration. A synthetic resident search through deployed `histreets-ai` version 11 returned HTTP 200 with `cloudflare_intent`. Unauthenticated drafting returned 401 and an untrusted origin returned 403. These are dated observations; authenticated provider drafting and the current account's plan need separate verification. See [FREE-AI-SETUP.md](FREE-AI-SETUP.md).
 
-## Validation and signed artifacts
+The reporting migration and native-origin updates were recorded as deployed on 20 October. The account-deletion request migration was applied on 26 October, with row-level security and column grants checked. Source changes to a client do not establish that a website or previously signed binary has been updated.
 
-Version 0.3.1 (versionCode 2) APK/AAB were built and signed from `d2d1bdd` using the existing upload key. Signature and bundle validation passed, with no lint errors and 26 warnings. Both include production backend configuration; neither includes a service-role key or signing credentials. Later PR commits add tests and documentation only, so those binaries remain unchanged.
+## Verified source checkpoint
 
-Local validation passed: 72 unit checks, 22 reporting database checks, 24 feedback database checks, 86 email-queue checks, 40 Chromium browser checks, 27 mocked-auth/feedback checks and four reporting/safety browser checks. Security and release CI passed on `bf2a4ae`, including Chromium and WebKit. Prior native preview tests passed on `d2d1bdd`.
+At [ba762da](https://github.com/zaid3/hi-streets-app/commit/ba762da04eabe96d34ac820c2869eab046b6350c), the following CI checks passed on 26 October 2026:
 
-The production-configured native test initially asserted that the restricted business view must be nonempty. This was a test error: the app's map uses `businesses_geojson`. The corrected test follows that RPC; consult the PR's Android workflow for its result. A direct public-endpoint check returned 3,454 map features, denied anonymous report reads (401), rejected an invalid report (400), and exposed Auth settings successfully (200). These results are not a substitute for authenticated installed-app testing or Play pre-launch review.
+- [Security and release](https://github.com/zaid3/hi-streets-app/actions/runs/40366733840): 81 source/unit tests, TypeScript, Vite, dependency audit and secret scanning; 21 account-deletion database checks; 48 account/consent/deletion browser cases; 75 general browser cases with 14 skipped; 8 HiPulse and 4 content-safety cases.
+- [Android build and native tests](https://github.com/zaid3/hi-streets-app/actions/runs/40366733827): production-configured debug build and installed WebView checks.
+- [iOS build and simulator tests](https://github.com/zaid3/hi-streets-app/actions/runs/40366734023): 8 release-guard checks, an unsigned device archive and native navigation tests on iPhone and iPad.
+
+Installed public-backend checks use the `businesses_geojson` RPC, denied private report reads, invalid report rejection and Auth settings. They do not create users, submit reports, send email or invoke AI. Browser account tests use controlled fixtures. These checks do not replace ordinary-account testing on a signed release.
+
+## Signed Android artifacts and historical checks
+
+The [Android 0.3.2 validation record](FINAL-ANDROID-0.3.2.md) documents the signed APK/AAB produced on 20 October, including their hashes and Cloudflare disclosures. They predate the current explicit AI-consent and account-deletion request flows. Build a new signed package from the selected release commit before distributing those changes.
+
+The earlier 0.3.1 artifacts (versionCode 2) were built from `d2d1bdd`. That checkpoint recorded 72 unit checks, 22 reporting database checks, 24 feedback checks, 86 email-queue checks, 40 Chromium checks, 27 account/feedback checks and 4 safety checks. CI passed at `bf2a4ae`. Those dated results do not validate later source or binaries.
+
+## Remaining publication work
+
+Test ordinary-account sign-in, confirmation/recovery, private uploads, reporting, AI consent, provider drafting, deletion requests and sign-out in the installed release. Verify the public support/policy pages and the operator's moderation and deletion process.
+
+Complete store declarations, reviewer access, screenshots, physical-device checks and the applicable store review/testing process. Apple account setup, signing and upload remain pending. No signed iOS package or store publication is established by the unsigned CI archive.

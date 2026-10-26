@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigured } from './supabase'
+import { requireAiConsent } from './ai-consent'
 import type { Business, Post, PostType } from '../types'
 
 export type AskHiStreetsResponse = {
@@ -62,7 +63,8 @@ function messageFromError(error: unknown, fallback: string) {
   return fallback
 }
 
-export async function askHiStreets(prompt: string): Promise<AskHiStreetsResponse> {
+export async function askHiStreets(prompt: string, consented: boolean): Promise<AskHiStreetsResponse> {
+  requireAiConsent(consented)
   if (!supabaseConfigured || !supabase) throw new Error('HiStreets AI is not configured.')
   const text = prompt.trim()
   if (text.length < 2) throw new Error('Tell HiStreets what you need.')
@@ -74,7 +76,8 @@ export async function askHiStreets(prompt: string): Promise<AskHiStreetsResponse
   return data as AskHiStreetsResponse
 }
 
-export async function draftBusinessPost(prompt: string, businessId: string): Promise<BusinessCopilotResponse> {
+export async function draftBusinessPost(prompt: string, businessId: string, consented: boolean): Promise<BusinessCopilotResponse> {
+  requireAiConsent(consented)
   if (!supabaseConfigured || !supabase) throw new Error('Business Copilot is not configured.')
   const text = prompt.trim()
   if (!businessId) throw new Error('Choose an approved business first.')

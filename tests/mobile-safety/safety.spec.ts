@@ -49,7 +49,7 @@ test('signup requires rule acceptance and deletion is reachable when signed out'
   await expect(page.getByRole('button',{name:'Create account',exact:true})).toBeDisabled()
   await page.getByRole('checkbox').check()
   await expect(page.getByRole('button',{name:'Create account',exact:true})).toBeEnabled()
-  await page.getByRole('link',{name:'Delete account and associated data',exact:true}).click()
+  await page.getByRole('link',{name:'Deletion information and help if you cannot sign in',exact:true}).click()
   await expect(page.getByRole('heading',{name:'Delete your HiStreets account or data'})).toBeVisible()
   await expect(page.getByRole('link',{name:'Request account deletion by email'})).toHaveAttribute('href',/^mailto:ahaque@atomicmail.io/)
 })

@@ -19,3 +19,4 @@ yarn-error.log*
 *.mobileprovision
 keystore.properties
 playwright-report/
+__pycache__/

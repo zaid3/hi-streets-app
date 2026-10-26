@@ -1,0 +1,87 @@
+name: iOS build and simulator tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Select Xcode 26.3
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.3.app/Contents/Developer
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+      - run: npm ci
+      - run: npm run test:ios-guard
+      - name: Prepare an isolated preview and check the release guard
+        run: |
+          npm run mobile:preview -- --platform ios
+          if npm run ios:verify > ios/preview-guard.log 2>&1; then
+            cat ios/preview-guard.log
+            exit 1
+          fi
+          grep -q 'Preview/unconfigured builds cannot be released' ios/preview-guard.log
+      - name: Bundle the current public backend configuration
+        run: node scripts/prepare-mobile-live-test.mjs --platform ios
+      - run: npm run ios:verify
+      - name: Check Apple property lists
+        run: plutil -lint ios/App/App/Info.plist ios/App/App.xcodeproj/project.pbxproj
+      - name: Build an unsigned release archive
+        run: |
+          set -o pipefail
+          xcodebuild archive -project ios/App/App.xcodeproj -scheme App \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath ios/build/HiStreets.xcarchive \
+            -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO \
+            | tee ios/archive.log
+      - name: Select an iPhone and iPad simulator
+        run: |
+          xcrun simctl list devices available -j > /tmp/histreets-simulators.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          devices = json.loads(Path('/tmp/histreets-simulators.json').read_text())['devices']
+          runtimes = sorted((key for key in devices if '.iOS-26-' in key), reverse=True)
+          for family, preferred in [('IPHONE', 'iPhone 17 Pro Max'), ('IPAD', 'iPad Pro 13-inch')]:
+              candidates = [d for key in runtimes for d in devices[key] if preferred in d['name'] and d['isAvailable']]
+              if not candidates:
+                  raise SystemExit(f'No supported {family} simulator is installed.')
+              with open(os.environ['GITHUB_ENV'], 'a') as output:
+                  output.write(f'{family}_SIMULATOR={candidates[0]["udid"]}\n')
+              print(f'{family}: {candidates[0]["name"]}')
+          PY
+      - name: Run native iPhone navigation tests
+        run: |
+          set -o pipefail
+          xcodebuild test -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -destination "platform=iOS Simulator,id=$IPHONE_SIMULATOR" \
+            -derivedDataPath ios/DerivedData -resultBundlePath ios/build/iPhone.xcresult \
+            CODE_SIGNING_ALLOWED=NO | tee ios/iphone-tests.log
+      - name: Run native iPad navigation tests
+        run: |
+          set -o pipefail
+          xcodebuild test -project ios/App/App.xcodeproj -scheme App \
+            -configuration Debug -destination "platform=iOS Simulator,id=$IPAD_SIMULATOR" \
+            -derivedDataPath ios/DerivedData -resultBundlePath ios/build/iPad.xcresult \
+            CODE_SIGNING_ALLOWED=NO | tee ios/ipad-tests.log
+      - name: Upload build logs and native screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-native-validation
+          path: |
+            ios/*.log
+            ios/build/*.xcresult
+          if-no-files-found: warn
+          retention-days: 14

@@ -92,6 +92,9 @@ test.describe('HiStreets final mobile release', () => {
     expect(box).not.toBeNull()
     expect(box!.x).toBeGreaterThanOrEqual(0)
     expect(box!.width).toBeLessThanOrEqual((await page.viewportSize())!.width + 1)
+    await expect(dialog.getByRole('button', { name: 'Ask with AI', exact: true })).toBeDisabled()
+    await dialog.getByRole('checkbox').check()
+    await dialog.getByRole('button', { name: 'Ask with AI', exact: true }).click()
     // This layout smoke test runs without production credentials in CI.
     // Provider availability is verified separately from sheet rendering.
     await expect(dialog).toContainText(/Understanding your need|real HiStreets|couldn't find|AI unavailable/i)

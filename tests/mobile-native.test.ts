@@ -36,6 +36,15 @@ test('native origins are added without changing backend authorization logic', as
         }
         assert.equal(section(current), section(original))
       }
+    } else if (name === 'histreets-opportunity') {
+      // Keep every origin, session, role, ownership and verification check
+      // unchanged. Data-availability behaviour is exercised by handler tests.
+      const authorization = (source:string) => {
+        const end = source.indexOf('  const business=result.data')
+        assert.ok(end > 0, 'Missing opportunity authorization boundary')
+        return normalize(source.slice(0, end))
+      }
+      assert.equal(authorization(current), authorization(original))
     } else {
       assert.equal(normalize(current), normalize(original))
     }

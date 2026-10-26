@@ -23,8 +23,9 @@ a certification of the whole application's legal compliance.
    Keep `verify_jwt=false`: resident searches are public; Business Copilot checks
    the JWT, business verification and ownership inside the handler.
 4. Publish the updated provider disclosures in the web app and policy pages.
-   Rebuild the signed Android package: the earlier signed 0.3.1 interface still
-   names Gemini. An old package does not contain the updated disclosures.
+   Build signed packages from the selected release commit. The historical 0.3.2
+   Android artifacts include Cloudflare disclosures but predate the current
+   explicit sharing-consent and account-deletion request flows.
 5. Test a non-sensitive search and confirm `ai_processing=cloudflare_intent`,
    then test a verified owner's draft and confirm `cloudflare_draft`. Test the
    installed release with an ordinary account. A fallback response is not proof
@@ -50,20 +51,21 @@ integration does not use stateful AI features, prompt logging or caching.
 
 ## Release status
 
-The user approved deployment and Cloudflare processing on 20 October 2026.
-Supabase `histreets-ai` version 11 is ACTIVE with `index.ts` and `cloudflare.ts`.
-After the owner saved the credentials and the function was refreshed, a synthetic
+On 20 October 2026, Supabase `histreets-ai` version 11 was deployed with
+`index.ts` and `cloudflare.ts`. After credentials were configured, a synthetic
 resident search returned HTTP 200 with `ai_processing: cloudflare_intent`.
 This confirms provider processing; the search returned zero matching listings.
 Unauthenticated business drafting returned 401 and an untrusted origin returned 403.
 Authenticated business drafting remains untested. No paid plan or billing settings
 were changed; the account's plan was not independently queried.
 
-The owner supplied the original signing-key backup, and its private-key entry
-was validated. Version 0.3.2 (versionCode 3) is being rebuilt using that key.
-Previous 0.3.1 files predate this provider/disclosure change. Web publication,
-account/device checks and the operational review in
-`AI-LICENCE-AND-PRIVACY-REVIEW.md` remain separate release gates.
+Version 0.3.2 (versionCode 3) Android artifacts were signed and validated on
+20 October using the original upload key; see [the artifact record](FINAL-ANDROID-0.3.2.md).
+Previous 0.3.1 files predate the provider/disclosure change. Newer client changes
+require a fresh signed build. Web publication, account/device checks and the
+operational review in [AI-LICENCE-AND-PRIVACY-REVIEW.md](AI-LICENCE-AND-PRIVACY-REVIEW.md)
+remain separate release steps. The current source also requires an explicit
+opt-in before sending resident questions or business drafts for AI processing.
 
 Sources checked 20 October 2026:
 

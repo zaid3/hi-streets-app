@@ -40,7 +40,10 @@ privacy disclosures, and contain neither the upload password nor private signing
 APK SHA-256: b9215455d6a551296790eb2874e2e5089a041c0f3d478378f70df6ec4a94a568
 AAB SHA-256: 73ea257472199c9b3b4dff550bdffc3ba79cc949bf92b35dadb2ae1d6bc9387a
 
-Source checkpoint: b3ce811, local. Automatic approval review rejected pushing it to
-GitHub because explicit authorization to publish that change was not found. No retry
-or alternate publication route was used.
+Source checkpoint recorded for these artifacts: `b3ce811`.
 
+This is a dated artifact record. Later shared-app changes add explicit AI-sharing
+consent and in-app account-deletion requests; the hashes above do not identify a
+build containing those changes. See [MOBILE-BUILD.md](MOBILE-BUILD.md) for the
+current source and CI status, and produce a new signed release before distributing
+new functionality.

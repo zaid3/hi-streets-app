@@ -1,4 +1,4 @@
--- Sprint 8: Export exact HiStreets business list for manual/Claude research
+-- Sprint 8: Export exact HiStreets business list for source-verified research
 -- Purpose: Give researchers exact business_id/name/address/category so enrichment matches our records.
 -- Updated: includes a CSV-text export to avoid Supabase/PostgREST row caps.
 

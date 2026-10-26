@@ -2,6 +2,7 @@ import AccountSafety from './AccountSafety'
 import AuthFeedback from './AuthFeedback'
 import AdminReports from './AdminReports'
 import AdminFeedback from './AdminFeedback'
+import AdminDeletionRequests from './AdminDeletionRequests'
 import { authRedirect } from '../lib/auth-redirect'
 import { useEffect, useRef, useState } from 'react'
 import { authErrorMessage, emailRetrySeconds } from '../lib/auth-feedback'
@@ -428,7 +429,7 @@ export default function Profile({ onPost }: Props) {
       {adminSection === 'overview' && <PlatformAnalyticsDashboard founder={role === 'super_admin'} />}
       {adminSection === 'queue' && <><AdminReports /><AdminOwnershipRequests /><AdminPanel /></>}
       {adminSection === 'applications' && <JobApplicationsPanel />}
-      {adminSection === 'users' && role === 'super_admin' && <AdminUserManagement />}
+      {adminSection === 'users' && role === 'super_admin' && <><AdminDeletionRequests /><AdminUserManagement /></>}
       {adminSection === 'feedback' && role === 'super_admin' && <AdminFeedback />}
       <AccountSafety /><footer className="portal-footer"><ProjectLinks /></footer>
     </section>

@@ -3,6 +3,10 @@ App/Pods
 App/output
 App/App/public
 DerivedData
+*.xcarchive
+*.xcresult
+*.ipa
+*.dSYM
 xcuserdata
 
 # Cordova plugins for Capacitor

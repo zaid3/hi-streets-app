@@ -74,6 +74,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   const [acceptedRules, setAcceptedRules] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [copilotPrompt, setCopilotPrompt] = useState('')
+  const [copilotConsent, setCopilotConsent] = useState(false)
   const [copilotDraft, setCopilotDraft] = useState<BusinessCopilotDraft | null>(null)
   const [copilotLoading, setCopilotLoading] = useState(false)
   const [copilotStatus, setCopilotStatus] = useState('')
@@ -100,12 +101,13 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
   }
 
   async function askCopilot() {
+    if (!copilotConsent || copilotLoading) return
     if (!copilotPrompt.trim()) return setCopilotStatus('Tell the Copilot what you want to post.')
     try {
       setCopilotLoading(true)
       setCopilotStatus('Creating a factual draft from your instructions…')
       setCopilotDraft(null)
-      const response = await draftBusinessPost(copilotPrompt, businessId)
+      const response = await draftBusinessPost(copilotPrompt, businessId, copilotConsent)
       setCopilotDraft(response.draft)
       setCopilotStatus(response.draft.missing_fields.length ? `Draft ready. Check the missing details before publishing: ${response.draft.missing_fields.join(', ')}.` : 'Draft ready. Review it before using it.')
     } catch (error) {
@@ -185,7 +187,7 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
       <p className="muted">Verified businesses can post quickly. Posts that pass the safety checks go live; risky or incomplete posts wait for review.</p>
 
       <label>Verified business
-        <select value={businessId} onChange={e => { setBusinessId(e.target.value); setCopilotDraft(null) }} disabled={loadingBusinesses}>
+        <select value={businessId} onChange={e => { setBusinessId(e.target.value); setCopilotDraft(null); setCopilotConsent(false) }} disabled={loadingBusinesses}>
           {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       </label>
@@ -194,7 +196,8 @@ export default function PostComposer({ onClose, onSubmitted, initialType = 'offe
         <div className="business-copilot-head"><span><Bot size={20} /></span><div><small>AI assistant</small><h3 id="business-copilot-title">QuickPost with Business Copilot</h3></div></div>
         <p>Write naturally. Example: “20% off biryani after 5pm today” or “need a part-time waiter Friday to Sunday, around 20 hours”.</p>
         <textarea value={copilotPrompt} onChange={e => setCopilotPrompt(e.target.value)} placeholder="Tell HiStreets what you want to post…" maxLength={800} />
-        <button type="button" className="copilot-generate" onClick={() => void askCopilot()} disabled={copilotLoading || !businessId}><Sparkles size={17} /> {copilotLoading ? 'Drafting…' : 'Create draft with AI'}</button>
+        <label className="safety-consent"><input type="checkbox" checked={copilotConsent} onChange={event => setCopilotConsent(event.target.checked)} /><span>I agree to share my instructions and selected business profile with Cloudflare Workers AI to create a draft. AI is optional; I can write the post myself below. <a href="/privacy.html">Privacy</a></span></label>
+        <button type="button" className="copilot-generate" onClick={() => void askCopilot()} disabled={copilotLoading || !businessId || !copilotConsent}><Sparkles size={17} /> {copilotLoading ? 'Drafting…' : 'Create draft with AI'}</button>
         {copilotDraft && <div className="copilot-preview">
           <small>{copilotDraft.type.replace('_', ' ')} · {copilotDraft.category}</small>
           <strong>{copilotDraft.title}</strong>

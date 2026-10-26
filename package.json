@@ -21,6 +21,7 @@
     "ios:sync": "node scripts/prepare-mobile.mjs --platform ios",
     "ios:verify": "python3 scripts/verify-ios-release.py",
     "test:ios-guard": "python3 -m unittest discover -s tests -p 'test_ios*.py' -v",
+    "test:account-deletion": "node scripts/test-account-deletion.mjs",
     "mobile:assets": "capacitor-assets generate --android --ios --assetPath assets --iconBackgroundColor '#EF6C34' --iconBackgroundColorDark '#EF6C34' --splashBackgroundColor '#063b3a' --splashBackgroundColorDark '#063b3a'",
     "test:reports": "node scripts/test-mobile-reports.mjs",
     "test:safety": "playwright test --config playwright-safety.config.ts",

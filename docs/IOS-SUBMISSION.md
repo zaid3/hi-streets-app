@@ -61,18 +61,19 @@ record or signed iOS upload has been established by this source change.
 
 These must be resolved and verified before submitting for public App Review:
 
-- **Account deletion:** the current Business > Privacy & safety link opens an
-  email-based support page. Apple requires a way to initiate account deletion in
-  the app or a directly linked deletion page without requiring a support email
-  for this kind of app. A manual processing period is permitted, but its duration
-  and completion must be communicated. Implement and test that request flow and
-  operational handling; the current admin soft-delete control is not sufficient.
+- **Account deletion:** the app now submits an authenticated request directly and
+  shows the saved status. The private founder queue and row-level policies are
+  included in `20261026142746_account_deletion_requests.sql`. Apply and verify
+  this migration before shipping the frontend. The owner must monitor the queue
+  daily, complete the existing removal procedure within the displayed 30-day
+  target, and confirm completion. Test the flow with a designated test account.
+  The intake does not itself erase data or send a confirmation email.
   [Apple account deletion guidance](https://developer.apple.com/help/app-review/guideline-reference/5-1-1-account-deletion).
-- **AI sharing:** the app names Cloudflare Workers AI, but a disclosure alone is
-  not a verified explicit permission flow. Obtain permission before sharing
-  personal data with third-party AI, covering resident questions and business
-  drafting, and check decline behaviour. Do not describe this gate as passed
-  until the implemented request paths have been tested.
+- **AI sharing:** resident questions now require an affirmative checkbox before
+  any AI request; business drafting has a separate opt-in covering instructions
+  and the selected business profile. Declining keeps ordinary search and manual
+  posting available. The shared API client rejects calls without affirmative
+  consent. Verify these controls in the signed app as well as mocked browser tests.
   [App Review Guideline 5.1.2(i)](https://developer.apple.com/app-store/review/guidelines/#data-use-and-sharing).
 - **Privacy:** verify the live policy and support pages, operator details, actual
   backend processing and App Store privacy answers. The app collects data through

@@ -49,10 +49,30 @@ export default function SmartMapSearch({ onNavigate }: Props) {
   const [activeIndex, setActiveIndex] = useState(-1)
   const [bridgeStatus, setBridgeStatus] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
+  const [aiConsent, setAiConsent] = useState(false)
+  const [aiQuestion, setAiQuestion] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState('')
   const [aiResult, setAiResult] = useState<AskHiStreetsResponse | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const aiRequestId = useRef(0)
+  const aiDialogRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    if (!aiOpen) return
+    const previous = document.activeElement as HTMLElement | null
+    aiDialogRef.current?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.focus()
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setAiOpen(false); return }
+      if (event.key !== 'Tab') return
+      const controls = Array.from(aiDialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled)') || [])
+      const first = controls[0], last = controls[controls.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey); if (previous?.isConnected) previous.focus({ preventScroll: true }) }
+  }, [aiOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -121,7 +141,7 @@ export default function SmartMapSearch({ onNavigate }: Props) {
     runMapQuery(value)
   }
 
-  async function runAi() {
+  function beginAi() {
     const trimmed = query.trim()
     if (!trimmed) {
       inputRef.current?.focus()
@@ -131,15 +151,27 @@ export default function SmartMapSearch({ onNavigate }: Props) {
     inputRef.current?.blur()
     closeSuggestions()
     setAiOpen(true)
+    setAiQuestion(trimmed)
+    aiRequestId.current += 1
+    setAiLoading(false)
+    setAiConsent(false)
+    setAiError('')
+    setAiResult(null)
+  }
+
+  async function runAi() {
+    if (!aiConsent || aiLoading) return
+    const requestId = ++aiRequestId.current
     setAiLoading(true)
     setAiError('')
     setAiResult(null)
     try {
-      setAiResult(await askHiStreets(trimmed))
+      const result = await askHiStreets(aiQuestion, aiConsent)
+      if (requestId === aiRequestId.current) setAiResult(result)
     } catch (error) {
-      setAiError(error instanceof Error ? error.message : 'HiStreets AI is temporarily unavailable.')
+      if (requestId === aiRequestId.current) setAiError(error instanceof Error ? error.message : 'HiStreets AI is temporarily unavailable.')
     } finally {
-      setAiLoading(false)
+      if (requestId === aiRequestId.current) setAiLoading(false)
     }
   }
 
@@ -218,7 +250,7 @@ export default function SmartMapSearch({ onNavigate }: Props) {
         <div className="smart-search-panel" id="smart-search-list" role="listbox" aria-label={query.trim() ? 'Smart search suggestions' : 'Popular searches'}>
           <div className="smart-search-panel-head"><Sparkles size={14} /><span>{query.trim() ? 'Smart suggestions' : 'Explore Newham'}</span><small>Real local data</small></div>
           {query.trim().length >= 3 && (
-            <button type="button" className="ask-histreets-option" onMouseDown={event => event.preventDefault()} onClick={() => void runAi()}>
+            <button type="button" className="ask-histreets-option" onMouseDown={event => event.preventDefault()} onClick={beginAi}>
               <span className="smart-search-option-icon ai"><Bot size={19} /></span>
               <span className="smart-search-option-copy"><strong>Ask HiStreets AI</strong><small>Uses Cloudflare Workers AI. Do not enter sensitive data.</small></span>
             </button>
@@ -247,14 +279,20 @@ export default function SmartMapSearch({ onNavigate }: Props) {
 
       {aiOpen && (
         <div className="ask-ai-layer" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setAiOpen(false) }}>
-          <section className="ask-ai-sheet" role="dialog" aria-modal="true" aria-labelledby="ask-ai-title">
+          <section ref={aiDialogRef} className="ask-ai-sheet" role="dialog" aria-modal="true" aria-labelledby="ask-ai-title">
             <div className="ask-ai-handle" />
             <header className="ask-ai-header">
               <span className="ask-ai-mark"><Bot size={20} /></span>
               <div><small>Local intelligence</small><h2 id="ask-ai-title">Ask HiStreets</h2></div>
               <button type="button" aria-label="Close Ask HiStreets" onClick={() => setAiOpen(false)}><X size={20} /></button>
             </header>
-            <div className="ask-ai-question">“{query.trim()}”</div>
+            <div className="ask-ai-question">“{aiQuestion}”</div>
+            {!aiLoading && !aiResult && !aiError && <div className="ai-permission">
+              <p>To answer your question, HiStreets sends it to Cloudflare Workers AI. Do not include private or sensitive details. You can keep browsing the map without AI.</p>
+              <label className="safety-consent"><input type="checkbox" checked={aiConsent} onChange={event => setAiConsent(event.target.checked)} /><span>I agree to share this question with Cloudflare Workers AI.</span></label>
+              <a href="/privacy.html">How your data is used</a>
+              <div className="ai-permission-actions"><button type="button" disabled={!aiConsent} onClick={() => void runAi()}>Ask with AI</button><button type="button" onClick={() => setAiOpen(false)}>Keep using the map</button></div>
+            </div>}
             {aiLoading && <div className="ask-ai-loading"><Sparkles size={20} /><strong>Understanding your need…</strong><span>Checking HiStreets business listings and live local posts.</span></div>}
             {aiError && <div className="ask-ai-error" role="status"><strong>AI unavailable</strong><span>{aiError}</span><button type="button" onClick={() => void runAi()}>Try again</button></div>}
             {aiResult && <>
